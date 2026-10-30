@@ -221,3 +221,8 @@ red-green proof and a phone step as usual. Visual ones get a mockup first (marke
   4 point to existing checks (B-012, B-022, B-033, and partly B-006/B-009/B-014/B-028),
   2 are removed features (B-010 swipe-to-delete, B-029 Reports Customize), and 4 can only
   be seen on a phone (B-007, B-013, B-017 two phones).
+- Saving / syncing / encryption (2026-10-30): H-60 a save that couldn't read the online
+  copy wrote over it ("save as before"). Harmless today, but after a re-lock it would have
+  overwritten the re-locked data with old-key data. FIXED as K5 step 5 (a save names its key
+  number; red-green proven in __tests__/KeyChain.test.tsx "step 5"). Envelope v2 reader,
+  merge-before-save, waiting changes and the save line checked: nothing else wrong found.

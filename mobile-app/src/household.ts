@@ -23,7 +23,8 @@
 
 import CryptoJS from 'crypto-js';
 import * as Crypto from 'expo-crypto';
-import { doc, getDoc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, deleteField, onSnapshot, runTransaction } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, deleteField, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { KeyChangedError } from './keyChain';
 import { db } from './firebase';
 import { encryptJSON, decryptJSON, bytesToHex } from './encryption';
 import { requireCurrentUid, getCurrentFirebaseUser } from './authFirebase';
@@ -86,30 +87,37 @@ export async function createHouseholdData(
 // an edit). Does not touch the `members` list — see addMemberToHousehold
 // below for that.
 export async function saveHouseholdData(householdId: string, encryptedPayload: string): Promise<void> {
-  await setDoc(
-    doc(db, 'households', householdId),
-    {
-      data: encryptedPayload,
-      updatedAt: Date.now(),
-    },
-    { merge: true }
-  );
+  // K3: through the checked save, so a re-locked household gets its key number and stamp.
+  await saveHouseholdDataChecked(householdId, async () => encryptedPayload);
 }
 
 // Version 2.1 (merge before save): reads what is online now and writes in one step, so a
 // save from another phone can't slip in between. `build` gets the online text (or null)
 // and returns the text to write, e.g. this phone's change merged with the online copy.
 // Returns the text that was written.
+// K3 / K5 step 5: `keyVersion` is the key number the text is locked with. If the household
+// has been re-locked with a newer key, nothing is written (KeyChangedError): the caller
+// picks up the new key and tries again, instead of writing over the re-locked copy. After a
+// re-lock every save carries the key number and a "now" stamp (the rules check both).
 export async function saveHouseholdDataChecked(
   householdId: string,
-  build: (onlineData: string | null) => Promise<string>
+  build: (onlineData: string | null) => Promise<string>,
+  keyVersion?: number
 ): Promise<string> {
   const ref = doc(db, 'households', householdId);
   return runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
-    const online = snap.exists() && typeof snap.data().data === 'string' ? (snap.data().data as string) : null;
+    const d = snap.exists() ? snap.data() : {};
+    const kv = typeof d.keyVersion === 'number' ? d.keyVersion : 0;
+    if (keyVersion !== undefined && kv !== Math.max(0, keyVersion)) throw new KeyChangedError();
+    const online = typeof d.data === 'string' ? (d.data as string) : null;
     const next = await build(online);
-    tx.set(ref, { data: next, updatedAt: Date.now() }, { merge: true });
+    const write: Record<string, unknown> = { data: next, updatedAt: Date.now() };
+    if (kv > 0) {
+      write.dataKv = kv;
+      write.dataAt = serverTimestamp();
+    }
+    tx.set(ref, write, { merge: true });
     return next;
   });
 }
@@ -256,6 +264,11 @@ export type HouseholdDocSnapshot = {
   updatedAt?: number;
   // Version 2.1: how the household is stored online (see householdPartsSync.ts).
   layout?: number;
+  // K3 / K5: which app version each member's phone runs, the key number, and who has held
+  // the current key (see keyChain.ts).
+  memberVersions?: Record<string, unknown>;
+  keyVersion?: number;
+  keyMembers?: string[];
 };
 
 // Watches the household document live for membership changes, dissolutions, or revocations.
@@ -281,6 +294,9 @@ export function subscribeToHousehold(
         data: typeof data.data === 'string' ? data.data : undefined,
         updatedAt: typeof data.updatedAt === 'number' ? data.updatedAt : undefined,
         layout: typeof data.layout === 'number' ? data.layout : undefined,
+        memberVersions: data.memberVersions && typeof data.memberVersions === 'object' ? data.memberVersions : {},
+        keyVersion: typeof data.keyVersion === 'number' ? data.keyVersion : 0,
+        keyMembers: Array.isArray(data.keyMembers) ? data.keyMembers : undefined,
       });
     },
     (error) => {

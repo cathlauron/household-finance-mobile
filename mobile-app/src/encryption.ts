@@ -1,5 +1,5 @@
 import * as Crypto from 'expo-crypto';
-import { isV2Payload, openV2 } from './envelopeV2';
+import { isV2Payload, openV2, sealV2 } from './envelopeV2';
 import CryptoJS from 'crypto-js';
 import { keyDeriver } from './fastCrypto';
 import { saltParts } from './passwordRounds';
@@ -37,8 +37,11 @@ export function deriveKey(password: string, salt: string): CryptoJS.lib.WordArra
 
 // Scrambles any data (as JSON) using the derived key. A fresh random IV is used every time,
 // so the same data never scrambles to the exact same text twice.
-export async function encryptJSON(key: CryptoJS.lib.WordArray, data: unknown): Promise<string> {
+// K5 step 4: { v2: true } writes the tamper-checked kind (envelopeV2.ts). Callers only ask
+// for it where every reader runs 3.2 or newer (the household: every member's phone).
+export async function encryptJSON(key: CryptoJS.lib.WordArray, data: unknown, opts?: { v2?: boolean }): Promise<string> {
   const ivHex = await randomIVHex();
+  if (opts?.v2) return sealV2(key, JSON.stringify(data), ivHex);
   const iv = CryptoJS.enc.Hex.parse(ivHex);
   const json = JSON.stringify(data);
   const encrypted = CryptoJS.AES.encrypt(json, key, { iv });

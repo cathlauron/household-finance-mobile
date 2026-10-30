@@ -1368,3 +1368,12 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   (passwordRounds.ts); keys unchanged, proven by check. Checks: 299 logic, 235 screen.
   Next: K5 steps 3-5 (report 3.2 per phone/member, gated v2 writer, save key check) + K3, then
   ONE rules publish (K4 + K3) after her emulator run.
+- 2026-10-30 (afternoon): Cath: "do everything on the next list". Done on v3, full checks pass
+  (307 logic, 243 screen):
+  - Bug hunt saving/syncing/encryption: H-60 fixed (B-074), nothing else found.
+  - K5 steps 3-5 + K3 key chain built (see SECURITY-3.2-PLAN.md "Built so far"): keyChain.ts,
+    keyChainPlan.ts, household.ts checked save, parts kv, sign-in / invite pickup, rules.
+  - rules-test/ (repo root): Cath runs it on her PC after installing Java (Temurin 21):
+    cd rules-test; npm install; npm test. Then ONE rules publish (K4 + K3) in the Console.
+  - TEST-3 s19 = batch 2 phone list. Still waiting: her 3.2.0 build + sign-in times (rounds,
+    removing "Check sign-in speed"), hosting republish, H-59 answer (email note per account?).

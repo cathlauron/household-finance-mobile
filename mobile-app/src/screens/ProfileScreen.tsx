@@ -1,5 +1,6 @@
 import { updateRecentAccountIfPresent } from '../recentAccounts';
 import { codeTimeLeft } from '../linkCodeTime';
+import { catchUpKey } from '../keyChain';
 import { friendlyError } from '../friendlyError';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, TRY_AGAIN } from '../messages';
@@ -544,7 +545,8 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
       if (!wrapped || wrapped.householdId !== householdId) {
         throw new Error('Linked household key not found.');
       }
-      const householdKey = unwrapHouseholdKey(wrapped.wrappedKey, personalKey);
+      // K3: hand on the household's newest key.
+      const householdKey = (await catchUpKey(householdId, unwrapHouseholdKey(wrapped.wrappedKey, personalKey))).key;
       const result = await startHouseholdInvite(householdId, householdKey, model, username);
       clearLinkCodeExpiryTimer();
       setLinkCode(result.code);

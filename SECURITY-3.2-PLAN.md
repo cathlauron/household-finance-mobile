@@ -58,3 +58,23 @@ here is built yet. Cath's answers decide the open questions (bottom).
   rules change. Limits 100,000 to 2,000,000. Nothing writes a count yet, so every key is
   exactly as before (tests/passwordRounds.test.mjs proves the same key). An old 3.1 phone
   could not read a counted salt: step 9 only writes it once all of a person's phones are 3.2.
+- Steps 3-6 (2026-10-30, v3, NOT on phones yet, rules NOT published):
+  - Step 3: phones report "3.2.1" in memberVersions (the existing field; no device field
+    needed for the household). Personal cloud copies stay the old kind (not switched to v2).
+  - Step 4: the household (data + parts) is saved tamper-checked once every member reports
+    3.2+ (keyChain.ts sealOptions). Chain links are always tamper-checked.
+  - Step 5: a save names its key number; if the household was re-locked, nothing is written
+    (KeyChangedError), the new key is picked up and the save tried once more.
+  - K3: keyMembers (who held the current key; owner adds joiners); owner's phone re-locks in
+    ONE transaction (chain link n + data + keyVersion n + dataKv + dataAt + keyMembers) when
+    someone who held the key is gone and every member reports 3.2.1. Others pick up new keys
+    by walking the chain (sign-in, opening, live updates, inviting). Parts carry kv; older
+    parts still open with older keys and are all rewritten right after the re-lock.
+  - Households from before K3 start their keyMembers list with today's members: someone
+    removed BEFORE 3.2.1 doesn't trigger a re-lock (Cath can ask for a one-time re-lock).
+  - Known limit: someone who joins and leaves within seconds, before the owner's phone notes
+    them, isn't noticed. If parts rewriting stops part way, the rest are rewritten when they
+    next change (still protected by the rules).
+  - Rules: data saves after a re-lock need dataKv + dataAt == now; owner re-lock rule;
+    keyMembers rule; keyChain (members read; owner create only inside a re-lock; never
+    changed); parts need kv. Checked by rules-test/rules.test.mjs on Cath's PC (emulator).

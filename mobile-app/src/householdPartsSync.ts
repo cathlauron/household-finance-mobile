@@ -21,11 +21,13 @@ import { splitModel, joinParts, partTexts, extraReceiptPhotos } from './househol
 import { saveParts, loadParts, deleteAllParts, migrateToParts, reportMemberVersion, PartTooBigError } from './householdCloudParts';
 import type { HouseholdModel } from './types';
 import { partsEnabledFor, everyoneReadsParts, EXTRA_RECEIPTS_VERSION, ENVELOPE_READER_VERSION } from './partsGate';
+import { KEYCHAIN_READER_VERSION } from './keyChainPlan';
 
 // What this phone reports in memberVersions (2.2: reads parts for every account; 3.0: also
 // reads the receipt parts of shared expenses, payments and trip items).
 // 3.2: also reads the tamper-checked saves.
-export const PARTS_APP_VERSION = ENVELOPE_READER_VERSION;
+// 3.2.1 (K3): also picks up a new household key (keyChainPlan.ts).
+export const PARTS_APP_VERSION = KEYCHAIN_READER_VERSION;
 
 // Who has parts switched on: see partsGate.ts.
 export { partsEnabledFor };
@@ -107,6 +109,11 @@ function sameHousehold(householdId: string) {
 
 export function currentLayout(householdId: string): number {
   return state.householdId === householdId ? state.layout : 0;
+}
+
+// K3: after a re-lock every part is written again (with the new key) on the next save.
+export function rewriteAllPartsNext() {
+  state.texts = {};
 }
 
 export function forgetParts() {

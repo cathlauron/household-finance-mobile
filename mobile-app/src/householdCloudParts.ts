@@ -20,6 +20,7 @@ import { collection, deleteField, doc, getDocs, updateDoc, writeBatch } from 'fi
 import { db } from './firebase';
 import { encryptJSON, decryptJSON } from './encryption';
 import { requireCurrentUid } from './authFirebase';
+import { keysToTry, sealOptions, versionOfKey } from './keyChain';
 import { CORE_PART, HouseholdParts, PARTS_LAYOUT_VERSION, partTexts, changedParts, joinParts, splitModel } from './householdParts';
 import { planBatches, PART_LIMIT_CHARS } from './householdPartsPlan';
 import type { HouseholdModel } from './types';
@@ -57,12 +58,13 @@ export async function saveParts(
   // Encrypt everything first and check sizes before touching Firestore.
   const encrypted: { id: string; data: string }[] = [];
   for (const id of write) {
-    const data = await encryptJSON(key, parts[id]);
+    const data = await encryptJSON(key, parts[id], sealOptions(householdId));
     if (data.length > PART_LIMIT_CHARS) throw new PartTooBigError(id);
     encrypted.push({ id, data });
   }
 
   const now = Date.now();
+  const kv = Math.max(0, versionOfKey(householdId, key));
   const others = encrypted.filter((e) => e.id !== CORE_PART);
   const core = encrypted.filter((e) => e.id === CORE_PART);
   for (const group of [others, core]) {
@@ -70,7 +72,8 @@ export async function saveParts(
       const batch = writeBatch(db);
       for (const item of batchItems) {
         const e = group.find((g) => g.id === item.id)!;
-        batch.set(doc(partsCol(householdId), e.id), { data: e.data, updatedAt: now, updatedBy: uid });
+        // K3: after a re-lock each part names its key number (the rules check it).
+        batch.set(doc(partsCol(householdId), e.id), kv > 0 ? { data: e.data, updatedAt: now, updatedBy: uid, kv } : { data: e.data, updatedAt: now, updatedBy: uid });
       }
       await batch.commit();
     }
@@ -85,13 +88,27 @@ export async function saveParts(
 }
 
 // Reads every part and decrypts it. Returns null when the household has no parts yet.
+// K3: right after a re-lock some parts may still be locked with the previous key until
+// they're rewritten; the older keys this phone knows are tried too.
+function openPart(householdId: string, key: CryptoJS.lib.WordArray, data: string): any {
+  let first: unknown;
+  for (const k of keysToTry(householdId, key)) {
+    try {
+      return decryptJSON(k, data);
+    } catch (e) {
+      if (first === undefined) first = e;
+    }
+  }
+  throw first;
+}
+
 export async function loadParts(householdId: string, key: CryptoJS.lib.WordArray): Promise<HouseholdParts | null> {
   const snap = await getDocs(partsCol(householdId));
   if (snap.empty) return null;
   const parts: HouseholdParts = {};
   snap.forEach((d) => {
     const data = d.data().data;
-    if (typeof data === 'string') parts[d.id] = decryptJSON(key, data);
+    if (typeof data === 'string') parts[d.id] = openPart(householdId, key, data);
   });
   return parts;
 }

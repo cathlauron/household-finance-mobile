@@ -112,10 +112,17 @@ service cloud.firestore {
       // change another member's entry.
       allow update: if request.auth != null
         && request.auth.uid in resource.data.members
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['data', 'updatedAt', 'layout', 'memberVersions'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['data', 'updatedAt', 'layout', 'memberVersions', 'dataKv', 'dataAt'])
         && request.resource.data.data is string
         && request.resource.data.updatedAt is number
         && (!('layout' in request.resource.data) || request.resource.data.layout is int)
+        // K3 (3.2.1): once the household has been re-locked (keyVersion > 0), a save must name
+        // the current key number, and a change to the data must be stamped "now". Older apps
+        // never send these, so they can't write data locked with a key someone who left knew.
+        && (resource.data.get('keyVersion', 0) == 0
+            || (request.resource.data.get('dataKv', -1) == resource.data.keyVersion
+                && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['data'])
+                    || request.resource.data.get('dataAt', null) == request.time)))
         && (!('memberVersions' in request.resource.data)
             || (request.resource.data.memberVersions is map
                 && request.resource.data.memberVersions.diff(resource.data.get('memberVersions', {})).affectedKeys().hasOnly([request.auth.uid])
@@ -187,6 +194,33 @@ service cloud.firestore {
             || (request.resource.data.memberUsernames is map
                 && request.resource.data.memberUsernames.diff(resource.data.get('memberUsernames', {})).affectedKeys().hasOnly([request.auth.uid])));
 
+      // K3 (3.2.1): the owner re-locks the household with the next key: the data, the key
+      // number (+1 exactly), the stamp and the list of key holders change together, and the
+      // new key's chain link must be written in the same step. Members can't change here.
+      allow update: if request.auth != null
+        && resource.data.get('owner', null) == request.auth.uid
+        && request.auth.uid in resource.data.members
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['data', 'updatedAt', 'keyVersion', 'dataKv', 'dataAt', 'keyMembers'])
+        && request.resource.data.data is string
+        && request.resource.data.updatedAt is number
+        && request.resource.data.keyVersion == resource.data.get('keyVersion', 0) + 1
+        && request.resource.data.dataKv == request.resource.data.keyVersion
+        && request.resource.data.dataAt == request.time
+        && request.resource.data.keyMembers == resource.data.members
+        && existsAfter(/databases/$(database)/documents/households/$(householdId)/keyChain/$(string(request.resource.data.keyVersion)));
+
+      // K3 (3.2.1): the owner notes who holds the current key. People can only be added (and
+      // only people who are members now); someone who left stays listed until the re-lock.
+      allow update: if request.auth != null
+        && resource.data.get('owner', null) == request.auth.uid
+        && request.auth.uid in resource.data.members
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['keyMembers'])
+        && request.resource.data.keyMembers is list
+        && request.resource.data.keyMembers.size() <= 10
+        && request.resource.data.keyMembers.hasAll(resource.data.get('keyMembers', []))
+        && request.resource.data.keyMembers.hasAll(resource.data.members)
+        && resource.data.members.hasAll(request.resource.data.keyMembers.removeAll(resource.data.get('keyMembers', [])));
+
       // Allows an existing member to set or clear pendingRecoveryRequestId
       allow update: if request.auth != null
         && request.auth.uid in resource.data.members
@@ -217,12 +251,40 @@ service cloud.firestore {
       allow get, list: if isHouseholdMember();
       allow create, update: if isHouseholdMember()
         && partId.size() <= 80
-        && request.resource.data.keys().hasOnly(['data', 'updatedAt', 'updatedBy'])
+        && request.resource.data.keys().hasOnly(['data', 'updatedAt', 'updatedBy', 'kv'])
         && request.resource.data.data is string
         && request.resource.data.data.size() <= 1000000
         && request.resource.data.updatedAt is number
-        && request.resource.data.updatedBy == request.auth.uid;
+        && request.resource.data.updatedBy == request.auth.uid
+        // K3: after a re-lock each part names the current key number.
+        && (get(/databases/$(database)/documents/households/$(householdId)).data.get('keyVersion', 0) == 0
+            || request.resource.data.get('kv', -1) == get(/databases/$(database)/documents/households/$(householdId)).data.keyVersion);
       allow delete: if isHouseholdMember();
+    }
+
+    // K3 (3.2.1): the household's key chain. Link n is key n locked with key n-1. Only
+    // members can read it (someone removed can't, so they never learn a newer key). Only the
+    // owner adds a link, only as part of the re-lock (the household's key number becomes n
+    // in the same step), and a link is never changed or deleted.
+    match /households/{householdId}/keyChain/{n} {
+      function hh() {
+        return /databases/$(database)/documents/households/$(householdId);
+      }
+      allow get, list: if request.auth != null
+        && exists(hh())
+        && request.auth.uid in get(hh()).data.members;
+      allow create: if request.auth != null
+        && exists(hh())
+        && request.auth.uid in get(hh()).data.members
+        && get(hh()).data.get('owner', null) == request.auth.uid
+        && get(hh()).data.get('keyVersion', 0) + 1 == int(n)
+        && getAfter(hh()).data.get('keyVersion', 0) == int(n)
+        && request.resource.data.keys().hasOnly(['wrapped', 'by', 'at'])
+        && request.resource.data.wrapped is string
+        && request.resource.data.wrapped.size() <= 2000
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.at is number;
+      allow update, delete: if false;
     }
 
     match /householdKeys/{username} {

@@ -69,12 +69,16 @@ import {
   loadHouseholdDoc,
   saveHouseholdDataChecked,
 } from './household';
+import type { HouseholdDocSnapshot } from './household';
 import { mergeHouseholds } from './merge3';
+import { catchUpKey, KeyChangedError, noteHouseholdReaders, relockHousehold, sealOptions, versionOfKey, writeKeyMembers, forgetKeys } from './keyChain';
+import { canRelockNow, keyMembersToWrite, needsRelock } from './keyChainPlan';
 import { describeNewEntry } from './guest';
 import {
   partsEnabledFor,
   afterLoad as partsAfterLoad,
   afterSave as partsAfterSave,
+  rewriteAllPartsNext,
   saveWhenTooBig as partsSaveWhenTooBig,
   loadModelFromParts,
   modelFromPartsForUpdate,
@@ -389,6 +393,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
           return;
         }
 
+        // K5 step 4: saved in the tamper-checked kind once every phone reads it.
+        noteHouseholdReaders(householdId, members, snapshotData.memberVersions);
+        // K3: the household was re-locked with a newer key: pick it up before reading.
+        if (householdKeyRef.current && (snapshotData.keyVersion ?? 0) > Math.max(0, versionOfKey(householdId, householdKeyRef.current))) {
+          const old = householdKeyRef.current;
+          const up = await catchUpKey(householdId, old);
+          if (up.changed) adoptHouseholdKey(householdId, up.key, old);
+        }
+        ownerKeyJobs(householdId, snapshotData, currentUid);
+
         // Version 2.1: a household stored in parts (layout 2) is read from its parts; its
         // single `data` copy is out of date then and must not be used.
         if ((snapshotData.layout ?? 0) >= 2 && partsEnabledFor(usernameRef.current) && householdKeyRef.current) {
@@ -459,6 +473,70 @@ export function DataProvider({ children }: { children: ReactNode }) {
         }
       }
     );
+  }
+
+  // K3: a newer household key was picked up (or made here). This phone uses it from now on,
+  // and keeps it locked with the password online and on the phone, like the old one.
+  function adoptHouseholdKey(householdId: string, newKey: CryptoJS.lib.WordArray, oldKey: CryptoJS.lib.WordArray | null) {
+    if (householdIdRef.current !== householdId) return;
+    if (householdKeyRef.current === oldKey || !householdKeyRef.current) householdKeyRef.current = newKey;
+    const username = usernameRef.current;
+    const personalKey = keyRef.current;
+    if (username && personalKey) saveAdoptedKey(username, personalKey, householdId, newKey);
+  }
+  function saveAdoptedKey(username: string, personalKey: CryptoJS.lib.WordArray, householdId: string, newKey: CryptoJS.lib.WordArray) {
+    wrapHouseholdKey(newKey, personalKey)
+      .then(async (wrappedKey) => {
+        await saveCachedHouseholdKey(username, { householdId, wrappedKey });
+        await saveWrappedHouseholdKey(username, householdId, wrappedKey);
+      })
+      .catch((e) => console.warn('[K3] could not keep the new household key:', e));
+  }
+  // K3, owner's phone only: notes who joined (they hold the key now), and re-locks the
+  // household when someone who held the key is no longer in it. Each is tried once per
+  // session and key number, so a refusal (e.g. rules not published yet) doesn't repeat.
+  const keyJobBusyRef = useRef(false);
+  const keyJobTriedRef = useRef<Set<string>>(new Set());
+  function ownerKeyJobs(householdId: string, snap: HouseholdDocSnapshot, uid: string) {
+    const key = householdKeyRef.current;
+    if (!key || snap.owner !== uid || keyJobBusyRef.current) return;
+    const members = snap.members;
+    if (needsRelock(snap.keyMembers, members)) {
+      if (!canRelockNow({ myUid: uid, owner: snap.owner, members, memberVersions: snap.memberVersions })) return;
+      const tag = `relock:${householdId}:${snap.keyVersion ?? 0}`;
+      if (keyJobTriedRef.current.has(tag)) return;
+      keyJobTriedRef.current.add(tag);
+      keyJobBusyRef.current = true;
+      inSaveLine(async () => {
+        const r = await relockHousehold(householdId, key, uid);
+        if (!r || householdIdRef.current !== householdId) return;
+        ownWriteRef.current = r.data;
+        lastEncryptedDataRef.current = r.data;
+        adoptHouseholdKey(householdId, r.key, key);
+        // Every part is written again with the new key.
+        rewriteAllPartsNext();
+        const username = usernameRef.current;
+        const model = latestModelRef.current;
+        if (username && model) partsAfterSave(username, householdId, r.key, model).catch(() => {});
+        console.log('[K3] household re-locked with key', r.version);
+      })
+        .catch((e) => console.warn('[K3] re-lock not done:', e))
+        .finally(() => {
+          keyJobBusyRef.current = false;
+        });
+      return;
+    }
+    const km = keyMembersToWrite(snap.keyMembers, members);
+    if (!km) return;
+    const tag = `members:${householdId}:${km.join(',')}`;
+    if (keyJobTriedRef.current.has(tag)) return;
+    keyJobTriedRef.current.add(tag);
+    keyJobBusyRef.current = true;
+    writeKeyMembers(householdId, km)
+      .catch((e) => console.warn('[K3] key holders not noted:', e))
+      .finally(() => {
+        keyJobBusyRef.current = false;
+      });
   }
 
   async function loadModel(
@@ -538,8 +616,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         // and decrypt the shared household data with it.
         const wrapped = await loadWrappedHouseholdKey(username);
         if (wrapped && wrapped.householdId === householdId) {
-          const householdKey = unwrapHouseholdKey(wrapped.wrappedKey, key);
-          saveCachedHouseholdKey(username, wrapped).catch(() => {});
+          let householdKey = unwrapHouseholdKey(wrapped.wrappedKey, key);
+          // K3: the household may have been re-locked since this key was saved.
+          const up = await catchUpKey(householdId, householdKey);
+          if (up.changed) {
+            householdKey = up.key;
+            saveAdoptedKey(username, key, householdId, householdKey);
+          } else saveCachedHouseholdKey(username, wrapped).catch(() => {});
           let encryptedHousehold: string | null = null;
           let layout = 0;
           try {
@@ -696,6 +779,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // the other phone's change and is merged in (before, a change that arrived while this save
   // was running could be overwritten). The text about to be written is remembered, so when
   // it comes back through the live listener it's recognised as this phone's own save.
+  // K3 / K5 step 5: if the household was re-locked meanwhile, nothing is written with the
+  // old key: the new key is picked up and the save is tried once more with it.
   async function pushHousehold(
     householdId: string,
     householdKey: CryptoJS.lib.WordArray,
@@ -703,6 +788,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
     mineEncrypted: string,
     base: HouseholdModel | null = lastSyncedModelRef.current,
     baseText: string | null = lastEncryptedDataRef.current
+  ): Promise<{ encrypted: string; model: HouseholdModel; merged: boolean; key: CryptoJS.lib.WordArray }> {
+    try {
+      return { ...(await pushHouseholdOnce(householdId, householdKey, mine, mineEncrypted, base, baseText)), key: householdKey };
+    } catch (e) {
+      if (!(e instanceof KeyChangedError)) throw e;
+      const up = await catchUpKey(householdId, householdKey);
+      if (!up.changed) throw e;
+      adoptHouseholdKey(householdId, up.key, householdKey);
+      const again = await encryptJSON(up.key, mine, sealOptions(householdId));
+      return { ...(await pushHouseholdOnce(householdId, up.key, mine, again, base, baseText)), key: up.key };
+    }
+  }
+  async function pushHouseholdOnce(
+    householdId: string,
+    householdKey: CryptoJS.lib.WordArray,
+    mine: HouseholdModel,
+    mineEncrypted: string,
+    base: HouseholdModel | null,
+    baseText: string | null
   ): Promise<{ encrypted: string; model: HouseholdModel; merged: boolean }> {
     let result = mine;
     const seq = remoteSeqRef.current;
@@ -716,10 +820,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
           result = mine; // can't read the online copy: save as before
         }
       }
-      const text = result === mine ? mineEncrypted : await encryptJSON(householdKey, result);
+      const text = result === mine ? mineEncrypted : await encryptJSON(householdKey, result, sealOptions(householdId));
       ownWriteRef.current = text;
       return text;
-    });
+    }, versionOfKey(householdId, householdKey));
     // (Not when the other phone's newer save already came in meanwhile: that one is newer.)
     if (householdIdRef.current === householdId && remoteSeqRef.current === seq) {
       lastEncryptedDataRef.current = encrypted;
@@ -815,7 +919,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const key = keyRef.current;
     try {
       if (householdIdRef.current && householdKeyRef.current) {
-        const encrypted = await encryptJSON(householdKeyRef.current, current);
+        const encrypted = await encryptJSON(householdKeyRef.current, current, sealOptions(householdIdRef.current));
         noteStorageSize(encrypted);
         if (encrypted.length > STORAGE_LIMIT_CHARS && (await partsSaveWhenTooBig(username, householdIdRef.current, householdKeyRef.current, current))) {
           // Version 2.1: too big for one copy, saved in parts instead.
@@ -829,7 +933,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           );
           settleMerged(res, current, version, username, key);
           forgetWaitingBase(username);
-          partsAfterSave(username, householdIdRef.current, householdKeyRef.current, res.model).catch(() => {});
+          partsAfterSave(username, householdIdRef.current, res.key, res.model).catch(() => {});
         }
       } else if (saltRef.current && keyRef.current) {
         const encrypted = await encryptJSON(keyRef.current, current);
@@ -1121,7 +1225,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const stillHere = () => usernameRef.current === username && keyRef.current === key;
     if (householdId && householdKey) {
       // Linked profile: save to the shared household document
-      const encrypted = await encryptJSON(householdKey, sanitizedModel);
+      const encrypted = await encryptJSON(householdKey, sanitizedModel, sealOptions(householdId));
 
       // Continuous local snapshotting: keep an up-to-date personal copy in local storage first.
       // Deliberately not awaited — this shouldn't hold up the household sync below — but a
@@ -1171,10 +1275,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         if (stillHere()) setPendingChanges((n) => n + 1);
       } else {
         const push = pushHousehold(householdId, householdKey, sanitizedModel, encrypted, base, baseText);
-        const sent = (res: { model: HouseholdModel; merged: boolean }) => {
+        const sent = (res: { model: HouseholdModel; merged: boolean; key: CryptoJS.lib.WordArray }) => {
           // The whole household was just sent, so nothing is waiting any more.
           forgetWaitingBase(username);
-          partsAfterSave(username, householdId, householdKey, res.model).catch(() => {});
+          partsAfterSave(username, householdId, res.key, res.model).catch(() => {});
           if (stillHere()) {
             settleMerged(res, sanitizedModel, version, username, key);
             setPendingChanges(0);
@@ -1416,6 +1520,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     keyRef.current = null;
     householdIdRef.current = undefined;
     householdKeyRef.current = null;
+    forgetKeys();
     lastEncryptedDataRef.current = null;
     lastSyncedModelRef.current = null;
     setModel(null);

@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import CryptoJS from 'crypto-js';
 import { sanitizeUsername } from '../auth';
 import { deriveKey, decryptJSON, generateSalt, encryptJSON } from '../encryption';
+import { catchUpKey } from '../keyChain';
 import { loadProfilesIndex, loadEncryptedProfileData, saveEncryptedProfileData, saveProfilesIndex, updateProfileSalt, updateProfileHouseholdId, ProfileIndexEntry } from '../storage';
 import type { HouseholdModel } from '../types';
 import { signInWithFirebase, createFirebaseAccount, signOutFirebase, sendResetEmail } from '../authFirebase';
@@ -578,6 +579,7 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
           // recovery key as if the password were wrong (see signInRestore.ts).
           const outcome = await restoreLinkedHousehold({
             unwrap: () => unwrapHouseholdKey(wrappedKeyInfo.wrappedKey, key),
+            catchUp: async (hk) => (await catchUpKey(effectiveHouseholdId, hk)).key,
             load: () => loadHouseholdData(effectiveHouseholdId),
             decrypt: (hk, text) => decryptJSON<HouseholdModel>(hk, text),
           });
@@ -678,6 +680,8 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
             return null;
           }
 
+          // K3: the household may have been re-locked since this key was saved.
+          householdKey = (await catchUpKey(profile.householdId!, householdKey)).key;
           const encryptedHousehold = await loadHouseholdData(profile.householdId!);
           if (!encryptedHousehold) {
             return null;
@@ -741,6 +745,8 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
             return null;
           }
 
+          // K3: the household may have been re-locked since this key was saved.
+          householdKey = (await catchUpKey(wrapped.householdId, householdKey)).key;
           const encryptedHousehold = await loadHouseholdData(wrapped.householdId);
           if (!encryptedHousehold) {
             return null;

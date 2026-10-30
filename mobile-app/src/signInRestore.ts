@@ -16,8 +16,11 @@ export function looksOffline(e: unknown): boolean {
   return ['unavailable', 'deadline-exceeded', 'auth/network-request-failed'].includes(code) || /offline|network|timed out|timeout/i.test(msg);
 }
 
+// K3: catchUp (optional) brings the key up to the household's newest one first (a household
+// re-locked since this key was saved). It never throws; when it can't, the key is kept.
 export async function restoreLinkedHousehold<M, K>(steps: {
   unwrap: () => K;
+  catchUp?: (key: K) => Promise<K>;
   load: () => Promise<string | null>;
   decrypt: (key: K, text: string) => M;
 }): Promise<RestoreOutcome<M, K>> {
@@ -27,6 +30,7 @@ export async function restoreLinkedHousehold<M, K>(steps: {
   } catch {
     return { status: 'recovery' };
   }
+  if (steps.catchUp) householdKey = await steps.catchUp(householdKey).catch(() => householdKey);
   let text: string | null;
   try {
     text = await steps.load();

@@ -285,3 +285,12 @@ Only if 1-3 are as described, make the build (3.2.0) and on the INSTALLED app:
       your changes sync.
 7. Updates: after the build is installed, open the app, close it, open it again: nothing
    changes yet (there is no update yet). This just confirms it opens normally.
+
+## 19. Batch 2 (sent later as an EAS Update to 3.2.0, on v3). NOT YET TESTED.
+Test in Expo Go first (from v3), then again once the update reaches the installed 3.2.0 app.
+1. Sign in: "Forgot password?" under Sign in opens the warning sheet; Send → "Check your email"; the email arrives and the reset works.
+2. Settings top: the "confirm your email" note shows if your email isn't confirmed; "Send link" works; ✕ hides it.
+3. Settings › About & Help › Delete account: the page explains what happens (use a TEST account, never your real one).
+4. Saving on both phones (yours + partner's, both on 3.2): a change on one shows on the other, both ways. (After both phones report 3.2 the household is saved in the new tamper-checked kind.)
+5. Slow connection: "Still saving..." instead of "Sync Failed"; guest: the first item shows before the sheet rises.
+K3 (new key after someone leaves) is checked on your computer with the rules test (rules-test folder, needs Java), not on the phone.

@@ -21,3 +21,27 @@ test('household does not open with the key: recovery', async () => {
 test('no household data online: recovery, as before', async () => {
   assert.equal((await restoreLinkedHousehold({ ...ok, load: async () => null })).status, 'recovery');
 });
+
+test('K3: a household re-locked since the key was saved opens with the newer key', async () => {
+  const out = await restoreLinkedHousehold({
+    unwrap: () => 'key0',
+    catchUp: async (k) => (k === 'key0' ? 'key1' : k),
+    load: async () => 'text',
+    decrypt: (k) => {
+      if (k !== 'key1') throw new Error('wrong key');
+      return { ok: true };
+    },
+  });
+  assert.equal(out.status, 'ok');
+  assert.equal(out.householdKey, 'key1');
+});
+
+test('K3: if picking up the newer key fails, the saved key is still tried', async () => {
+  const out = await restoreLinkedHousehold({
+    unwrap: () => 'key0',
+    catchUp: async () => { throw new Error('offline'); },
+    load: async () => 'text',
+    decrypt: () => ({ ok: true }),
+  });
+  assert.equal(out.householdKey, 'key0');
+});

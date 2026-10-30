@@ -1,0 +1,13 @@
+{
+  "name": "finance-flow-rules-test",
+  "private": true,
+  "description": "Checks the Firestore rules on a pretend copy of Firebase on this computer (needs Java). Never touches the real project.",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore --project demo-finance-flow \"node --test --test-reporter=spec\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.19.0",
+    "firebase-tools": "^14.27.0"
+  }
+}
