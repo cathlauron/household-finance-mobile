@@ -1172,3 +1172,9 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   B14 (paid look) and L4 (Left to Spend page). BUILT + PROVEN: B14 paid look (B-062), L4 page
   (B-063), H-53 guest picks (B-064). Phone: TEST-3 section 15. NEXT: E2 dropdowns on every
   form, F2 banner + F3 list, D2 inside Edit loan.
+
+- NEWEST (2026-10-29, evening, v3 ..ab207fe + H-51): Cath: "device test is as described"
+  (s15), "do all three as one batch". BUILT + checked: E2 dropdowns on every form with a
+  guessed category (B-065), D2 inside Edit loan (B-066), F2 banner + F3 list of household
+  changes (B-067). (An earlier run of this request was cut off after E2 and D2 with F2/F3
+  half-written; it was finished from where it stopped, not redone.) Phone: TEST-3 section 16.
