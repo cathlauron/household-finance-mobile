@@ -1252,3 +1252,26 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   real payments before upload; to confirm). She APPROVED mockups K2e (corner peel) and H1
   (Help & FAQ + support page). She asked what can be done before / alongside batch 1;
   suggested plan given in chat, waiting for her OK.
+
+- NEWEST (2026-10-29, night): BATCH 1+ BUILT on `v3` (her OK on the plan). Commits 618f7e0
+  (store basics), Help & FAQ, 4051237 (peel), iPad, 5dfdfc3 (TEST-3 section 17). All checks
+  pass (287 logic, 212 screen). Her answers this round: peel Theme = "Match my phone" sticker
+  + "Dark mode" sticker (Dark greyed while Match is on); stickers on the Appearance page only.
+  Built: (1) app.json ios.bundleIdentifier com.cathlauron.householdfinance (+ .v2 for the
+  side-by-side build), buildNumber 1, requireFullScreen true (iPad upright + full screen,
+  avoids the iPad multitasking upload error); eas.json "production" profile (.aab) + submit.
+  (2) Web pages in mobile-app/hosting: support.html (made from src/helpFaq.ts by
+  tools/build-web-pages.mjs; tests/webPages.test.mjs fails if they differ), privacy.html,
+  delete-account.html (by email for now), site.css, links on index.html. NOT LIVE until Cath
+  publishes Firebase Hosting. Privacy/delete pages have 3 choices for her: "within 30 days",
+  "not for children under 13", shared-household items on delete (left neutral). (3) Help &
+  FAQ page (H1, HelpFaqScreen, route HelpFaq) replaces "Help & guides: Coming soon"; About &
+  Help adds Privacy policy + Delete account (opens the web page; in-app delete = batch 2);
+  "More languages are coming later" removed; APP_VERSION moved to src/appVersion.ts (check vs
+  app.json). (4) Peel-off switches K2e: components/PeelSticker.tsx, peelGeometry.ts,
+  screenPeel.tsx (ScreenPeelHost in App.tsx), screens/AppearancePage.tsx (Appearance moved
+  out of SettingsScreen); new motion value PEEL_TAP_MS 1000. (5) iPad-size walk: everything
+  works, pages stretch full width (H-55, centred column = mockup first). Walk tool: WALK_SIZE /
+  WALK_DARK, peel: / mpeel: steps; the checking copy may open Settings as a guest.
+  STORE-READINESS.md updated. Next: her phone test (TEST-3 section 17), publish the web pages,
+  then batch 1 (release 3.2).
