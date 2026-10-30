@@ -260,3 +260,18 @@ Before testing: publish the new Firebase rules (steps in Claude's message, SEC-1
 Needs your phone: the feel of the peel (speed, the curl, the shadow), dragging diagonally
 (the hidden browser cancels diagonal touch drags; a phone shouldn't), TalkBack/VoiceOver
 reading "Dark mode, switch, off" and a double tap turning it on.
+
+## 18. Release 3.2.0 (2026-10-30). NOT YET TESTED.
+
+First in Expo Go (git pull, npx expo start -c):
+1. Settings › your profile › Appearance: Dark mode shows a clean "☀ Light" sticker (no
+   "Lark", no pink showing on the right). Peel or tap it: the screen turns dark and the
+   sticker shows a clean "☾ Dark". Peel it back: a clean "☀ Light" again. (B-068)
+2. Settings › About & Help looks like mockup H1: Help & FAQ with a green "?" tile and a "New"
+   tag, Contact support with a blue mail tile, Copy email address; "Your data": Privacy
+   policy (grey lock) and Delete account (red, red tile). Version 3.2.0.
+3. Delete account opens the web page; it now says what you added to a shared household stays.
+Only if 1-3 are as described, make the build (3.2.0) and on the INSTALLED app:
+4. Settings › About & Help › Check sign-in speed: send Claude the three times it shows.
+5. Repeat 1 on the installed app (the peel on a real build), and check that sign-in,
+   fingerprint/PIN and the household still work as before.

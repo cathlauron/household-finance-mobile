@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockups: iPad layout and Delete account</title>
+<style>
+:root { --page:#EEF0EC; --ink:#16201A; --muted:#5B675F; --accent:#2E6B47; --line:#D5DBD6; --red:#D70015; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--page); color:var(--ink); font-family:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif; font-size:15px; line-height:1.5; padding:28px 16px 56px; }
+.wrap { max-width:1180px; margin:0 auto; }
+.eyebrow { font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); font-weight:700; }
+h1 { font-size:30px; line-height:1.15; margin:4px 0 8px; }
+h2 { font-size:22px; margin:40px 0 4px; }
+h3 { font-size:17px; margin:0; text-align:center; }
+p.lead { color:var(--muted); margin:0 0 10px; max-width:80ch; }
+.grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px; margin-top:16px; align-items:start; }
+@media (max-width:1000px){ .grid { grid-template-columns:minmax(0,1fr); } }
+.col { display:grid; gap:8px; justify-items:center; }
+.col > p { margin:0; color:var(--muted); font-size:14px; text-align:center; max-width:40ch; }
+.ipad { width:100%; max-width:340px; border-radius:22px; overflow:hidden; box-shadow:0 14px 40px rgba(0,0,0,.16); border:8px solid #1c1c1e; background:#000; }
+.ipad img { display:block; width:100%; height:auto; }
+.pair { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+.pair .ipad { max-width:250px; }
+.phone { width:340px; max-width:100%; min-height:720px; border-radius:38px; background:#F2F2F7; color:#111; box-shadow:0 18px 50px rgba(0,0,0,.18); overflow:hidden; position:relative; padding-bottom:24px; }
+.top { padding:40px 18px 0; color:var(--accent); font-size:16px; }
+.big { padding:4px 18px 8px; font-size:28px; font-weight:700; }
+.hero { text-align:center; padding:6px 22px 4px; }
+.hero .ic { width:56px; height:56px; border-radius:16px; margin:0 auto 8px; display:grid; place-items:center; background:#FDE3E5; color:var(--red); font-size:26px; font-weight:800; }
+.hero b { font-size:19px; display:block; }
+.hero span { color:#636366; font-size:14px; }
+.glabel { margin:14px 30px 6px; font-size:12px; color:#636366; text-transform:uppercase; letter-spacing:.3px; }
+.grp { margin:0 14px; background:#fff; border-radius:14px; overflow:hidden; }
+.li { display:flex; gap:10px; align-items:flex-start; padding:11px 14px; font-size:15px; }
+.li + .li { border-top:.5px solid #D1D1D6; }
+.li .d { width:22px; flex:none; text-align:center; }
+.foot { margin:6px 30px 0; font-size:12.5px; color:#636366; line-height:17px; }
+.field { margin:0 14px; background:#fff; border-radius:14px; padding:12px 14px; color:#8E8E93; font-size:15px; display:flex; justify-content:space-between; }
+.btn { margin:14px 14px 0; border-radius:14px; padding:14px; text-align:center; font-weight:800; font-size:16px; }
+.btn.red { background:var(--red); color:#fff; }
+.btn.ghost { color:var(--accent); background:transparent; padding:8px; margin-top:4px; font-weight:700; }
+.radio { display:flex; justify-content:space-between; align-items:center; padding:11px 14px; }
+.radio + .radio { border-top:.5px solid #D1D1D6; }
+.radio .r { width:20px; height:20px; border-radius:50%; border:2px solid #C7C7CC; }
+.radio .r.on { border:6px solid var(--accent); }
+.sheet { position:absolute; left:0; right:0; bottom:0; background:#F2F2F7; border-radius:22px 22px 0 0; box-shadow:0 -10px 30px rgba(0,0,0,.18); padding:8px 0 24px; }
+.sheet .grab { width:38px; height:5px; border-radius:3px; background:#C7C7CC; margin:4px auto 10px; }
+.dim { position:absolute; inset:0; background:rgba(0,0,0,.35); }
+.under { opacity:.9; }
+.done { display:grid; place-items:center; text-align:center; min-height:640px; padding:0 30px; }
+.done .ic { width:64px; height:64px; border-radius:50%; background:#E3F1E8; color:var(--accent); display:grid; place-items:center; font-size:30px; margin:0 auto 12px; }
+.qs { background:#fff; border-radius:16px; padding:16px 20px; margin-top:28px; color:var(--muted); }
+.qs b { color:var(--ink); }
+.qs li { margin:4px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Finance Flow 3.3 · mockups I and DA</div>
+  <h1>iPad layout, and Delete account inside the app</h1>
+  <p class="lead">Two things to pick before they're built. The iPad pictures are the real app, drawn at iPad size by Claude's hidden browser.</p>
+
+  <h2>iPad: how pages sit on the wider screen</h2>
+  <p class="lead">Today everything stretches across the whole iPad, so rows get very long. A centred column keeps the phone layout and leaves calm space at the sides (iPad Settings and Notes do the same).</p>
+  <div class="grid">
+    <div class="col">
+      <h3>I1 · Today: full width</h3>
+      <div class="ipad"><img src="i1-home.jpg" alt="Home stretched across a whole iPad screen"></div>
+      <p>Works, nothing cut off, but amounts sit far from their names.</p>
+    </div>
+    <div class="col">
+      <h3>I2 · Centred column, narrow (600)</h3>
+      <div class="pair">
+        <div class="ipad"><img src="i2-home.jpg" alt="Home in a narrow centred column on iPad"></div>
+        <div class="ipad"><img src="i2-tx.jpg" alt="Transactions in a narrow centred column on iPad"></div>
+      </div>
+      <p>Closest to the phone. The tab bar and + button stay inside the column.</p>
+    </div>
+    <div class="col">
+      <h3>I3 · Centred column, wider (720)</h3>
+      <div class="pair">
+        <div class="ipad"><img src="i3-home.jpg" alt="Home in a wider centred column on iPad"></div>
+        <div class="ipad"><img src="i3-tx.jpg" alt="Transactions in a wider centred column on iPad"></div>
+      </div>
+      <p>A little roomier; still easy to read across.</p>
+    </div>
+  </div>
+
+  <h2>Delete account inside the app</h2>
+  <p class="lead">Opens from Settings › About &amp; Help › Delete account. It says exactly what goes and what stays, asks for your password (that's also how the app proves it's you), and only then deletes. Your answer is built in: what you added to a shared household stays.</p>
+  <div class="grid">
+    <div class="col">
+      <h3>DA1 · One page</h3>
+      <div class="phone">
+        <div class="top">‹ About &amp; Help</div>
+        <div class="big">Delete account</div>
+        <div class="hero"><div class="ic">✕</div><b>Delete your account?</b><span>This can't be undone.</span></div>
+        <div class="glabel">What gets deleted</div>
+        <div class="grp">
+          <div class="li"><span class="d">👤</span><span>Your account (cath@…) and your sign-in on every phone</span></div>
+          <div class="li"><span class="d">🔑</span><span>Your Recovery Key and your password lock</span></div>
+        </div>
+        <div class="glabel">Your household: Lauron home</div>
+        <div class="grp">
+          <div class="li"><span class="d">🏠</span><span>You leave the household. What you added stays for Miguel.</span></div>
+        </div>
+        <div class="foot">You're the owner, so Miguel becomes the owner.</div>
+        <div class="glabel">Type your password to confirm</div>
+        <div class="field"><span>Password</span><span>👁</span></div>
+        <div class="btn red">Delete my account</div>
+        <div class="btn ghost">Save a backup first</div>
+      </div>
+    </div>
+    <div class="col">
+      <h3>DA2 · Two short steps in a sheet</h3>
+      <div class="phone">
+        <div class="under">
+          <div class="top">‹ Settings</div>
+          <div class="big">About &amp; Help</div>
+        </div>
+        <div class="dim"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="hero"><div class="ic">✕</div><b>Delete your account?</b><span>Step 1 of 2</span></div>
+          <div class="glabel">Deleted</div>
+          <div class="grp"><div class="li"><span class="d">👤</span><span>Your account and sign-in on every phone, your Recovery Key</span></div></div>
+          <div class="glabel">Stays</div>
+          <div class="grp"><div class="li"><span class="d">🏠</span><span>Everything you added to Lauron home stays for Miguel</span></div></div>
+          <div class="glabel">Who takes over Lauron home?</div>
+          <div class="grp">
+            <div class="radio"><span>Miguel</span><span class="r on"></span></div>
+            <div class="radio"><span>Ana</span><span class="r"></span></div>
+          </div>
+          <div class="btn red">Continue</div>
+          <div class="btn ghost">Cancel</div>
+        </div>
+      </div>
+      <p>Step 2 asks for your password, then deletes.</p>
+    </div>
+    <div class="col">
+      <h3>Afterwards (both)</h3>
+      <div class="phone">
+        <div class="done">
+          <div>
+            <div class="ic">✓</div>
+            <b style="font-size:20px">Your account is deleted</b>
+            <p style="color:#636366;font-size:14px">Thanks for using Finance Flow. You can start again any time.</p>
+            <div class="btn" style="background:#2E6B47;color:#fff;margin:18px 0 0">Back to the start</div>
+          </div>
+        </div>
+      </div>
+      <p>If you're the only one in the household, the household and its money data are deleted too.</p>
+    </div>
+  </div>
+
+  <div class="qs">
+    <b>To pick:</b>
+    <ol>
+      <li>iPad: I1 (keep full width), I2 (narrow column) or I3 (wider column).</li>
+      <li>Delete account: DA1 (one page) or DA2 (sheet, two steps).</li>
+      <li>If you own a shared household with 2 or more other members: you choose who takes over (as when you leave today), or the person who joined first takes over automatically.</li>
+    </ol>
+    Delete account is built in batch 2 with K3 (a new household key when someone leaves), so leaving by deleting is covered by the same lock change and one rules publish.
+  </div>
+</div>
+</body>
+</html>
