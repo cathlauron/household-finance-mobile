@@ -3,6 +3,7 @@ import { measureSignInSpeed, speedText } from '../signInSpeed';
 import { animateNextLayout } from '../animateLayout';
 import { APP_VERSION } from '../appVersion';
 import { useHelpSeen, markHelpSeen } from '../helpSeen';
+import EmailCheckNote from '../components/EmailCheckNote';
 import AppearancePage, { type ScrollFrame } from './AppearancePage';
 import { PRIVACY_URL } from '../helpFaq';
 import { readyToAutoSave } from '../autoSaveInput';
@@ -1308,6 +1309,8 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
       >
         {page === null && (
         <>
+        {/* Mockup FP, E1 (Cath, 2026-10-30): "Confirm your email" until it's confirmed. */}
+        <EmailCheckNote />
         {/* Profile Card */}
         <TouchableOpacity
           testID="profile-card"

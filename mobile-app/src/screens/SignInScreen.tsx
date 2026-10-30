@@ -19,7 +19,8 @@ import { sanitizeUsername } from '../auth';
 import { deriveKey, decryptJSON, generateSalt, encryptJSON } from '../encryption';
 import { loadProfilesIndex, loadEncryptedProfileData, saveEncryptedProfileData, saveProfilesIndex, updateProfileSalt, updateProfileHouseholdId, ProfileIndexEntry } from '../storage';
 import type { HouseholdModel } from '../types';
-import { signInWithFirebase, createFirebaseAccount, signOutFirebase } from '../authFirebase';
+import { signInWithFirebase, createFirebaseAccount, signOutFirebase, sendResetEmail } from '../authFirebase';
+import ForgotPasswordSheet from '../components/ForgotPasswordSheet';
 import { loadProfileCloudBackup, saveProfileCloudBackup, ProfileCloudBackup } from '../cloudBackup';
 import { loadWrappedHouseholdKey, unwrapHouseholdKey, loadHouseholdData, wrapHouseholdKey, saveWrappedHouseholdKey } from '../household';
 import { enableNetwork } from 'firebase/firestore';
@@ -93,6 +94,7 @@ export default function SignInScreen({
   const { colors } = useTheme();
   const ms = makeMainStyles(colors);
   const styles = makeStyles(colors);
+  const [forgotOpen, setForgotOpen] = useState(false);
   const [usernameInput, setUsernameInput] = useState(autoSignIn?.username ?? initialUsername ?? '');
   const [emailInput, setEmailInput] = useState(autoSignIn?.email ?? '');
   const [password, setPassword] = useState(autoSignIn?.password ?? '');
@@ -950,6 +952,12 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
           Deriving your encryption key can take up to a minute. Normal on sign-in.
         </Text>
       )}
+
+      {/* Mockup FP1 (Cath, 2026-10-30): Forgot password, under Sign in. */}
+      <TouchableOpacity testID="forgot-password" onPress={() => setForgotOpen(true)} disabled={busy} style={{ alignSelf: 'center', padding: 10 }} accessibilityRole="button">
+        <Text style={{ fontSize: 15, fontWeight: '700', color: colors.gold }}>Forgot password?</Text>
+      </TouchableOpacity>
+      <ForgotPasswordSheet visible={forgotOpen} initialEmail={emailInput} onClose={() => setForgotOpen(false)} send={sendResetEmail} />
 
       <View style={{ opacity: working ? 0.45 : 1 }}>
       <View style={ms.dividerRow}>

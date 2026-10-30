@@ -15,6 +15,8 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
+  sendPasswordResetEmail,
+  sendEmailVerification,
   User,
 } from "firebase/auth";
 import { auth } from "./firebase";
@@ -40,6 +42,30 @@ export async function signInWithFirebase(
 ): Promise<User> {
   const result = await signInWithEmailAndPassword(auth, email, password);
   return result.user;
+}
+
+// Forgot password (mockup FP, Cath 2026-10-30): Firebase emails a link to choose a new
+// password. The money data stays locked with the OLD password; after signing in with the new
+// one, the Recovery Key (or a household member's OK) re-opens it once.
+export async function sendResetEmail(email: string): Promise<void> {
+  await sendPasswordResetEmail(auth, email.trim());
+}
+
+// Email check (mockup FP, E1): has the signed-in account confirmed its email? Asks Firebase
+// again (the answer changes once the link in the email is opened).
+export async function emailConfirmed(): Promise<boolean | null> {
+  const user = auth.currentUser;
+  if (!user) return null;
+  try {
+    await user.reload();
+  } catch (e) {}
+  return !!auth.currentUser?.emailVerified;
+}
+
+export async function sendConfirmEmail(): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Please sign in again.');
+  await sendEmailVerification(user);
 }
 
 // Signs the current Firebase account out.
