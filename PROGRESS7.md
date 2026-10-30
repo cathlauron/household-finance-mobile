@@ -1295,3 +1295,26 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   times Check sign-in speed on the installed app. Then batch 2 (3.3): K3 + K5 steps 2-9 with
   her rounds, Delete account (her pick), iPad (her pick), ONE rules publish, remove "Check
   sign-in speed".
+
+- NEWEST (2026-10-30, 00:10): Cath: "New" tag on Help & FAQ now disappears once opened
+  (helpSeen.ts, per phone; check in HelpFaq.test, red-green) + tile/tag colours stronger.
+  iPad PARKED (her idea for later: "look more like a website and mobile app combined, the
+  best of both worlds", not just a wider column). Owner question: she said "yes" = read as
+  "the owner chooses who takes over" (like leaving today); to confirm in the next report.
+  Delete account: she asked what most apps use; Claude recommended DA1 (one page:
+  what goes / what stays / password / one red button / "Save a backup first").
+  Expo free plan (expo.dev/pricing, read 2026-10-30): 15 Android + 15 iOS builds a month,
+  low-priority queue, resets on the 1st; EAS Update free for 1,000 monthly active users.
+  OPEN LIST BY "NEEDS A BUILD?" (given to her this day):
+  NEEDS A NATIVE BUILD (bundle into the next build): (1) EAS Update (expo-updates) so later
+  JS-only changes reach the installed app without a build: recommended for THIS build,
+  waiting for her yes. (2) Later, store-time only: Premium payments (store billing),
+  Firebase App Check, widgets. (3) Build-only phone checks: sign-in speed timing, the peel
+  on a real build, fingerprint/PIN, notifications, QR camera.
+  NO BUILD NEEDED (Expo Go now; EAS Update later if added): Delete account in-app (her pick
+  DA1/DA2 + rules publish); K3 + K5 steps 1-8 (step 9 = rounds from her timing); Forgot
+  password / email check (needs a design: a reset locks encrypted data, Recovery Key path);
+  remove "Check sign-in speed" after timing; checks for the 17 unguarded old bugs; guest
+  first-entry cosmetic; fresh bug hunt; big-form rise (her call); Quick Unlock Step 6
+  (still wanted?); Payment Methods report; orphaned household cleanup; H-04 / H-06 (parked).
+  PARKED by her: iPad layout (idea above); store submission (Play account, testers, listing).
