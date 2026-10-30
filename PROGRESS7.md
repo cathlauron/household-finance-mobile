@@ -1210,7 +1210,7 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   separate copy that never reached the repo: not built; peel-off K2c mockup (top-right to
   bottom-left, live peek, steady peel on tap) waits for her OK; "big forms built before they
   rise" left out on purpose (it would add a blank moment): her call.
-  AGREED ORDER (batches): 1) Release 3.2 + speed check (merge v3 to main, version 3.2.0,
+  SUGGESTED ORDER (batches, waiting for her OK): 1) Release 3.2 + speed check (merge v3 to main, version 3.2.0,
   EAS build, build-only phone checks, she times sign-in speed, stray files removed, package
   name confirmed). 2) Security: K3 + K5 writer steps (+ rounds from her timing), ONE rules
   publish (K4 + K3), 3-person test household. 3) Safety net + polish: checks for the 17
