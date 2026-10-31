@@ -1406,3 +1406,8 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   for an adb logcat crash log (phone USB debugging) instead of guessing again. Voice entry:
   she asked if it's free / how; answered (expo-speech-recognition + our own wording rules, free;
   needs a build); mockup waits for her yes.
+- 2026-10-30 19:15: Cath's crash log found the real cause of the peel crash (B-081):
+  react-native-svg "Underflow in restore" when groups inside a sticker drawing fade. Fixed by
+  making each sticker layer its own drawing in a fading view. Lesson: ask for the phone log
+  (adb logcat -c / reproduce / logcat -d -b main,system,crash) as soon as the app CLOSES,
+  instead of guessing (two guesses were wrong).

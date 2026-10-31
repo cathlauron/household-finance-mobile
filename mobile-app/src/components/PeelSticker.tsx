@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { View } from 'react-native';
 import Svg, { ClipPath, Defs, G, LinearGradient, Path, Rect, Stop, Text as SvgText } from 'react-native-svg';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { Easing, runOnJS, useAnimatedProps, useAnimatedReaction, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
+import Animated, { Easing, runOnJS, useAnimatedProps, useAnimatedReaction, useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import { useTheme } from '../ThemeContext';
 import { hapticSelection } from '../haptics';
 import { useReduceMotion } from '../reduceMotion';
@@ -19,7 +19,14 @@ import type { StickerValues } from '../screenPeel';
 // `screenK` (Dark mode): how far the sticker has come off, 0 to 1, for the screen peel.
 
 const APath = Animated.createAnimatedComponent(Path);
-const AG = Animated.createAnimatedComponent(G);
+// One layer of the sticker: its own drawing inside an ordinary view that can fade.
+function Layer({ style, w, children }: { style: any; w: number; children: React.ReactNode }) {
+  return (
+    <Animated.View style={[{ position: 'absolute', left: -PAD, top: -PAD, width: w + PAD * 2, height: H + PAD * 2 }, style]} pointerEvents="none">
+      <Svg width={w + PAD * 2} height={H + PAD * 2}>{children}</Svg>
+    </Animated.View>
+  );
+}
 const PAD = 60;
 const H = 34;
 const R = 10;
@@ -128,12 +135,19 @@ export default function PeelSticker({
     const r = stickerPeel(W, H, [px.value, py.value]);
     return { d: pathOf(r.flap, PAD + 1.5, PAD + 3) };
   });
-  const topOnProps = useAnimatedProps(() => ({ opacity: topOn.value }));
+  // Which layers show (ordinary views fading, never groups inside a drawing: B-081).
   // Cath's video 2026-10-30 ("Daght", a pink corner on "☀ Light"): the face underneath and the
-  // lifted corner are only drawn while a peel is going on. At rest only the top face shows,
-  // even where the phone hasn't applied the "still stuck down" clip yet.
-  const peelingProps = useAnimatedProps(() => ({ opacity: busy.value ? 1 : 0 }));
-  const topOffProps = useAnimatedProps(() => ({ opacity: 1 - topOn.value }));
+  // lifted corner only show while a peel is going on.
+  const topOnStyle = useAnimatedStyle(() => ({ opacity: topOn.value }));
+  const topPaperStyle = useAnimatedStyle(() => ({ opacity: 1 - topOn.value }));
+  const underOnStyle = useAnimatedStyle(() => ({ opacity: busy.value ? 1 - topOn.value : 0 }));
+  const underPaperStyle = useAnimatedStyle(() => ({ opacity: busy.value ? topOn.value : 0 }));
+  const flapStyle = useAnimatedStyle(() => ({ opacity: busy.value ? 1 : 0 }));
+  const onBg = on.bg;
+  const flapFillProps = useAnimatedProps(() => ({
+    d: pathOf(stickerPeel(W, H, [px.value, py.value]).flap, PAD, PAD),
+    fill: topOn.value === 1 ? onBg : '#F7E7D6',
+  }));
 
   // Ends a peel on the animation thread: swap the faces and lay the new one flat at once.
   function settle(to: Pt, ms: number, linear: boolean, flip: boolean) {
@@ -236,44 +250,41 @@ export default function PeelSticker({
         }}
         hitSlop={{ top: 9, bottom: 9, left: 9, right: 9 }}
       >
-        <Svg width={W + PAD * 2} height={H + PAD * 2} style={{ position: 'absolute', left: -PAD, top: -PAD }} pointerEvents="none">
+        {/* B-081 (Cath's phone crash log, 2026-10-30): the drawing library crashed the app
+            ("Underflow in restore") when groups inside one drawing faded to see-through and
+            back. Now nothing inside a drawing fades: each layer is its own drawing, and only
+            the layers themselves (ordinary views) fade. */}
+        {/* Underneath: what you get when it comes off (only while peeling). */}
+        <Layer style={underOnStyle} w={W}>
+          <Defs><ClipPath id={`ru${ids}`}><Rect x={PAD} y={PAD} width={W} height={H} rx={R} /></ClipPath></Defs>
+          <G clipPath={`url(#ru${ids})`}>{face(on, onLabel, false)}</G>
+        </Layer>
+        <Layer style={underPaperStyle} w={W}>
+          <Defs><ClipPath id={`rp${ids}`}><Rect x={PAD} y={PAD} width={W} height={H} rx={R} /></ClipPath></Defs>
+          <G clipPath={`url(#rp${ids})`}>{face(PAPER, offLabel, true)}</G>
+        </Layer>
+        {/* On top: the setting as it is now, minus the lifted corner. */}
+        <Layer style={topOnStyle} w={W}>
+          <Defs><ClipPath id={`ko${ids}`}><APath animatedProps={keepProps} /></ClipPath></Defs>
+          <G clipPath={`url(#ko${ids})`}>{face(on, onLabel, false)}</G>
+        </Layer>
+        <Layer style={topPaperStyle} w={W}>
+          <Defs><ClipPath id={`kp${ids}`}><APath animatedProps={keepProps} /></ClipPath></Defs>
+          <G clipPath={`url(#kp${ids})`}>{face(PAPER, offLabel, true)}</G>
+        </Layer>
+        {/* The lifted corner: its back, with a soft shadow under it (only while peeling). */}
+        <Layer style={flapStyle} w={W}>
           <Defs>
-            <ClipPath id={`r${ids}`}>
-              <Rect x={PAD} y={PAD} width={W} height={H} rx={R} />
-            </ClipPath>
-            <ClipPath id={`k${ids}`}>
-              <APath animatedProps={keepProps} />
-            </ClipPath>
             <LinearGradient id={`g${ids}`} x1="1" y1="0" x2="0" y2="1">
               <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.75} />
               <Stop offset="0.45" stopColor="#FFFFFF" stopOpacity={0.15} />
               <Stop offset="1" stopColor="#000000" stopOpacity={0.22} />
             </LinearGradient>
           </Defs>
-          {/* Underneath: what you get when it comes off (only while peeling). */}
-          <G clipPath={`url(#r${ids})`}>
-            <AG animatedProps={peelingProps}>
-              <AG animatedProps={topOffProps}>{face(on, onLabel, false)}</AG>
-              <AG animatedProps={topOnProps}>{face(PAPER, offLabel, true)}</AG>
-            </AG>
-          </G>
-          {/* On top: the setting as it is now, minus the lifted corner. */}
-          <G clipPath={`url(#k${ids})`}>
-            <AG animatedProps={topOnProps}>{face(on, onLabel, false)}</AG>
-            <AG animatedProps={topOffProps}>{face(PAPER, offLabel, true)}</AG>
-          </G>
-          {/* The lifted corner: its back, with a soft shadow under it (only while peeling). */}
-          <AG animatedProps={peelingProps}>
           <APath animatedProps={shadowProps} fill="rgba(0,0,0,0.18)" />
-          <AG animatedProps={topOnProps}>
-            <APath animatedProps={flapProps} fill={on.bg} />
-          </AG>
-          <AG animatedProps={topOffProps}>
-            <APath animatedProps={flapProps} fill="#F7E7D6" />
-          </AG>
+          <APath animatedProps={flapFillProps} />
           <APath animatedProps={flapProps} fill={`url(#g${ids})`} />
-          </AG>
-        </Svg>
+        </Layer>
       </View>
   );
   if (still) return body;

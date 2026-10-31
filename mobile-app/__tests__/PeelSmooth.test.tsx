@@ -41,15 +41,24 @@ test('at rest a sticker draws only its top face: the one underneath and the lift
   mockModel = defaultModel();
   const AppearancePage = require('../src/screens/AppearancePage').default;
   render(<ThemeProvider><AppearancePage /></ThemeProvider>);
-  // The groups that hold the face underneath (clipped to the sticker's own shape, id r…).
-  const under = screen.UNSAFE_root.findAll((n: any) => typeof n.props?.clipPath === 'string' && /^url\(#r/.test(n.props.clipPath) && typeof n.type !== 'string');
-  expect(under.length).toBeGreaterThan(0);
-  for (const g of under) {
-    // Inside the clip: one group that is see-through at rest.
-    const inner = g.findAll((n: any) => n !== g && n.props?.animatedProps && typeof n.type !== 'string')[0];
-    const ap: any = inner?.props.animatedProps;
-    expect(ap?.initial?.value?.opacity).toBe(0);
+  // Each under-face layer is a drawing clipped to the sticker (ru… / rp…) inside a view
+  // that is see-through at rest.
+  const clips = screen.UNSAFE_root.findAll((n: any) => typeof n.props?.clipPath === 'string' && /^url\(#r[up]/.test(n.props.clipPath) && typeof n.type !== 'string');
+  expect(clips.length).toBe(14);
+  for (const g of clips) {
+    let v: any = g.parent;
+    while (v && !(v.props?.style && JSON.stringify(v.props.style).includes('"position":"absolute"'))) v = v.parent;
+    const flat = [].concat(v.props.style).flat(9).reduce((a: any, x: any) => ({ ...a, ...(x || {}) }), {});
+    expect(flat.opacity).toBe(0);
   }
+});
+
+// B-081 (Cath's crash log 2026-10-30, "Underflow in restore" inside the drawing library):
+// nothing inside a sticker's drawing may fade; only whole layers (ordinary views) do.
+test('no fading groups inside a sticker drawing (the phone crash)', () => {
+  const src = require('fs').readFileSync('src/components/PeelSticker.tsx', 'utf8');
+  expect(src).not.toMatch(/createAnimatedComponent\(G\)/);
+  expect(src).not.toMatch(/animatedProps=\{[a-zA-Z]*\}\s*clipPath|opacity: topOn\.value \}\)\);\s*\n\s*const topOffProps/);
 });
 
 test('while the screen is still turning over from a peel, Dark mode waits (a quick 2nd tap closed the app)', async () => {

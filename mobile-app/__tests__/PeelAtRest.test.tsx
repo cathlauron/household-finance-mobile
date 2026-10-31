@@ -30,7 +30,8 @@ test('every Appearance sticker lies flat when the page opens (the Dark mode one 
   const AppearancePage = require('../src/screens/AppearancePage').default;
   render(<ThemeProvider><AppearancePage /></ThemeProvider>);
   const shapes = keepShapes();
-  expect(shapes.length).toBe(7);
+  // 7 stickers, each with its two top layers (On and Off faces) clipped the same way.
+  expect(shapes.length).toBe(14);
   for (const d of shapes) {
     // A flat sticker: the whole rectangle (left edge at 60, the sticker's own space).
     expect(d).toMatch(/M60\.00 60\.00L(172|144)\.00 60\.00L(172|144)\.00 94\.00L60\.00 94\.00Z/);
