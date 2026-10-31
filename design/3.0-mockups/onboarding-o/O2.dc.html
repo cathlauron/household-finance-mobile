@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>O2 Make your number</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2E6B47}a:hover{color:#1B3F30}
+.ff-root{font-family:ui-rounded,"SF Pro Rounded",Nunito,-apple-system,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.ff-btn{border:0;cursor:pointer;font:inherit}
+.ff-in{animation:ffIn 260ms ease-out both}
+@keyframes ffIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.ff-chip{transition:background 200ms ease-out,color 200ms ease-out,transform 200ms cubic-bezier(.2,1.4,.4,1)}
+.ff-chip:active{transform:scale(.94)}
+.ff-fly{position:absolute;left:50%;top:0;font-size:15px;font-weight:700;color:#FFFFFF;animation:ffFly 900ms ease-out both;pointer-events:none}
+@keyframes ffFly{0%{opacity:0;transform:translate(-50%,10px)}20%{opacity:1}100%{opacity:0;transform:translate(-50%,-34px)}}
+.ff-burst{position:absolute;left:50%;top:50%;animation:ffBurst 1.4s cubic-bezier(.1,.8,.3,1) both}
+@keyframes ffBurst{from{opacity:1;transform:translate(-50%,-50%) rotate(0) scale(.4)}to{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--r)) scale(1)}}
+.ff-grow{animation:ffGrow 700ms cubic-bezier(.2,1.2,.3,1) both}
+@keyframes ffGrow{from{transform:scale(.92)}to{transform:none}}
+.ff-breathe{animation:ffBreathe 3.2s ease-in-out infinite}
+@keyframes ffBreathe{50%{transform:scale(1.03)}}
+@media (prefers-reduced-motion: reduce){.ff-in,.ff-fly,.ff-burst,.ff-grow,.ff-breathe{animation:none!important}.ff-burst,.ff-fly{display:none}}
+</style>
+</helmet>
+<div class="ff-root" style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #F2F2F7; color: #111111">
+  <div aria-hidden="true" style="position: absolute; inset: 0; background: radial-gradient(circle at 85% 8%, rgba(46,107,71,0.08), transparent 45%), radial-gradient(circle at 10% 90%, rgba(46,107,71,0.06), transparent 40%)"></div>
+  <div style="position: relative; height: 844px; display: flex; flex-direction: column; padding: 54px 16px 34px; box-sizing: border-box">
+    <div style="display: flex; gap: 6px; padding: 0 8px">
+      <sc-for list="{{progress}}" as="p" hint-placeholder-count="3">
+        <div style="{{p.style}}"></div>
+      </sc-for>
+    </div>
+
+    <div style="position: relative; margin-top: 20px">
+      <sc-for list="{{burst}}" as="bl" hint-placeholder-count="0">
+        <svg class="ff-burst" aria-hidden="true" style="{{bl.style}}" width="{{bl.size}}" height="{{bl.size}}" viewBox="0 0 24 24"><path d="M12 2C5 8 5 16 12 22C19 16 19 8 12 2Z" fill="{{bl.fill}}"></path></svg>
+      </sc-for>
+      <div class="{{heroClass}}" style="{{heroStyle}}">
+        <div style="display: flex; justify-content: space-between; font-size: 15px; color: rgba(255,255,255,0.86)"><span>Left to spend</span><span>{{payLine}}</span></div>
+        <div style="position: relative; font-size: 44px; line-height: 52px; font-weight: 800; letter-spacing: -0.5px; margin-top: 6px">{{shownText}}
+          <sc-for list="{{flies}}" as="fl" hint-placeholder-count="0"><span class="ff-fly">{{fl.text}}</span></sc-for>
+        </div>
+        <div style="font-size: 15px; color: rgba(255,255,255,0.86)">{{heroSub}}</div>
+      </div>
+    </div>
+
+    <div style="flex: 1; margin-top: 22px">
+      <sc-if value="{{a}}" hint-placeholder-val="{{ true }}">
+        <div class="ff-in" style="padding: 0 8px">
+          <h1 style="margin: 0; font-size: 28px; line-height: 34px; font-weight: 700">Let's make your number</h1>
+          <p style="margin: 6px 0 18px; font-size: 17px; color: #6C6C70">How much comes in each payday?</p>
+          <div style="display: flex; flex-wrap: wrap; gap: 10px">
+            <sc-for list="{{pays}}" as="c" hint-placeholder-count="4">
+              <button class="ff-btn ff-chip" onClick="{{c.tap}}" aria-pressed="{{c.on}}" style="{{c.style}}">{{c.label}}</button>
+            </sc-for>
+          </div>
+          <p style="margin: 22px 0 12px; font-size: 17px; color: #6C6C70">And when?</p>
+          <div style="display: flex; flex-wrap: wrap; gap: 10px">
+            <sc-for list="{{whens}}" as="c" hint-placeholder-count="3">
+              <button class="ff-btn ff-chip" onClick="{{c.tap}}" aria-pressed="{{c.on}}" style="{{c.style}}">{{c.label}}</button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{b}}" hint-placeholder-val="{{ false }}">
+        <div class="ff-in" style="padding: 0 8px">
+          <h1 style="margin: 0; font-size: 28px; line-height: 34px; font-weight: 700">What's due before payday?</h1>
+          <p style="margin: 6px 0 18px; font-size: 17px; color: #6C6C70">Tap each one. Watch your number change.</p>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+            <sc-for list="{{bills}}" as="c" hint-placeholder-count="6">
+              <button class="ff-btn ff-chip" onClick="{{c.tap}}" aria-pressed="{{c.on}}" style="{{c.style}}">
+                <span style="display: flex; justify-content: space-between; align-items: center; width: 100%"><span style="font-size: 17px; font-weight: 600">{{c.label}}</span><span style="{{c.tickStyle}}">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span></span>
+                <span style="{{c.amtStyle}}">{{c.amount}}</span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{c}}" hint-placeholder-val="{{ false }}">
+        <div class="ff-in" style="padding: 0 8px">
+          <h1 style="margin: 0; font-size: 28px; line-height: 34px; font-weight: 700">That's your number</h1>
+          <p style="margin: 6px 0 18px; font-size: 17px; line-height: 22px; color: #6C6C70">It moves every time you or your home spends, so one look tells you where you stand.</p>
+          <div style="background: #FFFFFF; border-radius: 16px; overflow: hidden">
+            <sc-for list="{{why}}" as="w" hint-placeholder-count="3">
+              <div class="ff-in" style="{{w.style}}">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2E6B47" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{w.icon}}"></path></svg>
+                <div><div style="font-size: 17px; font-weight: 600">{{w.t}}</div><div style="font-size: 15px; color: #6C6C70">{{w.b}}</div></div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px; padding: 0 8px">
+      <button class="ff-btn" onClick="{{next}}" style="{{nextStyle}}">{{nextLabel}}</button>
+      <button class="ff-btn" onClick="{{back}}" style="background: transparent; color: #2E6B47; font-size: 17px; min-height: 44px">{{backLabel}}</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+var PAYS = [15000, 25000, 40000, 60000];
+var WHENS = ['15th and 30th', 'Every 30th', 'Every Friday'];
+var NEXTPAY = { '15th and 30th': 'Payday Nov 15', 'Every 30th': 'Payday Nov 30', 'Every Friday': 'Payday Fri, Nov 7' };
+var BILLS = [
+  { id: 'r', label: 'Rent', amt: 8000 }, { id: 'e', label: 'Electricity', amt: 2400 },
+  { id: 'i', label: 'Internet', amt: 1699 }, { id: 'p', label: 'Phone', amt: 999 },
+  { id: 'w', label: 'Water', amt: 600 }, { id: 'g', label: 'Groceries', amt: 3000 }
+];
+function peso(n, dec) {
+  var s = '₱' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: dec ? 2 : 0, maximumFractionDigits: dec ? 2 : 0 });
+  return n < 0 ? '−' + s : s;
+}
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.state = { step: 0, pay: 0, when: '', on: {}, shown: 0, flies: [], burstKey: 0 };
+  }
+  target() {
+    var s = this.state, t = s.pay;
+    BILLS.forEach(function (b) { if (s.on[b.id]) t -= b.amt; });
+    return t;
+  }
+  componentDidMount() {
+    var self = this;
+    this.timer = setInterval(function () {
+      var t = self.target(), sh = self.state.shown;
+      if (sh !== t) {
+        var d = t - sh, n = Math.abs(d) < 20 ? t : Math.round(sh + d * 0.18);
+        self.setState({ shown: n });
+      }
+    }, 30);
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+  fly(text) {
+    var f = this.state.flies.concat([{ text: text, id: Date.now() }]).slice(-2);
+    this.setState({ flies: f });
+  }
+  chip(on) {
+    return 'min-height:44px;padding:0 18px;border-radius:999px;font-size:17px;font-weight:600;' + (on ? 'background:linear-gradient(135deg,#3E8A5E,#2E6B47 55%,#22543A);color:#FFFFFF' : 'background:#FFFFFF;color:#111111');
+  }
+  renderVals() {
+    var self = this, s = this.state;
+    var t = this.target();
+    var mood = s.pay === 0 ? 'good' : t < 0 ? 'over' : t < 3000 ? 'low' : 'good';
+    var cols = { good: ['#2C5E48', '#1B3F30', '#122B21'], low: ['#C25412', '#A33C00', '#7A2C00'], over: ['#D12A36', '#B30F1F', '#850A16'] }[mood];
+    var count = BILLS.filter(function (b) { return s.on[b.id]; }).length;
+    var ready = s.step === 0 ? (s.pay && s.when) : true;
+    var burst = [];
+    if (s.step === 2) {
+      for (var i = 0; i < 12; i++) {
+        var ang = (i / 12) * Math.PI * 2, r = 150 + (i % 3) * 40;
+        burst.push({ size: 14 + (i % 4) * 8, fill: ['#5FC48A', '#2E6B47', '#BFD3C8'][i % 3], style: '--dx:' + Math.round(Math.cos(ang) * r) + 'px;--dy:' + Math.round(Math.sin(ang) * r * 0.7) + 'px;--r:' + (i * 47) + 'deg;animation-delay:' + (i * 25) + 'ms' });
+      }
+    }
+    return {
+      progress: [0, 1, 2].map(function (i) { return { style: 'flex:1;height:4px;border-radius:2px;transition:background 300ms;background:' + (i <= s.step ? '#2E6B47' : '#C6C6C8') }; }),
+      a: s.step === 0, b: s.step === 1, c: s.step === 2,
+      heroClass: s.step === 2 ? 'ff-grow' : '',
+      heroStyle: 'position:relative;border-radius:24px;padding:20px;color:#FFFFFF;box-shadow:0 8px 24px rgba(27,63,48,0.18);transition:background 700ms ease-in-out;background:linear-gradient(135deg,' + cols[0] + ',' + cols[1] + ' 55%,' + cols[2] + ')',
+      payLine: s.when ? NEXTPAY[s.when] : 'Payday ?',
+      shownText: peso(s.shown, true),
+      heroSub: s.pay === 0 ? 'Tap an amount below to begin' : mood === 'over' ? 'More is due than comes in' : mood === 'low' ? 'Running low' : count ? 'Looking good · after ' + count + (count === 1 ? ' bill' : ' bills') : 'Looking good',
+      flies: s.flies.map(function (f) { return { text: f.text }; }),
+      burst: burst,
+      pays: PAYS.map(function (p) { var on = s.pay === p; return { label: peso(p), on: on ? 'true' : 'false', style: self.chip(on), tap: function () { self.setState({ pay: p }); self.fly('+' + peso(p)); } }; }),
+      whens: WHENS.map(function (w) { var on = s.when === w; return { label: w, on: on ? 'true' : 'false', style: self.chip(on), tap: function () { self.setState({ when: w }); } }; }),
+      bills: BILLS.map(function (b) {
+        var on = !!s.on[b.id];
+        return {
+          label: b.label, amount: '−' + peso(b.amt, true), on: on ? 'true' : 'false',
+          style: 'display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-height:72px;padding:12px 14px;border-radius:16px;text-align:left;' + (on ? 'background:#E6F0EA;color:#111111;box-shadow:inset 0 0 0 2px #2E6B47' : 'background:#FFFFFF;color:#111111'),
+          tickStyle: 'width:20px;height:20px;border-radius:10px;display:flex;align-items:center;justify-content:center;transition:transform 250ms cubic-bezier(.2,1.4,.4,1);background:#2E6B47;transform:scale(' + (on ? 1 : 0) + ')',
+          amtStyle: 'font-size:15px;font-weight:600;color:' + (on ? '#D70015' : '#6C6C70'),
+          tap: function () { var o = Object.assign({}, s.on); o[b.id] = !on; self.setState({ on: o }); self.fly((on ? '+' : '−') + peso(b.amt)); }
+        };
+      }),
+      why: [
+        { t: 'A quick look each morning', b: 'On Home and on your home screen widget', icon: 'M12 3v2M5.6 5.6l1.4 1.4M3 12h2M17 7l1.4-1.4M19 12h2M7 16a5 5 0 0 1 10 0M3 19h18' },
+        { t: 'Spend, say it, see it move', b: 'Log a purchase in seconds with your voice', icon: 'M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21' },
+        { t: 'Bills come off before they surprise you', b: 'Reminders, and they’re already counted', icon: 'M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0' }
+      ].map(function (w, i) { return Object.assign({}, w, { style: 'display:flex;gap:14px;align-items:center;min-height:62px;padding:8px 16px;animation-delay:' + (500 + i * 180) + 'ms' + (i ? ';border-top:1px solid #C6C6C8' : '') }); }),
+      next: function () { if (!ready) return; if (s.step < 2) self.setState({ step: s.step + 1, flies: [] }); else self.setState({ step: 0, pay: 0, when: '', on: {}, flies: [] }); },
+      nextLabel: s.step === 0 ? (ready ? 'Next' : 'Pick an amount and a payday') : s.step === 1 ? (count ? 'Show my number' : 'Nothing due yet, show my number') : 'You’re all set!',
+      nextStyle: 'min-height:53px;border-radius:14px;font-size:17px;font-weight:600;transition:opacity 200ms;color:#FFFFFF;background:linear-gradient(135deg,#3E8A5E,#2E6B47 55%,#22543A);opacity:' + (ready ? 1 : 0.45),
+      back: function () { if (s.step > 0) self.setState({ step: s.step - 1, flies: [] }); },
+      backLabel: s.step === 0 ? 'I already have an account' : 'Back'
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1470,3 +1470,10 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   NEXT = "Still open after the build" above: voice on the remaining forms (New trip, Log payday,
   pot add money, new account, transfer, investments, Home quick add); sign-in times -> K5 step 9
   + remove "Check sign-in speed"; republish hosting; island; optional K3 re-lock; H-57.
+- 2026-10-31: Cath asked for a new onboarding: more interactive and animated, showing the features
+  and why you'd use it every day, 3+ samples. Mockup O (canvas, artifact 8BiGD7MErYc4aXhd2hVjq1;
+  copy in design/3.0-mockups/onboarding-o/): O1 "Try it" (5 steps, each a working mini demo:
+  spend slider turns Left to Spend orange/red, Say it fills a form, tap bills paid in the B14 look,
+  household banner F2/F3, private + "why every day"), O2 "Make your number" (tap pay + payday +
+  bills, number counts live, leaf burst reveal), O3 "A day with Finance Flow" (morning widget,
+  lunch Say it, bill nudge, household changes, night; sky changes, auto-plays). WAITING for her pick.

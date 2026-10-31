@@ -1,0 +1,19 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-31T18:30:00Z" },
+  "title": "Onboarding O",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 390, "h": 844, "title": "O1 · Try it: every feature is a little demo", "is_interactive": true, "radius": 44 },
+    "O2.dc.html": { "x": 470, "y": 0, "w": 390, "h": 844, "title": "O2 · Make your number: tap to build Left to Spend", "is_interactive": true, "radius": 44 },
+    "O3.dc.html": { "x": 940, "y": 0, "w": 390, "h": 844, "title": "O3 · A day with Finance Flow: why every day", "is_interactive": true, "radius": 44 }
+  },
+  "order": ["Main.dc.html", "O2.dc.html", "O3.dc.html"],
+  "notes": {
+    "t": { "x": 0, "y": -260, "text": "New onboarding: 3 samples (press Play on each)", "kind": "title1", "maxW": 1330 }
+  },
+  "designSystems": [
+    { "title": "Finance Flow", "namespace": "finance-flow", "artifact": "https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ", "version": "1792004719-e46a", "copiedAt": "2026-10-31T18:30:00Z" }
+  ]
+}
