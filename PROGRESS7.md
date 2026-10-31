@@ -1459,3 +1459,6 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   forms (New trip, Log payday, pot add money, new account, transfer, investments, Home quick
   add); island; optional one-time K3 re-lock; parked: TestFlight, social sign-in, stores, iPad.
 - main fast-forwarded to v3 for the build (versionCode 7, version 3.2.0 unchanged: first 3.2.0 build).
+- 2026-10-30 21:20: VS Code "too many active changes" notice. Her folder had only 3 untracked
+  items (.vscode/, mobile-app/.firebase/, rules-test/package-lock.json), now in .gitignore.
+  Her folder is on main = 6b0c2f9 (latest). Everything logged and pushed.

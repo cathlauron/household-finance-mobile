@@ -3,3 +3,9 @@
 # Firebase emulator logs (2026-10-30)
 firestore-debug.log
 *-debug.log
+
+# Cath's computer (2026-10-30): editor settings, the hosting deploy cache, and the rules
+# test's install list are made on her machine and aren't part of the app.
+.vscode/
+.firebase/
+rules-test/package-lock.json
