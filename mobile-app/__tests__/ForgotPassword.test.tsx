@@ -16,6 +16,25 @@ test('Forgot password: warning first, then the email is sent and "Check your ema
   expect(screen.getByTestId('forgot-sent')).toBeTruthy();
 });
 
+test('Forgot password: "Send again" opens up after a minute, counting down', async () => {
+  jest.useFakeTimers();
+  try {
+    const ForgotPasswordSheet = require('../src/components/ForgotPasswordSheet').default;
+    const send = jest.fn(async () => {});
+    render(<ThemeProvider><ForgotPasswordSheet visible initialEmail="cath@x.com" onClose={() => {}} send={send} /></ThemeProvider>);
+    await act(async () => { fireEvent.press(screen.getByTestId('forgot-send')); });
+    expect(screen.getByText(/Send again in (1:00|0:59)$/)).toBeTruthy();
+    await act(async () => { fireEvent.press(screen.getByTestId('forgot-again')); });
+    expect(send).toHaveBeenCalledTimes(1); // not yet
+    await act(async () => { jest.advanceTimersByTime(61000); });
+    expect(screen.getByText("Didn't get it? Send again")).toBeTruthy();
+    await act(async () => { fireEvent.press(screen.getByTestId('forgot-again')); });
+    expect(send).toHaveBeenCalledTimes(2);
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
 test('Forgot password: a typo in the email is caught before sending', async () => {
   const ForgotPasswordSheet = require('../src/components/ForgotPasswordSheet').default;
   const send = jest.fn(async () => {});

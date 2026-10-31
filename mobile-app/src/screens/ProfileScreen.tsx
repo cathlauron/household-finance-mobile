@@ -1,4 +1,5 @@
 import { updateRecentAccountIfPresent } from '../recentAccounts';
+import { CODE_INPUT } from '../codeInput';
 import { codeTimeLeft } from '../linkCodeTime';
 import { catchUpKey } from '../keyChain';
 import { friendlyError } from '../friendlyError';
@@ -1324,8 +1325,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
                       placeholder="Type the 6-letter code"
                       autoFocus
                       placeholderTextColor={colors.inkFaint}
-                      autoCapitalize="characters"
-                      autoCorrect={false}
+                      {...CODE_INPUT}
                       value={joinCodeInput}
                       onChangeText={setJoinCodeInput}
                     />
@@ -1425,8 +1425,7 @@ export default function ProfileScreen({ onLock, onSignOut, onSwitchAccount }: Pr
               style={[styles.input, { letterSpacing: 2, fontSize: 18, textAlign: 'center' }]}
               placeholder="7KQ4M-2WX9P"
               placeholderTextColor={colors.inkFaint}
-              autoCapitalize="characters"
-              autoCorrect={false}
+              {...CODE_INPUT}
               maxLength={11}
               value={approvalCodeInput}
               onChangeText={(t) => setApprovalCodeInput(formatPeerCode(normalizePeerCode(t)))}

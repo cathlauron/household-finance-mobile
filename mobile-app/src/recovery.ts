@@ -66,12 +66,9 @@ export async function generatePeerTransferCode(): Promise<string> {
   return code;
 }
 // What was typed, as the code itself: capitals, no dash or spaces.
-export function normalizePeerCode(typed: string): string {
-  return (typed || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-}
-export function formatPeerCode(code: string): string {
-  return code.length > 5 ? `${code.slice(0, 5)}-${code.slice(5)}` : code;
-}
+// (Moved to recoveryCodeText.ts so the checks can run them directly.)
+export { normalizePeerCode, formatPeerCode } from './recoveryCodeText';
+import { normalizePeerCode } from './recoveryCodeText';
 
 // Generic key wrapping (AES-256 JSON encapsulation)
 export async function wrapKey(

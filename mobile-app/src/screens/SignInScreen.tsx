@@ -1,4 +1,5 @@
 import { usernameOwner } from '../usernameClaim';
+import { CODE_INPUT } from '../codeInput';
 import { restoreLinkedHousehold } from '../signInRestore';
 import { friendlyError } from '../friendlyError';
 import ErrorNote from '../components/ErrorNote';
@@ -1024,17 +1025,24 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
                   onChangeText={(v) => setRecoveryKeyInput(formatRecoveryKeyInput(v))}
                   placeholder="e.g. 4B9X-7M2K-W8Q3-P1Z6"
                   placeholderTextColor={colors.inkFaint}
-                  autoCapitalize="characters"
-                  autoCorrect={false}
+                  {...CODE_INPUT}
                   editable={!recoveryBusy && !peerBusy}
                 />
                 <ErrorNote text={recoveryError} />
                 <TouchableOpacity
-                  style={[ms.primaryBtn, (!recoveryKeyInput.trim() || recoveryBusy) && styles.btnDisabled]}
+                  style={[ms.primaryBtn, !recoveryKeyInput.trim() && !recoveryBusy && styles.btnDisabled]}
                   onPress={handleRecoverWithKey}
                   disabled={!recoveryKeyInput.trim() || recoveryBusy || peerBusy}
                 >
-                  <Text style={ms.primaryBtnText}>{recoveryBusy ? 'Restoring…' : 'Unlock & Restore Data'}</Text>
+                  {/* Cath 2026-10-30: busy shows the app's turning spinner, not just a greyed button. */}
+                  {recoveryBusy ? (
+                    <View testID="recovery-busy" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <ActivityIndicator size="small" color={ms.primaryBtnText.color} />
+                      <Text style={ms.primaryBtnText}>Restoring…</Text>
+                    </View>
+                  ) : (
+                    <Text style={ms.primaryBtnText}>Unlock & Restore Data</Text>
+                  )}
                 </TouchableOpacity>
               </View>
 
@@ -1048,12 +1056,19 @@ onSignedIn(username, localKey, localModel, profile, undefined, { email, password
 
                   {!isWaitingForPeer ? (
                     <TouchableOpacity
-                      style={[styles.secondaryBtn, peerBusy && styles.btnDisabled]}
+                      style={styles.secondaryBtn}
                       onPress={handleStartPeerRecovery}
                       disabled={peerBusy || recoveryBusy}
                     >
-                      <GradientFill match={[styles.secondaryBtn, peerBusy && styles.btnDisabled]} />
-                      <Text style={styles.secondaryBtnText}>{peerBusy ? 'Asking…' : 'Request Member Approval'}</Text>
+                      <GradientFill match={styles.secondaryBtn} />
+                      {peerBusy ? (
+                        <View testID="peer-request-busy" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <ActivityIndicator size="small" color={styles.secondaryBtnText.color} />
+                          <Text style={styles.secondaryBtnText}>Making your code…</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.secondaryBtnText}>Request Member Approval</Text>
+                      )}
                     </TouchableOpacity>
                   ) : (
                     <View style={styles.peerWaitingCard}>

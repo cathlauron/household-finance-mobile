@@ -51,6 +51,19 @@ export function measurePeelHost(): Promise<number> {
     (hostRef as any).measureInWindow((_x: number, y: number) => resolve(typeof y === 'number' ? y : 0));
   });
 }
+// True from the moment a peel turns the look over until the copy has faded away: the Dark
+// mode sticker waits (a 2nd tap in that moment closed the app on Cath's phone, 2026-10-30).
+export function useScreenPeelSettling(): boolean {
+  const [settling, setSettling] = useState(!!current?.flipped);
+  useEffect(() => {
+    const l = (p: Peel | null) => setSettling(!!p?.flipped);
+    listeners.add(l);
+    return () => {
+      listeners.delete(l);
+    };
+  }, []);
+  return settling;
+}
 export function prepareScreenPeel(content: React.ReactNode) {
   current = { content, toDark: null, flipped: false };
   emit();
@@ -107,8 +120,9 @@ export function ScreenPeelHost() {
   useEffect(() => {
     if (!peel?.flipped || isDark !== peel.toDark) return;
     const clear = () => {
-      // Kept prepared (hidden) for the next peel, now in the other look again.
-      if (current) current = { ...current, toDark: null, flipped: false };
+      // The copy goes; the Appearance page draws a fresh one (hidden) for the next peel, in
+      // the other look (a copy re-drawn in place closed the app on Cath's phone).
+      current = null;
       screenPeelK.value = 0;
       fade.value = 1;
       emit();

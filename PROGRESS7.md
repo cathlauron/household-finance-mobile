@@ -1385,3 +1385,8 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   peel still not smooth -> B-075 fixed (copy prepared early, placed relative to the host,
   sticker draws its under face only while peeling), proven by checks + hidden browser; feel
   needs her phone (TEST-3 s19 items 6-7). Forgot password email box now matches sign-in.
+- 2026-10-30 (evening): Cath's TEST-3 s19 results: 1,4,5,7 as described. Fixed (B-077..B-081):
+  lowercase approval code (Android keyboard), bell help request -> Household, spinner while
+  making the code, "Send again" after 1 minute, Dark mode 2nd tap closing the app (changed, not
+  yet confirmed). TEST-3 s20 = her re-test list. OPEN QUESTION to Cath: email-verified reset
+  without Recovery Key (needs an encryption decision; see the session report).

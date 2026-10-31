@@ -11,6 +11,8 @@ import { animateNextLayout } from '../animateLayout';
 // (before anything is sent: the data stays locked with the old password, so the Recovery Key
 // or a household member's OK is needed once), then "Check your email".
 
+const RESEND_AFTER_MS = 60 * 1000;
+
 export default function ForgotPasswordSheet({
   visible,
   initialEmail,
@@ -27,6 +29,16 @@ export default function ForgotPasswordSheet({
   const [step, setStep] = useState<'ask' | 'sent'>('ask');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // Cath 2026-10-30: "Send again" opens up a minute after a link was sent (it counts down).
+  const [sentAt, setSentAt] = useState(0);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (step !== 'sent') return;
+    setNow(Date.now());
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [step, sentAt]);
+  const waitLeft = Math.max(0, Math.ceil((sentAt + RESEND_AFTER_MS - now) / 1000));
 
   useEffect(() => {
     if (visible) {
@@ -47,6 +59,7 @@ export default function ForgotPasswordSheet({
     try {
       await send(e);
       animateNextLayout();
+      setSentAt(Date.now());
       setStep('sent');
     } catch (err: any) {
       const code = String(err?.code || '');
@@ -55,6 +68,7 @@ export default function ForgotPasswordSheet({
       else if (/user-not-found/.test(code)) {
         // Same answer either way, so nobody can find out which emails have an account.
         animateNextLayout();
+        setSentAt(Date.now());
         setStep('sent');
       } else setError('Couldn’t send it. Check your connection and try again.');
     } finally {
@@ -121,8 +135,17 @@ export default function ForgotPasswordSheet({
           <TouchableOpacity testID="forgot-back" onPress={onClose} style={[s.primary, { backgroundColor: colors.buttonFill }]} accessibilityRole="button">
             <Text style={[s.primaryText, { color: colors.onButton }]}>Back to sign in</Text>
           </TouchableOpacity>
-          <TouchableOpacity testID="forgot-again" onPress={doSend} disabled={busy} style={{ alignSelf: 'center', padding: 8 }} accessibilityRole="button">
-            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.gold }}>{busy ? 'Sending…' : "Didn't get it? Send again"}</Text>
+          <TouchableOpacity
+            testID="forgot-again"
+            onPress={doSend}
+            disabled={busy || waitLeft > 0}
+            style={{ alignSelf: 'center', padding: 8 }}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: busy || waitLeft > 0 }}
+          >
+            <Text style={{ fontSize: 15, fontWeight: '700', color: waitLeft > 0 ? colors.inkFaint : colors.gold }}>
+              {busy ? 'Sending…' : waitLeft > 0 ? `Didn't get it? Send again in ${Math.floor(waitLeft / 60)}:${String(waitLeft % 60).padStart(2, '0')}` : "Didn't get it? Send again"}
+            </Text>
           </TouchableOpacity>
         </View>
       )}

@@ -296,3 +296,10 @@ Test in Expo Go first (from v3), then again once the update reaches the installe
 6. Appearance › Dark mode: tap it, then peel it with your finger, both ways (dark to light and back). The screen peels from the top-right corner from the very start (no pause with the sticker half off), the page doesn't jump when it settles, and the sticker shows only "☾ Dark" or "☀ Light" (no mixed letters, no pink corner).
 7. The email note: ✕ hides it for this account only. Settings › Account & Security › Email shows Confirmed / Not confirmed; tapping "Not confirmed" sends the link.
 K3 (new key after someone leaves) is checked on your computer with the rules test (rules-test folder, needs Java), not on the phone.
+
+## 20. Fixes from TEST-3 s19 (2026-10-30 evening). NOT YET TESTED.
+1. Forgot password: after sending, "Send again in 1:00" counts down; at 0 it says "Didn't get it? Send again" and works.
+2. Ask a household member: tapping "Request Member Approval" shows a turning spinner and "Making your code…".
+3. On the approving phone: type the code in small letters: no extra letters, it's accepted.
+4. Tap the bell's "sign-in help request": it opens the Household page (with Review & Approve).
+5. Appearance › Dark mode: tap it twice, three times, quickly and slowly: the app stays open; the 2nd tap works once the first has finished.

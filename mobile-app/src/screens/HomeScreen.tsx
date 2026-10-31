@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { recoveryRequestRoute } from '../bellRoute';
 import { useToday } from '../useToday';
 import { View, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
@@ -119,7 +120,8 @@ export default function HomeScreen({ username }: Props) {
     markRead(item.key);
     setBellOpen(false);
     if (item.group === 'recovery') {
-      navigation.navigate('Profile');
+      const r = recoveryRequestRoute();
+      (navigation as any).navigate(r.screen, r.params);
       return;
     }
     // Redesign: open the full Bill / Debt / Loan page.

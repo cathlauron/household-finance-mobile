@@ -10,7 +10,7 @@ import { useFabSide, setFabSide } from '../fabSide';
 import { useSkyPrefs, setSkyGlowOn, setLiveWeatherOn, setRainAnimOn, usePreviewWeather, setPreviewWeather } from '../sky';
 import { getHomeZoneCity, setHomeZoneToPhone, phoneTimeZone, cityOf } from '../travelTime';
 import LargeHeader from '../navigation/LargeHeader';
-import { darkSticker, endScreenPeel, measurePeelHost, peelFrame, prepareScreenPeel, releaseScreenPeel, screenPeelK, showScreenPeel } from '../screenPeel';
+import { darkSticker, endScreenPeel, measurePeelHost, peelFrame, prepareScreenPeel, releaseScreenPeel, screenPeelK, showScreenPeel, useScreenPeelSettling } from '../screenPeel';
 
 // Settings › Appearance. Version 3.2 (mockup K2e, approved by Cath 2026-10-29): the on/off
 // settings are peel-off stickers. Theme is "Match my phone" + "Dark mode" (Cath's pick);
@@ -51,16 +51,20 @@ export default function AppearancePage({
   }, [still]);
   // The copy for the Dark mode peel is drawn (hidden) once the page has finished opening,
   // so a peel starts at once instead of waiting for it (Cath's video, 2026-10-30).
+  // After each turn-over a fresh copy is drawn, in the new other look.
+  const settling = useScreenPeelSettling();
   useEffect(() => {
-    if (still || !getFrame) return;
+    if (still || !getFrame || settling) return;
     const task = InteractionManager.runAfterInteractions(() => {
-      prepareScreenPeel(<PeelCopy />);
+      prepareScreenPeel(<PeelCopy key={isDark ? 'to-light' : 'to-dark'} />);
       placeCopy();
     });
-    return () => {
-      task.cancel();
-      releaseScreenPeel();
-    };
+    return () => task.cancel();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [still, isDark, settling]);
+  useEffect(() => {
+    if (still || !getFrame) return;
+    return () => releaseScreenPeel();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [still]);
   // Lines the copy up with the page as it sits now (relative to the peel host: both are
@@ -111,6 +115,7 @@ export default function AppearancePage({
               accessibilityLabel="Dark mode"
               value={isDark}
               disabled={mode === 'device'}
+              paused={!still && settling}
               lendTo={still ? undefined : darkSticker}
               borrow={still ? darkSticker.current : undefined}
               screenK={still ? undefined : screenPeelK}

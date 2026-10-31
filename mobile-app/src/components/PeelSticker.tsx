@@ -40,6 +40,7 @@ export default function PeelSticker({
   lendTo,
   borrow,
   still,
+  paused,
 }: {
   value: boolean;
   onChange: (on: boolean) => void;
@@ -57,6 +58,9 @@ export default function PeelSticker({
   lendTo?: { current: StickerValues | null };
   borrow?: StickerValues | null;
   still?: boolean;
+  // Not peelable for a moment, without looking greyed out (Dark mode, while the screen is
+  // still turning over from the last peel: Cath's phone closed the app on a quick 2nd tap).
+  paused?: boolean;
 }) {
   const { colors } = useTheme();
   const reduce = useReduceMotion();
@@ -161,7 +165,7 @@ export default function PeelSticker({
   const gesture = useMemo(() => {
   const pan = Gesture.Pan()
     .withTestId(`${testID ?? 'peel'}-pan`)
-    .enabled(!disabled)
+    .enabled(!disabled && !paused)
     .activeOffsetX([-6, 6])
     .onBegin(() => {
       if (busy.value) return;
@@ -195,7 +199,7 @@ export default function PeelSticker({
 
   const tap = Gesture.Tap()
     .withTestId(`${testID ?? 'peel'}-tap`)
-    .enabled(!disabled)
+    .enabled(!disabled && !paused)
     .onEnd((_e, ok) => {
       if (!ok || busy.value) return;
       busy.value = 2;
@@ -204,7 +208,7 @@ export default function PeelSticker({
     });
   return Gesture.Exclusive(pan, tap);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [disabled, reduce, W, testID]);
+  }, [disabled, paused, reduce, W, testID]);
 
   const face = (f: { bg: string; edge: string; ink: string }, label: string, stroke: boolean) => (
     <>
@@ -247,10 +251,12 @@ export default function PeelSticker({
             </LinearGradient>
           </Defs>
           {/* Underneath: what you get when it comes off (only while peeling). */}
-          <AG animatedProps={peelingProps} clipPath={`url(#r${ids})`}>
-            <AG animatedProps={topOffProps}>{face(on, onLabel, false)}</AG>
-            <AG animatedProps={topOnProps}>{face(PAPER, offLabel, true)}</AG>
-          </AG>
+          <G clipPath={`url(#r${ids})`}>
+            <AG animatedProps={peelingProps}>
+              <AG animatedProps={topOffProps}>{face(on, onLabel, false)}</AG>
+              <AG animatedProps={topOnProps}>{face(PAPER, offLabel, true)}</AG>
+            </AG>
+          </G>
           {/* On top: the setting as it is now, minus the lifted corner. */}
           <G clipPath={`url(#k${ids})`}>
             <AG animatedProps={topOnProps}>{face(on, onLabel, false)}</AG>

@@ -45,8 +45,25 @@ test('at rest a sticker draws only its top face: the one underneath and the lift
   const under = screen.UNSAFE_root.findAll((n: any) => typeof n.props?.clipPath === 'string' && /^url\(#r/.test(n.props.clipPath) && typeof n.type !== 'string');
   expect(under.length).toBeGreaterThan(0);
   for (const g of under) {
-    const ap: any = g.props.animatedProps;
-    const op = ap?.initial?.value?.opacity ?? g.props.opacity;
-    expect(op).toBe(0);
+    // Inside the clip: one group that is see-through at rest.
+    const inner = g.findAll((n: any) => n !== g && n.props?.animatedProps && typeof n.type !== 'string')[0];
+    const ap: any = inner?.props.animatedProps;
+    expect(ap?.initial?.value?.opacity).toBe(0);
   }
+});
+
+test('while the screen is still turning over from a peel, Dark mode waits (a quick 2nd tap closed the app)', async () => {
+  const { getByGestureTestId } = require('react-native-gesture-handler/jest-utils');
+  const peel = require('../src/screenPeel');
+  mockModel = defaultModel();
+  const AppearancePage = require('../src/screens/AppearancePage').default;
+  render(<ThemeProvider><AppearancePage getFrame={async () => ({ y: 0, height: 800, scrollY: 0, padTop: 16, padX: 12 })} /></ThemeProvider>);
+  await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
+  expect(getByGestureTestId('settings-theme-dark-tap').config.enabled).toBe(true);
+  await act(async () => { peel.showScreenPeel(null, true); peel.endScreenPeel(true); });
+  expect(getByGestureTestId('settings-theme-dark-tap').config.enabled).toBe(false);
+  // Not greyed out meanwhile.
+  expect(screen.getByTestId('settings-theme-dark').props.style.opacity).toBe(1);
+  await act(async () => { peel.releaseScreenPeel(); });
+  expect(getByGestureTestId('settings-theme-dark-tap').config.enabled).toBe(true);
 });
