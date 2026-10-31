@@ -9,24 +9,28 @@ import { useTheme } from '../ThemeContext';
 // sheet that closes straight away (Paid, Add money, Finish trip…) still confirms it worked.
 // Call showSaved('Payment saved') from anywhere; <SavedToastHost /> is mounted once in App.
 
-type Listener = (label: string) => void;
+type Icon = keyof typeof Ionicons.glyphMap;
+type Listener = (label: string, icon: Icon) => void;
 let listener: Listener | null = null;
 
-export function showSaved(label = 'Saved') {
-  listener?.(label);
+// icon: Day & night's sunset / sunrise note uses a moon or sun instead of the tick.
+export function showSaved(label = 'Saved', icon: Icon = 'checkmark-circle') {
+  listener?.(label, icon);
 }
 
 export function SavedToastHost() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [label, setLabel] = useState<string | null>(null);
+  const [icon, setIcon] = useState<Icon>('checkmark-circle');
   const opacity = useRef(new Animated.Value(0)).current;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    listener = (text) => {
+    listener = (text, ic) => {
       if (timer.current) clearTimeout(timer.current);
       setLabel(text);
+      setIcon(ic);
       opacity.stopAnimation();
       Animated.timing(opacity, { toValue: 1, duration: 160, useNativeDriver: true }).start();
       timer.current = setTimeout(() => {
@@ -66,7 +70,7 @@ export function SavedToastHost() {
           elevation: 6,
         }}
       >
-        <Ionicons name="checkmark-circle" size={20} color={colors.positive} />
+        <Ionicons name={icon} size={20} color={icon === 'checkmark-circle' ? colors.positive : colors.gold} />
         <Text style={{ fontSize: 15, fontWeight: '600', color: colors.ink, flexShrink: 1 }}>{label}</Text>
       </Animated.View>
     </View>

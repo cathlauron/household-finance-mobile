@@ -6,7 +6,8 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { TEXT_SIZE_OPTIONS, setTextSize, useTextSize } from '../textSize';
 import { useFabSide, setFabSide } from '../fabSide';
-import { useSkyPrefs, setSkyGlowOn, setLiveWeatherOn, setRainAnimOn, usePreviewWeather, setPreviewWeather } from '../sky';
+import { clockText, darkHoursText, nextThemeChange } from '../dayNight';
+import { skyPlaceNow, useSkyPrefs, setSkyGlowOn, setLiveWeatherOn, setRainAnimOn, usePreviewWeather, setPreviewWeather } from '../sky';
 import { getHomeZoneCity, setHomeZoneToPhone, phoneTimeZone, cityOf } from '../travelTime';
 import LargeHeader from '../navigation/LargeHeader';
 import { darkSticker, endScreenPeel, measurePeelHost, setCopyFrame, useCopyFrame, prepareScreenPeel, releaseScreenPeel, screenPeelK, showScreenPeel, useScreenPeelSettling } from '../screenPeel';
@@ -14,6 +15,9 @@ import { darkSticker, endScreenPeel, measurePeelHost, setCopyFrame, useCopyFrame
 // Settings › Appearance. Version 3.2 (mockup K2e, approved by Cath 2026-10-29): the on/off
 // settings are peel-off stickers. Theme is "Match my phone" + "Dark mode" (Cath's pick);
 // while Match my phone is on, Dark mode is greyed out and follows the phone.
+// 2026-10-31 (Cath, mockup D3): a third sticker, Day & night (dark from sunset to sunrise).
+// Only one of Day & night / Match my phone is on; while either is, Dark mode is greyed out
+// and says what decides it.
 // Peeling Dark mode peels the whole screen from its top-right corner (src/screenPeel.tsx):
 // the page shows underneath in the other look. `still` draws this page as that copy.
 
@@ -77,6 +81,18 @@ export default function AppearancePage({
   }
   if (!model) return null;
   const hold = { onPeelStart: () => onPeeling?.(true), onPeelEnd: () => onPeeling?.(false) };
+  const place = skyPlaceNow();
+  const now = new Date();
+  const darkSub =
+    mode === 'auto'
+      ? `Set by Day & night: ${isDark ? 'on' : 'off'} until ${clockText(nextThemeChange(now, place?.lat, place?.lon))}`
+      : mode === 'device'
+        ? 'Set by your phone'
+        : undefined;
+  const themeFooter =
+    mode === 'auto'
+      ? `Today: ${darkHoursText(now, place?.lat, place?.lon).replace('Dark', 'dark from')}, from sunset and sunrise (the same times as Home’s sky).`
+      : "Match my phone: light or dark follows your phone's own setting.";
 
   // The copy of this page, drawn in the other look, peeled into view under the screen.
   function startDarkPeel(toDark: boolean) {
@@ -86,7 +102,21 @@ export default function AppearancePage({
 
   return (
     <>
-      <SettingsGroup label="Theme" plain footer="Match my phone: light or dark follows your phone's own setting.">
+      <SettingsGroup label="Theme" plain footer={themeFooter}>
+        <PlainRow
+          title="Day & night"
+          sub="Dark from sunset to sunrise"
+          right={
+            <PeelSticker
+              {...hold}
+              testID="settings-theme-daynight"
+              still={still}
+              accessibilityLabel="Day and night"
+              value={mode === 'auto'}
+              onChange={(on) => setMode(on ? 'auto' : isDark ? 'dark' : 'light')}
+            />
+          }
+        />
         <PlainRow
           title="Match my phone"
           right={
@@ -102,6 +132,7 @@ export default function AppearancePage({
         />
         <PlainRow
           title="Dark mode"
+          sub={darkSub}
           right={
             <PeelSticker
               testID="settings-theme-dark"
@@ -111,7 +142,7 @@ export default function AppearancePage({
               onLabel="☾ Dark"
               accessibilityLabel="Dark mode"
               value={isDark}
-              disabled={mode === 'device'}
+              disabled={mode === 'device' || mode === 'auto'}
               paused={!still && settling}
               lendTo={still ? undefined : darkSticker}
               borrow={still ? darkSticker.current : undefined}

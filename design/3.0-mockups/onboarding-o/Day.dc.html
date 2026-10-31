@@ -42,6 +42,14 @@ a{color:#2E6B47}a:hover{color:#1B3F30}
 @keyframes ffdFillA{from{width:0}to{width:100%}}@keyframes ffdFillB{from{width:0}to{width:100%}}
 .ffd-glowdot{animation:ffdPulse 2.4s ease-in-out infinite}
 @keyframes ffdPulse{50%{box-shadow:0 0 0 8px rgba(255,196,107,0.18),0 0 26px 8px rgba(255,196,107,0.45)}}
+.ffd-pop{animation:ffdPop 460ms cubic-bezier(.2,1.3,.4,1) both}
+@keyframes ffdPop{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:none}}
+.ffd-ring{stroke-dashoffset:100;animation:ffdRing 1.2s ease-out .6s forwards}
+@keyframes ffdRing{to{stroke-dashoffset:40}}
+.ffd-spark{stroke-dasharray:1;stroke-dashoffset:1;animation:ffdDraw 1.2s ease-out .4s forwards}
+.ffd-mic{animation:ffdMic 1.8s ease-in-out infinite}
+@keyframes ffdMic{50%{box-shadow:0 0 0 11px rgba(46,107,71,0.12)}}
+@media (prefers-reduced-motion: reduce){.ffd-pop,.ffd-mic{animation:none!important}.ffd-ring{animation:none!important;stroke-dashoffset:40}.ffd-spark{animation:none!important;stroke-dashoffset:0}}
 @media (prefers-reduced-motion: reduce){.ffd-leaf,.ffd-leaf svg,.ffd-draw path,.ffd-word,.ffd-in,.ffd-drop,.ffd-slide,.ffd-tw,.ffd-mote,.ffd-bar,.ffd-fillA,.ffd-fillB,.ffd-glowdot{animation:none!important}.ffd-draw path{stroke-dashoffset:0}}
 </style>
 </helmet>
@@ -71,9 +79,6 @@ a{color:#2E6B47}a:hover{color:#1B3F30}
         <path pathLength="1" d="M 502 668 C 453 664, 432 592, 428 548 C 442 544, 486 566, 505 658" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"></path>
       </svg>
       <div class="ffd-word ffd-t" style="margin-top: 10px; font-size: 12px; font-weight: 600; letter-spacing: 0.34em; padding-left: 0.34em; color: var(--accent)">FINANCE FLOW</div>
-      <button class="ffd-btn ffd-t" onClick="{{togglePlay}}" aria-label="{{playLabel}}" style="position: absolute; right: 0; top: -6px; width: 44px; height: 44px; border-radius: 22px; display: flex; align-items: center; justify-content: center; background: var(--glass); color: var(--ink)">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="{{playIcon}}"></path></svg>
-      </button>
     </div>
 
     <sc-for list="{{moment}}" as="m" hint-placeholder-count="1">
@@ -85,25 +90,33 @@ a{color:#2E6B47}a:hover{color:#1B3F30}
 
     <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 8px 0">
       <sc-if value="{{k0}}" hint-placeholder-val="{{ true }}">
-        <div class="ffd-in ffd-t" style="background: var(--surface); border-radius: 24px; padding: 16px; box-shadow: var(--float)">
-          <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink2)">
-            <span style="width: 20px; height: 20px; border-radius: 6px; background: #1B3F30; display: flex; align-items: center; justify-content: center"><svg width="13" height="11" viewBox="190 240 644 530" fill="none" stroke="#E6F0EA" stroke-width="44" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M 215 512 L 501 276 C 507 268, 517 268, 524 276 L 809 512M 268 470 V 746 H 756 V 470"></path></svg></span>
-            Home screen widget
-          </div>
-          <div style="display: flex; align-items: flex-end; justify-content: space-between; margin-top: 12px">
-            <div>
-              <div style="font-size: 15px; color: var(--ink2)">Left to spend</div>
-              <div style="font-size: 34px; line-height: 40px; font-weight: 700; color: var(--ink)">₱9,860.00</div>
-              <div style="font-size: 15px; color: var(--positive)">Looking good · 9 days to payday</div>
+        <div class="ffd-in" style="border-radius: 28px; padding: 10px; background: linear-gradient(160deg, rgba(120,140,170,0.32), rgba(170,150,180,0.22)); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.35)">
+          <div class="ffd-pop" style="height: 108px; border-radius: 22px; padding: 10px 14px; box-sizing: border-box; color: #FFFFFF; background: linear-gradient(225deg, #2C5E48, #1B3F30 55%, #122B21); display: flex; flex-direction: column; justify-content: space-between; animation-delay: 150ms">
+            <div style="display: flex; justify-content: space-between">
+              <div><div style="font-size: 11px; font-weight: 800; letter-spacing: 0.3px">LEFT TO SPEND</div><div style="font-size: 24px; line-height: 28px; font-weight: 800">₱9,860.00</div><div style="font-size: 11px; font-weight: 700">₱1,095 a day · 9 days to payday</div></div>
+              <svg width="96" height="40" viewBox="0 0 96 40" aria-hidden="true"><path class="ffd-spark" pathLength="1" d="M2 30 L16 24 L30 28 L44 14 L58 20 L72 9 L94 16" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+            <div style="display: flex; gap: 8px">
+              <span style="flex: 1; height: 32px; border-radius: 14px; background: #FFFFFF; color: #2E6B47; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 5px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"></path></svg>Say it</span>
+              <span style="flex: 1; height: 32px; border-radius: 14px; background: rgba(255,255,255,0.22); color: #FFFFFF; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center">+ Add</span>
             </div>
           </div>
-          <div style="display: flex; gap: 8px; margin-top: 14px">
-            <span style="flex: 1; min-height: 44px; border-radius: 12px; background: var(--tint); color: var(--accent); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 15px; font-weight: 600"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"></path></svg>Say it</span>
-            <span style="flex: 1; min-height: 44px; border-radius: 12px; background: var(--tint); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 600">+ Add</span>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px">
+            <div class="ffd-pop" style="height: 104px; border-radius: 22px; padding: 10px 12px; box-sizing: border-box; color: #FFFFFF; background: linear-gradient(225deg, #2C5E48, #1B3F30 55%, #122B21); display: flex; flex-direction: column; justify-content: space-between; animation-delay: 350ms">
+              <div><div style="font-size: 11px; font-weight: 800; letter-spacing: 0.3px">LEFT TO SPEND</div><div style="font-size: 18px; font-weight: 800">₱9,860.00</div></div>
+              <div style="display: flex; justify-content: space-between; align-items: flex-end">
+                <svg width="44" height="44" viewBox="0 0 60 60" aria-hidden="true"><circle cx="30" cy="30" r="24" stroke="#FFFFFF" stroke-opacity="0.25" stroke-width="7" fill="none"></circle><circle class="ffd-ring" cx="30" cy="30" r="24" stroke="#FFFFFF" stroke-width="7" fill="none" stroke-linecap="round" pathLength="100" stroke-dasharray="100" transform="rotate(-90 30 30)"></circle></svg>
+                <span style="font-size: 11px; font-weight: 700; text-align: right">9 days to<br>payday</span>
+              </div>
+            </div>
+            <div class="ffd-pop" style="height: 104px; border-radius: 22px; padding: 8px; box-sizing: border-box; background: linear-gradient(180deg, #FFFFFF, #F1F7F3); display: flex; flex-direction: column; align-items: center; justify-content: center; animation-delay: 550ms">
+              <span class="ffd-mic" style="width: 46px; height: 46px; border-radius: 23px; background: #2E6B47; box-shadow: 0 0 0 6px rgba(46,107,71,0.22); display: flex; align-items: center; justify-content: center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"></path></svg></span>
+              <span style="margin-top: 6px; font-size: 13px; font-weight: 800; color: #2E6B47">Say it</span>
+              <span style="font-size: 11px; font-weight: 700; color: #6C6C70">“Spent 250 on…”</span>
+            </div>
           </div>
-          <div style="height: 1px; background: var(--sep); margin: 14px 0 10px"></div>
-          <div style="display: flex; justify-content: space-between; font-size: 15px; color: var(--ink)"><span>Electricity</span><span style="color: var(--warning); font-weight: 600">Due tomorrow</span></div>
         </div>
+        <div class="ffd-in ffd-t" style="margin-top: 8px; text-align: center; font-size: 13px; color: var(--ink2); animation-delay: 700ms">Plus Due soon, Month at a glance and Trip</div>
       </sc-if>
       <sc-if value="{{k1}}" hint-placeholder-val="{{ false }}">
         <div style="display: flex; flex-direction: column; gap: 10px">
@@ -164,7 +177,7 @@ a{color:#2E6B47}a:hover{color:#1B3F30}
     <sc-if value="{{isArc}}" hint-placeholder-val="{{ true }}">
       <div style="position: relative; height: 150px; margin: 0 8px">
         <svg aria-hidden="true" width="342" height="150" viewBox="0 0 342 150" style="position: absolute; left: 0; top: 0"><path d="M 31 140 A 140 140 0 0 1 311 140" fill="none" stroke="var(--sep)" stroke-width="2" stroke-dasharray="2 7" stroke-linecap="round"></path><path d="M 6 140 H 336" stroke="var(--sep)" stroke-width="1"></path></svg>
-        <div style="{{pivotStyle}}"><span class="ffd-glowdot" style="{{orbStyle}}"></span></div>
+        <div style="{{pivotStyle}}"><span style="{{orbStyle}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{orbIconStyle}}"><path d="{{orbIcon}}"></path></svg></span></div>
         <sc-for list="{{ticks}}" as="t" hint-placeholder-count="5">
           <button class="ffd-btn" onClick="{{t.go}}" aria-label="{{t.aria}}" style="{{t.style}}"><span style="{{t.dot}}"></span></button>
         </sc-for>
@@ -216,9 +229,9 @@ a{color:#2E6B47}a:hover{color:#1B3F30}
   </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"variant":{"editor":"enum","options":["arc","ruler","pill"],"default":"arc"},"nightDark":{"editor":"boolean","default":false},"leaves":{"editor":"boolean","default":true},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"variant":{"editor":"enum","options":["arc","ruler","pill"],"default":"arc"},"nightDark":{"editor":"boolean","default":true},"leaves":{"editor":"boolean","default":true},"$preview":{"width":390,"height":844}}'>
 var M = [
-  { label: 'Morning', time: '7:30 AM', h: 7.5, phase: 'morning', title: 'One glance before you leave' },
+  { label: 'Morning', time: '7:30 AM', h: 7.5, phase: 'morning', title: 'One glance from your home screen' },
   { label: 'Midday', time: '12:40 PM', h: 12.67, phase: 'afternoon', title: 'Say it at the till. Done.' },
   { label: 'Afternoon', time: '5:00 PM', h: 17, phase: 'afternoon', title: 'A nudge before a bill is due' },
   { label: 'Evening', time: '7:45 PM', h: 19.75, phase: 'evening', title: 'See what your home added' },
@@ -238,6 +251,8 @@ var ICONS = [
   'M3 18h18M7 18a5 5 0 0 1 10 0M12 4v5M9.5 6.5L12 9l2.5-2.5',
   'M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z'
 ];
+// The arc's sun: its own look for each time (sunrise, midday sun, low sun, sunset, moon).
+var ORB = ['#F2A65A', '#F5B83D', '#E8892E', '#D9667A', '#DDE2F5'];
 function rgba(hex, a) {
   var n = parseInt(hex.slice(1), 16);
   return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
@@ -257,21 +272,25 @@ var DUSK = scatter(11, 14, [1.2, 1.6, 2], 0.25, 0.6);
 var MOTES = scatter(5, 30, [1.6, 2, 2.6, 3.2], 0.2, 0.55);
 function fmtH(h) { var hh = Math.floor(h), mm = Math.round((h - hh) * 60), ap = hh >= 12 ? 'PM' : 'AM', h12 = hh % 12 || 12; return h12 + ':' + (mm < 10 ? '0' : '') + mm + ' ' + ap; }
 class Component extends DCLogic {
-  constructor(p) { super(p); this.state = { k: 0, playing: true, paid: false, cycle: 0 }; }
+  constructor(p) { super(p); this.state = { k: 0, playing: true, paid: false, cycle: 0 }; this.touched = 0; }
   componentDidMount() {
     var self = this;
-    this.timer = setInterval(function () { if (self.state.playing) self.setState({ k: (self.state.k + 1) % 5, paid: false, cycle: self.state.cycle + 1 }); }, 4200);
+    // Plays by itself; a tap on a time (or Pay now) holds it there, and it carries on after 8 s untouched.
+    this.timer = setInterval(function () {
+      if (!self.state.playing && Date.now() - self.touched > 8000) self.setState({ playing: true });
+      else if (self.state.playing) self.setState({ k: (self.state.k + 1) % 5, paid: false, cycle: self.state.cycle + 1 });
+    }, 4200);
   }
   componentWillUnmount() { clearInterval(this.timer); }
-  jump(i) { this.setState({ k: i, playing: false, paid: false, cycle: this.state.cycle + 1 }); }
+  jump(i) { this.touched = Date.now(); this.setState({ k: i, playing: false, paid: false, cycle: this.state.cycle + 1 }); }
   renderVals() {
     var self = this, s = this.state, m = M[s.k];
     var variant = this.props.variant || 'arc';
     var nd = !!this.props.nightDark && m.phase === 'night';
     var leavesOn = this.props.leaves !== false;
     var v = nd
-      ? { bg: '#000000', surface: '#1C1C1E', fill: '#2C2C2E', ink: '#FFFFFF', ink2: '#AEAEB2', sep: '#38383A', accent: '#5FC48A', onAccent: '#0B1F14', tint: '#15291D', positive: '#4CD07D', negative: '#FF6961', warning: '#FFB340', saving: '#FFB27A', hero: '#1E4A37', glass: 'rgba(28,28,30,0.82)', float: '0 4px 16px rgba(0,0,0,0.5)', heroShadow: 'none', btnLit: '#7AD3A0', btnDeep: '#3FA56C', leaf: 'rgba(95,196,138,0.10)' }
-      : { bg: '#F2F2F7', surface: '#FFFFFF', fill: '#EEEEF0', ink: '#111111', ink2: '#6C6C70', sep: '#C6C6C8', accent: '#2E6B47', onAccent: '#FFFFFF', tint: '#E6F0EA', positive: '#1E7B3E', negative: '#D70015', warning: '#B83200', saving: '#C2510A', hero: '#1B3F30', glass: 'rgba(255,255,255,0.78)', float: '0 4px 16px rgba(0,0,0,0.10)', heroShadow: '0 8px 24px rgba(27,63,48,0.18)', btnLit: '#3E8A5E', btnDeep: '#22543A', leaf: 'rgba(46,107,71,0.10)' };
+      ? { bg: '#000000', surface: '#1C1C1E', fill: '#2C2C2E', ink: '#FFFFFF', ink2: '#AEAEB2', sep: '#38383A', accent: '#5FC48A', onAccent: '#0B1F14', tint: '#15291D', positive: '#4CD07D', negative: '#FF6961', warning: '#FFB340', saving: '#FFB27A', hero: '#1E4A37', glass: 'rgba(28,28,30,0.82)', float: '0 4px 16px rgba(0,0,0,0.5)', heroShadow: 'none', btnLit: '#7AD3A0', btnDeep: '#3FA56C', leaf: 'rgba(95,196,138,0.055)' }
+      : { bg: '#F2F2F7', surface: '#FFFFFF', fill: '#EEEEF0', ink: '#111111', ink2: '#6C6C70', sep: '#C6C6C8', accent: '#2E6B47', onAccent: '#FFFFFF', tint: '#E6F0EA', positive: '#1E7B3E', negative: '#D70015', warning: '#B83200', saving: '#C2510A', hero: '#1B3F30', glass: 'rgba(255,255,255,0.78)', float: '0 4px 16px rgba(0,0,0,0.10)', heroShadow: '0 8px 24px rgba(27,63,48,0.18)', btnLit: '#3E8A5E', btnDeep: '#22543A', leaf: 'rgba(46,107,71,0.055)' };
     var vars = '';
     for (var key in v) vars += '--' + key + ':' + v[key] + ';';
 
@@ -293,14 +312,14 @@ class Component extends DCLogic {
     });
 
     var leaves = [];
-    var spec = [[12, 16, 30, 40, 56, 0.6, 7], [11, 38, 74, 22, 32, 0.9, 18], [4, 110, 170, 12, 17, 0.95, 34]];
+    var spec = [[12, 10, 18, 40, 56, 0.6, 6], [11, 22, 42, 22, 32, 0.9, 14], [4, 64, 96, 12, 17, 0.95, 26]];
     var r = seeded(21), idx = 0;
     spec.forEach(function (d) {
       for (var i = 0; i < d[0]; i++) {
         var w = Math.round(d[1] + r() * (d[2] - d[1])), dur = (d[3] + r() * (d[4] - d[3])).toFixed(1);
         leaves.push({
           w: w, h: Math.round(w * 2.05), fill: v.leaf, vein: v.bg,
-          style: 'left:' + Math.round(r() * 420 - 30) + 'px;opacity:' + d[5] + ';animation-duration:' + dur + 's;animation-delay:-' + (r() * dur).toFixed(1) + 's' + (d[1] > 100 ? ';filter:blur(1.4px)' : ''),
+          style: 'left:' + Math.round(r() * 420 - 30) + 'px;opacity:' + d[5] + ';animation-duration:' + dur + 's;animation-delay:-' + (r() * dur).toFixed(1) + 's' + (d[1] > 60 ? ';filter:blur(1.4px)' : ''),
           sway: '--sw:' + d[6] + 'px;animation-duration:' + (3 + r() * 5).toFixed(1) + 's'
         });
         idx++;
@@ -322,12 +341,9 @@ class Component extends DCLogic {
       skies: skies,
       leafLayer: 'position:absolute;inset:0;opacity:' + (leavesOn ? 1 : 0) + ';transition:transform 1.3s cubic-bezier(.15,.85,.25,1),opacity 600ms;transform:translateX(' + (-s.k * 70) + 'px)',
       leaves: leaves,
-      togglePlay: function () { self.setState({ playing: !s.playing }); },
-      playLabel: s.playing ? 'Pause the day' : 'Play the day',
-      playIcon: s.playing ? 'M7 5h3.5v14H7zM13.5 5H17v14h-3.5z' : 'M8 5l11 7-11 7z',
       moment: [{ time: m.time, label: m.label, title: m.title, key: s.k }],
       k0: s.k === 0, k1: s.k === 1, k2: s.k === 2, k3: s.k === 3, k4: s.k === 4,
-      payIt: function () { self.setState({ paid: true, playing: false }); },
+      payIt: function () { self.touched = Date.now(); self.setState({ paid: true, playing: false }); },
       payLabel: s.paid ? 'Paid' : 'Pay now',
       payStyle: 'min-height:53px;border-radius:14px;font-size:17px;font-weight:600;animation-delay:150ms;transition:background 300ms;color:' + (s.paid ? 'var(--positive)' : 'var(--onAccent)') + ';background:' + (s.paid ? 'var(--tint)' : 'linear-gradient(135deg,var(--btnLit),var(--accent) 55%,var(--btnDeep))'),
       payNote: s.paid ? 'Logged from BPI Savings. Nothing else to do.' : 'One tap logs it from the right account.',
@@ -335,7 +351,9 @@ class Component extends DCLogic {
       clock: m.time, phaseName: m.label, stepOf: (s.k + 1) + ' of 5',
       isArc: variant === 'arc', isRuler: variant === 'ruler', isPill: variant === 'pill',
       pivotStyle: 'position:absolute;left:171px;top:140px;width:0;height:0;transition:transform 1.4s cubic-bezier(.3,.8,.3,1);transform:rotate(' + ang.toFixed(1) + 'deg)',
-      orbStyle: 'position:absolute;left:-151px;top:-11px;width:22px;height:22px;border-radius:11px;transition:background 1.2s,box-shadow 1.2s;background:' + (isNight ? (nd ? '#EDEFF7' : '#AFBBE6') : '#FFC46B') + ';box-shadow:0 0 0 4px ' + (isNight ? 'rgba(175,187,230,0.25)' : 'rgba(255,196,107,0.25)') + ',0 0 22px 6px ' + (isNight ? 'rgba(175,187,230,0.5)' : 'rgba(255,196,107,0.55)'),
+      orbStyle: 'position:absolute;left:-156px;top:-16px;width:32px;height:32px;border-radius:16px;display:flex;align-items:center;justify-content:center;transition:background 1.2s,box-shadow 1.2s;background:' + ORB[s.k] + ';box-shadow:0 0 0 4px ' + rgba(ORB[s.k], 0.22) + ',0 0 22px 6px ' + rgba(ORB[s.k], 0.5),
+      orbIcon: ICONS[s.k],
+      orbIconStyle: 'stroke:' + (isNight ? '#1C2450' : '#FFFFFF') + ';transition:transform 1.4s cubic-bezier(.3,.8,.3,1);transform:rotate(' + (-ang).toFixed(1) + 'deg)',
       ticks: M.map(function (x, i) {
         var a = (x.h - 6) / 16 * Math.PI, px = 171 - 140 * Math.cos(a), py = 140 - 140 * Math.sin(a), on = i === s.k;
         return { aria: 'Show ' + x.label.toLowerCase() + ', ' + x.time, go: function () { self.jump(i); },

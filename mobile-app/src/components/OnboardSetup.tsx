@@ -39,7 +39,7 @@ const QUICK: { name: string; group: Group }[] = [
 const DEFAULT_WATCH = ['Groceries', 'Dining out', 'Transport', 'Shopping', 'Utilities', 'Health', 'Kids', 'Fun'];
 
 export default function OnboardSetup({ onDone, topInset }: { onDone: () => void; topInset: number }) {
-  const { colors, isDark, setMode } = useTheme();
+  const { colors, isDark, mode, setMode } = useTheme();
   const { model, saveModel, username } = useData();
   const side = useFabSide();
   const styles = makeStyles(colors);
@@ -258,13 +258,15 @@ export default function OnboardSetup({ onDone, topInset }: { onDone: () => void;
               </View>
             </View>
             <Text style={styles.header}>Appearance</Text>
-            <SegmentedControl<'light' | 'dark'>
+            {/* 2026-10-31 (Cath): Day & night next to Light and Dark, like the guest set-up. */}
+            <SegmentedControl<'light' | 'dark' | 'auto'>
               accessibilityLabel="Appearance"
               options={[
                 { id: 'light', label: 'Light' },
                 { id: 'dark', label: 'Dark' },
+                { id: 'auto', label: 'Day & night' },
               ]}
-              value={isDark ? 'dark' : 'light'}
+              value={mode === 'auto' ? 'auto' : isDark ? 'dark' : 'light'}
               onChange={(v) => setMode(v)}
             />
             <Text style={styles.header}>Which thumb taps +?</Text>

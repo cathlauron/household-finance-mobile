@@ -1485,3 +1485,30 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   real leaf shape falling with the tab-switch gust), and S1-S4 (Setup.dc.html: name with a
   live "Good morning" preview, help-with chips, theme/leaves/mood live preview incl. dark,
   phone lock animation, then "You're all set!" with the opening-screen logo). WAITING for picks.
+- 2026-10-31 (later): Cath's notes on mockup O: leaves fainter (about 5.5%, near the app's own)
+  and smaller on all screens; no pause button (it pushed the logo off centre: the day now holds
+  when a time is tapped and carries on by itself after 8 s); she likes O3a's moving time with
+  its sun changing look for every time (sunrise, midday, low sun, sunset, moon), and O3c's
+  colour change (night turns dark): both now in O3a. WAITING: her OK on O3a + S1-S4.
+- 2026-10-31 (evening): Cath likes O3a. Added her real widgets (W2 crimson/pink: Spend & say,
+  Left to spend, Say it) popping in at O3a's morning. S1-S4 now match O3a: logo drawing itself,
+  Home's sky with motes/rays/stars, a small sun arc as the step progress (sunrise -> sunset over
+  the 4 steps), back arrow only from step 2. WAITING: her OK on O3a + S1-S4.
+- LATER (Cath, after onboarding is decided): dark mode at night, like Google Maps. Answered with
+  a proposal: a 4th Appearance choice "Day & night" (light by day, dark sunset to sunrise from the
+  sky's sunrise/sunset times); Light / Dark / Device stay. To ask her: default for new people;
+  switch while the app is open (soft fade) or only when it opens.
+- 2026-10-31 (night): Cath: the widgets should be GREEN by default (onboarding mockup fixed). NOTE: the
+  app's real widgets (src/widgets/FFWidgets.tsx, from W2) are crimson: asked her whether they should
+  be green and follow the mood like the Left to Spend card. Day & night mockups added to canvas O
+  (row 4): D1 Home moon icon opens a small menu (Light / Dark / Day & night / Match my phone),
+  D2 Home moon icon flips until the next sunrise/sunset then Day & night carries on, D3 Appearance
+  with a third sticker "Day & night", D4 Appearance as four choices + "Your day" bar. WAITING: picks.
+- 2026-10-31 (night): Cath picked D1 + D3, OK'd O3a and S1-S4, and answered: new people start on
+  Day & night; at sunset/sunrise while open it fades softly (tapping stays instant); widgets green
+  + follow the mood; set-up S3 gets 4 looks. BUILT on v3 (checks: dayNight.test.mjs,
+  DayNight/WelcomeDay/SetupDay screen checks, red-green): dayNight.ts + sunTimes.ts (moved out of
+  sky.ts), ThemeContext 'auto' + soft fade + note, Home moon menu (ThemeMenu), Appearance Day &
+  night sticker, new WelcomeScreen (O3a; IntroSlides uses it), SunArc, SkyFade, DrawingLogo once,
+  set-up S1-S4 restyle + "You're all set". Screen checks get 30 s each (were timing out).
+  NEXT: widgets green + mood, voice on remaining forms, bug + smoothness hunt, TEST-3 list.

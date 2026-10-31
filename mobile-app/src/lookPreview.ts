@@ -6,7 +6,9 @@ import type { LeftToSpendMood } from './balanceProjection';
 // setting yet, so the screen tells the background what to show here.
 // mood (2.2, approved L2): the mood sample being looked at on the set-up screen, so the
 // whole screen takes its colours before there's any money to work it out from.
-export type LookPreview = { fallingLeaves?: boolean; mood?: LeftToSpendMood };
+// dark (2026-10-31, onboarding O3a): the welcome's night moment shows the app dark without
+// changing the saved look; it fades like Day & night at sunset.
+export type LookPreview = { fallingLeaves?: boolean; mood?: LeftToSpendMood; dark?: boolean };
 
 let current: LookPreview = {};
 const listeners = new Set<(p: LookPreview) => void>();

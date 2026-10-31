@@ -127,7 +127,8 @@ const RAYS = [118, 140, 162].map((deg) => ({ outer: wedge(deg, 0.08), inner: wed
 
 // Version 2.1 (Cath): `plain` is the same time-of-day glow without the sun rays, rain,
 // clouds and stars (those stay on Home), for every other page and the bottom sheets.
-export default function SkyGlow({ plain = false }: { plain?: boolean } = {}) {
+// phase (2026-10-31, welcome O3a and set-up): show a chosen time of day (clear sky) instead of now.
+export default function SkyGlow({ plain = false, phase: chosen }: { plain?: boolean; phase?: SkyPhase } = {}) {
   const { isDark } = useTheme();
   const { glowOn, rainAnimOn } = useSkyPrefs();
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -142,8 +143,10 @@ export default function SkyGlow({ plain = false }: { plain?: boolean } = {}) {
       appSub.remove();
     };
   }, []);
-  const phase = useSkyPhase();
-  const sky = useSkyWeather();
+  const livePhase = useSkyPhase();
+  const liveSky = useSkyWeather();
+  const phase = chosen ?? livePhase;
+  const sky = chosen ? 'clear' : liveSky;
   const { width } = useWindowDimensions();
   // Rain falls only when the switch is on, Reduce Motion is off and the app is in front;
   // otherwise the drops are drawn still.

@@ -1,5 +1,5 @@
 import StepSlide from '../components/StepSlide';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView } from 'react-native';
 import { CARD as HERO_CARD } from '../components/HomeHero';
 import type { LeftToSpendMood } from '../balanceProjection';
@@ -9,7 +9,14 @@ import { TouchableOpacity } from '../components/Tap';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, TextInput } from '../components/AppText';
-import SkyGlow from '../components/SkyGlow';
+import SkyFade from '../components/SkyFade';
+import DrawingLogo from '../components/DrawingLogo';
+import SunArc, { SunLook } from '../components/SunArc';
+import type { SkyPhase } from '../sky';
+import { Animated, Easing } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { CURVE, FINALE_MS, PAGE_OPEN_MS, VOICE_PULSE_MS } from '../motion';
+import { useReduceMotion } from '../reduceMotion';
 import GradientFill from '../components/GradientFill';
 import AppSwitch from '../components/AppSwitch';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
@@ -19,6 +26,19 @@ import type { GuestSetup, HelpWith } from '../guest';
 
 // Version 3 (approved Option B, canvas B2-B5): four short questions before Home, all
 // before any account exists. Only these answers are kept on the phone.
+// Version 3.3 (Cath, mockup S1-S4, 2026-10-31): the welcome's look and a few live touches:
+// a "Good morning" preview of your name, chips for what Home shows first, Day & night as a
+// fourth look, a lock that closes or opens, and "You're all set" before Home.
+
+const STEP_SKY: SkyPhase[] = ['morning', 'afternoon', 'afternoon', 'evening'];
+const STEP_SUN: SunLook[] = ['sunrise', 'midday', 'afternoon', 'sunset'];
+const STEP_NAME = ['Morning', 'Midday', 'Afternoon', 'Evening'];
+const HOME_FIRST: Record<HelpWith, string> = {
+  calm: "What's coming up",
+  debt: 'Your debt-free date',
+  save: 'Savings goals',
+  spending: 'Where it went',
+};
 
 type Props = {
   setup: GuestSetup;
@@ -123,21 +143,39 @@ export default function GuestSetupScreen({ setup, onChange, onBackToWelcome, onD
     if (step === 1) onBackToWelcome();
     else setStep((n) => (n - 1) as 1 | 2 | 3 | 4);
   }
+  // See my Home: a moment of "You're all set" (FINALE_MS), then Home.
+  const [finishing, setFinishing] = useState(false);
+  const reduceAll = useReduceMotion();
   function next() {
     if (step < 4) setStep((n) => (n + 1) as 1 | 2 | 3 | 4);
-    else onDone(setup);
+    else if (!finishing) {
+      setFinishing(true);
+      setTimeout(() => onDone(setup), reduceAll ? FINALE_MS / 2 : FINALE_MS);
+    }
   }
   const canContinue = step === 1 ? setup.name.trim().length > 0 : step === 4 ? setup.othersUsePhone !== null : true;
 
   return (
-    <View style={[s.container, { paddingTop: insets.top + 16 }]}>
-      <SkyGlow />
-      <View style={s.topRow}>
-        <TouchableOpacity onPress={back} accessibilityRole="button" hitSlop={10} style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Ionicons name="chevron-back" size={24} color={colors.gold} style={{ marginLeft: -6 }} />
-          <Text style={[s.link, { color: colors.gold }]}>Back</Text>
+    <View style={[s.container, { paddingTop: insets.top + 8 }]}>
+      {/* 2026-10-31 (Cath, mockup O3a + S1-S4): the welcome's look. Home's sky moves through
+          the day as you go, the logo draws itself, and the sun on its arc shows the step. */}
+      <SkyFade phase={STEP_SKY[step - 1]} />
+      <View style={s.header}>
+        <TouchableOpacity onPress={back} accessibilityRole="button" accessibilityLabel="Back" hitSlop={6} style={s.backBtn} testID="guest-back">
+          <Ionicons name="chevron-back" size={26} color={colors.gold} />
         </TouchableOpacity>
-        <Text style={{ fontSize: 13, color: colors.inkDim }}>{step} of 4</Text>
+        <DrawingLogo width={52} drawing={false} once />
+        <SunArc
+          width={300}
+          radius={200}
+          sweep={38}
+          orb={28}
+          at={(step - 1) / 3}
+          look={STEP_SUN[step - 1]}
+          current={step - 1}
+          stops={[0, 1, 2, 3].map((i) => ({ at: i / 3, label: `Step ${i + 1} of 4` }))}
+        />
+        <Text style={{ fontSize: 13, fontWeight: '600', color: colors.inkDim }}>{step} of 4 · {STEP_NAME[step - 1]}</Text>
       </View>
 
       {/* Smoothness 2026-10-23 (Cath): each step slides like opening a page. */}
@@ -145,6 +183,25 @@ export default function GuestSetupScreen({ setup, onChange, onBackToWelcome, onD
       <KeyboardAwareScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
         {step === 1 && (
           <>
+            <View style={[s.card, s.greetCard]} accessibilityLabel={`Home will greet you: Good morning, ${first || 'your name'}`}>
+              <LinearGradient
+                colors={isDark ? ['rgba(94,85,48,0.9)', 'rgba(58,52,36,0.35)', 'rgba(58,52,36,0)'] : ['rgba(246,226,174,0.95)', 'rgba(243,217,210,0.45)', 'rgba(243,217,210,0)']}
+                start={{ x: 1, y: 0 }}
+                end={{ x: 0.2, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={[s.datePill, { color: colors.inkDim, backgroundColor: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.7)' }]}>
+                  {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                </Text>
+                <View style={s.initial}>
+                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>{first ? first[0].toUpperCase() : '?'}</Text>
+                </View>
+              </View>
+              <Text style={{ fontSize: 15, color: colors.inkDim, marginTop: 16 }}>Good morning,</Text>
+              <Text style={{ fontSize: 32, lineHeight: 38, fontWeight: '700', color: colors.ink }} numberOfLines={1}>{first || '…'}</Text>
+              <Text style={{ fontSize: 13, color: colors.inkDim, marginTop: 2 }}>This is how Home will greet you</Text>
+            </View>
             <Text style={[s.title, { color: colors.ink }]}>What should we call you?</Text>
             <View style={s.card}>
               <GradientFill match={s.card} />
@@ -198,6 +255,14 @@ export default function GuestSetupScreen({ setup, onChange, onBackToWelcome, onD
                 );
               })}
             </View>
+            <Text style={[s.groupHead, { color: colors.inkDim }]}>{setup.helpWith.length ? 'HOME WILL SHOW FIRST' : 'PICK ONE TO SEE WHAT HOME SHOWS'}</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, minHeight: 36 }}>
+              {setup.helpWith.map((id) => (
+                <Pop key={id}>
+                  <Text style={[s.chip, { color: colors.ink, backgroundColor: colors.navy3 }]}>{HOME_FIRST[id]}</Text>
+                </Pop>
+              ))}
+            </View>
           </>
         )}
 
@@ -209,20 +274,26 @@ export default function GuestSetupScreen({ setup, onChange, onBackToWelcome, onD
                 [
                   ['light', 'Light'],
                   ['dark', 'Dark'],
+                  ['auto', 'Day & night'],
                   ['device', 'Device'],
                 ] as const
               ).map(([id, label]) => (
                 <TouchableOpacity
                   key={id}
-                  onPress={() => setMode(id)}
+                  testID={`guest-look-${id}`}
+                  onPress={() => {
+                    hapticSelection();
+                    setMode(id);
+                  }}
                   style={[s.segmentItem, mode === id && { backgroundColor: colors.navy3 }]}
                   accessibilityRole="button"
                   accessibilityState={{ selected: mode === id }}
                 >
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: mode === id ? colors.ink : colors.inkDim }}>{label}</Text>
+                  <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 14, fontWeight: '700', color: mode === id ? colors.ink : colors.inkDim }}>{label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
+            {mode === 'auto' && <Text style={[s.footnote, { color: colors.inkDim, marginTop: -6 }]}>Light by day, dark from sunset to sunrise.</Text>}
             <View style={s.card}>
               <GradientFill match={s.card} />
               <View style={s.row}>
@@ -247,6 +318,7 @@ export default function GuestSetupScreen({ setup, onChange, onBackToWelcome, onD
 
         {step === 4 && (
           <>
+            <LockPicture locked={setup.othersUsePhone} />
             <Text style={[s.title, { color: colors.ink }]}>Does anyone else use your phone?</Text>
             <Text style={[s.sub, { color: colors.inkDim }]}>Family, kids playing games, a partner borrowing it.</Text>
             {(
@@ -259,7 +331,11 @@ export default function GuestSetupScreen({ setup, onChange, onBackToWelcome, onD
               return (
                 <TouchableOpacity
                   key={title}
-                  onPress={() => onChange({ ...setup, othersUsePhone: value })}
+                  testID={value ? 'guest-phone-yes' : 'guest-phone-no'}
+                  onPress={() => {
+                    hapticSelection();
+                    onChange({ ...setup, othersUsePhone: value });
+                  }}
                   style={[s.option, { borderColor: on ? colors.gold : 'transparent' }]}
                   accessibilityRole="radio"
                   accessibilityState={{ selected: on }}
@@ -292,6 +368,89 @@ export default function GuestSetupScreen({ setup, onChange, onBackToWelcome, onD
           <Text style={[s.primaryText, { color: colors.onButton }]}>{step === 4 ? 'See my Home' : 'Continue'}</Text>
         </TouchableOpacity>
       </View>
+      {finishing && <AllSet name={first} />}
+    </View>
+  );
+}
+
+// A chip or row that pops in when it appears.
+function Pop({ children }: { children: React.ReactNode }) {
+  const v = useRef(new Animated.Value(0)).current;
+  const reduce = useReduceMotion();
+  useEffect(() => {
+    if (reduce) return v.setValue(1);
+    Animated.timing(v, { toValue: 1, duration: PAGE_OPEN_MS, easing: Easing.bezier(...CURVE), useNativeDriver: true }).start();
+  }, [v, reduce]);
+  return <Animated.View style={{ opacity: v, transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }) }] }}>{children}</Animated.View>;
+}
+
+// S4: a lock that closes (Yes, with a soft pulse, like it's guarding) or swings open (No).
+function LockPicture({ locked }: { locked: boolean | null }) {
+  const { colors } = useTheme();
+  const reduce = useReduceMotion();
+  const open = useRef(new Animated.Value(locked === false ? 1 : 0)).current;
+  const pulse = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const to = locked === false ? 1 : 0;
+    if (reduce) return open.setValue(to);
+    Animated.spring(open, { toValue: to, useNativeDriver: true, speed: 14, bounciness: 8 }).start();
+  }, [locked, open, reduce]);
+  useEffect(() => {
+    if (reduce || locked !== true) return pulse.setValue(0);
+    const loop = Animated.loop(Animated.timing(pulse, { toValue: 1, duration: VOICE_PULSE_MS, easing: Easing.out(Easing.quad), useNativeDriver: true }));
+    loop.start();
+    return () => loop.stop();
+  }, [locked, pulse, reduce]);
+  return (
+    <View style={{ alignItems: 'center', justifyContent: 'center', height: 104 }} accessible accessibilityLabel={locked === true ? 'Locked' : locked === false ? 'Open' : 'A lock'}>
+      <View style={{ width: 84, height: 84, borderRadius: 26, backgroundColor: colors.accentTint, alignItems: 'center', justifyContent: 'center' }}>
+        <Animated.View
+          pointerEvents="none"
+          style={{ position: 'absolute', width: 96, height: 96, borderRadius: 48, borderWidth: 2, borderColor: colors.gold, opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.6, 0] }), transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.35] }) }] }}
+        />
+        <View style={{ width: 40, height: 46, alignItems: 'center' }}>
+          <Animated.View
+            style={{
+              width: 24,
+              height: 22,
+              borderWidth: 3.5,
+              borderBottomWidth: 0,
+              borderColor: colors.gold,
+              borderTopLeftRadius: 12,
+              borderTopRightRadius: 12,
+              transform: [
+                { translateX: open.interpolate({ inputRange: [0, 1], outputRange: [0, -7] }) },
+                { translateY: open.interpolate({ inputRange: [0, 1], outputRange: [0, -6] }) },
+                { rotate: open.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-28deg'] }) },
+              ],
+            }}
+          />
+          <View style={{ width: 36, height: 26, borderRadius: 7, borderWidth: 3.5, borderColor: colors.gold, alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ width: 3.5, height: 8, borderRadius: 2, backgroundColor: colors.gold }} />
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+// "You're all set": the green opening screen, the logo drawing itself, then Home.
+function AllSet({ name }: { name: string }) {
+  const words = useRef(new Animated.Value(0)).current;
+  const reduce = useReduceMotion();
+  useEffect(() => {
+    if (reduce) return words.setValue(1);
+    Animated.timing(words, { toValue: 1, duration: PAGE_OPEN_MS, delay: 1200, easing: Easing.bezier(...CURVE), useNativeDriver: true }).start();
+  }, [words, reduce]);
+  return (
+    <View style={StyleSheet.absoluteFill} accessibilityViewIsModal>
+      <LinearGradient colors={['#21503B', '#0E2419']} start={{ x: 0.5, y: 0.3 }} end={{ x: 0.5, y: 1 }} style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
+        <DrawingLogo width={120} drawing={false} once color="#F3EBD8" />
+        <Animated.View style={{ alignItems: 'center', marginTop: 32, opacity: words, transform: [{ translateY: words.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }] }}>
+          <Text style={{ fontSize: 28, fontWeight: '700', color: '#FFFFFF' }} accessibilityRole="header">{`You're all set${name ? `, ${name}` : ''}!`}</Text>
+          <Text style={{ fontSize: 17, color: '#BFD3C8', marginTop: 6 }}>Small steps. Bigger dreams.</Text>
+        </Animated.View>
+      </LinearGradient>
     </View>
   );
 }
@@ -299,7 +458,8 @@ export default function GuestSetupScreen({ setup, onChange, onBackToWelcome, onD
 function makeStyles(colors: any) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: 'transparent' },
-    topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24 },
+    header: { alignItems: 'center', paddingHorizontal: 24 },
+    backBtn: { position: 'absolute', left: 12, top: 0, width: 44, height: 44, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
     link: { fontSize: 17, fontWeight: '600', paddingVertical: 8 },
     scroll: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24, gap: 14 },
     title: { fontSize: 30, lineHeight: 36, fontWeight: '600', letterSpacing: -0.2 },
@@ -316,5 +476,10 @@ function makeStyles(colors: any) {
     option: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: 22, borderWidth: 2, overflow: 'hidden', backgroundColor: colors.navy3 },
     primary: { borderRadius: 28, paddingVertical: 17, alignItems: 'center' },
     primaryText: { fontSize: 17, fontWeight: '700' },
+    greetCard: { padding: 18, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
+    datePill: { fontSize: 13, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, overflow: 'hidden' },
+    initial: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#1B3F30', alignItems: 'center', justifyContent: 'center' },
+    groupHead: { fontSize: 13, letterSpacing: 0.3, marginTop: 8, marginLeft: 6 },
+    chip: { fontSize: 15, fontWeight: '600', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, overflow: 'hidden' },
   });
 }

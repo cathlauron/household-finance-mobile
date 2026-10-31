@@ -129,6 +129,15 @@ How to check (besides reading the code):
 - 2026-10-23: whole-screen changes (welcome, set-up, sign-in, unlock): the old screen fades
   out, then the new one fades in; no blank blink, never both at once. Locking: instant.
 
+- 2026-10-31: Day & night (mockups D1 + D3): at sunset / sunrise WHILE the app is open, the
+  look changes with a 1-second soft fade (`AUTO_THEME_MS` each half) and a short note.
+  Tapping a look (Home's menu, Appearance, set-up) stays INSTANT, as decided on 10-23.
+  The welcome's night moment uses the same soft fade (a preview, nothing saved).
+- 2026-10-31: welcome O3a and set-up S1-S4: the sun travels its arc (`SUN_ARC_MS`), each time
+  of day stays `WELCOME_MOMENT_MS`, a tap holds it `WELCOME_HOLD_MS`; the sky fades between
+  times; "You're all set" shows `FINALE_MS` before Home. With Reduce Motion the welcome does
+  not play by itself (tap the times).
+
 ## Part of the full sweep (Cath, 2026-10-29)
 
 This check is part 3 of the full sweep in `finance-flow-bug-check`, which runs before EVERY

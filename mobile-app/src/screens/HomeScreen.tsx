@@ -3,6 +3,7 @@ import { recoveryRequestRoute } from '../bellRoute';
 import { useToday } from '../useToday';
 import { View, StyleSheet } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
+import ThemeMenu from '../components/ThemeMenu';
 import { Text } from '../components/AppText';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -474,27 +475,32 @@ function makeHomeStyles(colors: any) {
   });
 }
 
-// 2.2 speed fix (Cath: the light/dark button lagged): its own small piece, so the icon
-// flips the moment it's tapped while the whole app recolours just after.
+// The light/dark button (Cath, 2026-10-31, mockup D1): opens a small menu with Light, Dark,
+// Day & night and Match my phone. Its icon shows the current choice (half-filled circle for
+// Day & night). Picking changes the look at once.
 function ThemeToggle({ style }: { style: object }) {
-  const { colors, isDark, setMode } = useTheme();
-  const [shown, setShown] = useState<boolean | null>(null);
-  const dark = shown ?? isDark;
-  useEffect(() => {
-    setShown(null);
-  }, [isDark]);
+  const { colors, isDark, mode } = useTheme();
+  const [open, setOpen] = useState(false);
+  const [top, setTop] = useState(100);
+  const btn = useRef<View>(null);
+  const icon: keyof typeof Ionicons.glyphMap = mode === 'auto' ? 'contrast-outline' : mode === 'device' ? 'phone-portrait-outline' : isDark ? 'moon-outline' : 'sunny-outline';
   return (
-    <TouchableOpacity
-      testID="home-theme-toggle"
-      accessibilityLabel={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-      style={style}
-      onPress={() => {
-        hapticSelection();
-        setShown(!dark);
-        setMode(dark ? 'light' : 'dark');
-      }}
-    >
-      <Ionicons name={dark ? 'sunny-outline' : 'moon-outline'} size={23} color={colors.ink} />
-    </TouchableOpacity>
+    <>
+      <TouchableOpacity
+        ref={btn}
+        testID="home-theme-toggle"
+        accessibilityLabel="Light or dark"
+        accessibilityHint="Opens a menu: Light, Dark, Day and night, Match my phone"
+        style={style}
+        onPress={() => {
+          hapticSelection();
+          btn.current?.measureInWindow((_x, y, _w, h) => setTop(y + h + 6));
+          setOpen(true);
+        }}
+      >
+        <Ionicons name={icon} size={23} color={colors.ink} />
+      </TouchableOpacity>
+      <ThemeMenu open={open} top={top} onClose={() => setOpen(false)} />
+    </>
   );
 }

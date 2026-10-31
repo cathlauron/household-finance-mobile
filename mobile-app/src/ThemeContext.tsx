@@ -1,9 +1,15 @@
-import React, { createContext, useContext, useEffect, useMemo, useState, startTransition } from 'react';
-import { Appearance } from 'react-native';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState, startTransition } from 'react';
+import { Animated, AppState, Appearance, Easing, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lightTheme, darkTheme, ThemeColors } from './theme';
+import { ColorMode, isNightAt, resolveDark, startingMode } from './dayNight';
+import { skyPlaceNow } from './sky';
+import { AUTO_THEME_MS, CURVE, CURVE_OUT } from './motion';
+import { reduceMotionNow } from './reduceMotion';
+import { showSaved } from './components/SavedToast';
+import { useLookPreview } from './lookPreview';
 
-type ColorMode = 'light' | 'dark' | 'device';
+export type { ColorMode };
 const STORAGE_KEY = 'colorModePreference';
 
 type ThemeContextValue = {
@@ -16,18 +22,61 @@ type ThemeContextValue = {
 export const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function resolveIsDark(mode: ColorMode): boolean {
-  if (mode === 'dark') return true;
-  if (mode === 'light') return false;
-  return Appearance.getColorScheme() === 'dark';
+  const p = skyPlaceNow();
+  return resolveDark(mode, new Date(), Appearance.getColorScheme() === 'dark', p?.lat, p?.lon);
 }
+const nightNow = () => {
+  const p = skyPlaceNow();
+  return isNightAt(new Date(), p?.lat, p?.lon);
+};
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  // Day & night (Cath, 2026-10-31): new people start on it; a saved choice is kept.
+  // Until the saved choice is read (a moment, under the green opening screen) it's light, as
+  // before, so someone who chose Light never sees a flash of dark at night.
   const [mode, setModeState] = useState<ColorMode>('light');
   const [isDark, setIsDark] = useState<boolean>(false);
+  const dip = useRef(new Animated.Value(0)).current;
+  const [dipColor, setDipColor] = useState<string | null>(null);
+  const darkRef = useRef(isDark);
+  darkRef.current = isDark;
+  const fading = useRef(false);
+  // The welcome's night moment (lookPreview.dark) shows dark without saving it.
+  const preview = useLookPreview();
+  const [previewShown, setPreviewShown] = useState<boolean | undefined>(undefined);
+  const shownDark = previewShown ?? isDark;
+
+  // A 1-second soft fade to the other look (Cath, 2026-10-31): a veil in the new page colour
+  // rises most of the way, the look changes under it, and it settles away. Reduce Motion: instant.
+  function softFade(toDark: boolean, apply: () => void) {
+    if (reduceMotionNow() || fading.current) {
+      apply();
+      return;
+    }
+    fading.current = true;
+    setDipColor((toDark ? darkTheme : lightTheme).navy2);
+    dip.setValue(0);
+    Animated.timing(dip, { toValue: 0.85, duration: AUTO_THEME_MS, easing: Easing.bezier(...CURVE_OUT), useNativeDriver: true }).start(() => {
+      apply();
+      Animated.timing(dip, { toValue: 0, duration: AUTO_THEME_MS, easing: Easing.bezier(...CURVE), useNativeDriver: true }).start(() => {
+        fading.current = false;
+        setDipColor(null);
+      });
+    });
+  }
+
+  useEffect(() => {
+    if (preview.dark === previewShown) return;
+    const toDark = preview.dark ?? isDark;
+    if (toDark === shownDark) setPreviewShown(preview.dark);
+    else softFade(toDark, () => setPreviewShown(preview.dark));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preview.dark]);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((saved) => {
-      const initial = (saved === 'light' || saved === 'dark' || saved === 'device') ? saved : 'light';
+      // FF_CHECK_START_LOOK: only the screen checks set it (they run at any time of day).
+      const initial = startingMode(saved ?? process.env.FF_CHECK_START_LOOK ?? null);
       setModeState(initial);
       setIsDark(resolveIsDark(initial));
     });
@@ -40,6 +89,33 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => sub.remove();
   }, [mode]);
 
+  // Day & night: checked every minute and whenever the app comes back. Coming back it just
+  // shows the right look; at sunset or sunrise while the app is open, a 1-second soft fade
+  // (Cath, 2026-10-31) and a short note. Reduce Motion: instant.
+  useEffect(() => {
+    if (mode !== 'auto') return;
+    const check = (open: boolean) => {
+      const night = nightNow();
+      if (darkRef.current === night || fading.current) return;
+      if (!open) {
+        setIsDark(night);
+        return;
+      }
+      showSaved(night ? 'Sunset: dark until sunrise' : 'Sunrise: back to light', night ? 'moon-outline' : 'sunny-outline');
+      softFade(night, () => setIsDark(night));
+    };
+    check(false);
+    const tick = setInterval(() => check(true), 60000);
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'active') check(false);
+    });
+    return () => {
+      clearInterval(tick);
+      sub.remove();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
   // Version 2.2 (Cath: "I prefer the light/dark in 2.1, it's more responsive and smooth"):
   // back to how 2.1 did it. The tap switches the mode straight away, in the same moment,
   // with no photo, no fade and no waiting. (Tabs you're not looking at still catch up a
@@ -50,14 +126,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(STORAGE_KEY, m).catch(() => {});
   };
 
-  const colors = useMemo(() => (isDark ? darkTheme : lightTheme), [isDark]);
+  const colors = useMemo(() => (shownDark ? darkTheme : lightTheme), [shownDark]);
   // 2.2 speed sweep: the same theme object until the colours really change.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const value = useMemo(() => ({ colors, isDark, mode, setMode }), [colors, isDark, mode]);
+  const value = useMemo(() => ({ colors, isDark: shownDark, mode, setMode }), [colors, shownDark, mode]);
 
   return (
     <ThemeContext.Provider value={value}>
       {children}
+      {dipColor && <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: dipColor, opacity: dip }]} />}
     </ThemeContext.Provider>
   );
 }

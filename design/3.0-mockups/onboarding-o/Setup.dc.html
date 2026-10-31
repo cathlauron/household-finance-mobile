@@ -40,11 +40,21 @@ a{color:#2E6B47}a:hover{color:#1B3F30}
 .ffs-breathe{animation:ffsBreathe 3s ease-in-out 2s infinite}
 @keyframes ffsBreathe{50%{transform:scale(1.04)}}
 .ffs-input:focus{outline:2px solid var(--accent);outline-offset:2px}
+.ffs-tw{animation:ffsTw 2.6s ease-in-out infinite alternate}
+@keyframes ffsTw{from{opacity:.2}to{opacity:1}}
+.ffs-mote{animation:ffsMote 7s ease-in-out infinite alternate}
+@keyframes ffsMote{from{transform:translate(0,0)}to{transform:translate(-10px,8px)}}
+@media (prefers-reduced-motion: reduce){.ffs-tw,.ffs-mote{animation:none!important}}
 @media (prefers-reduced-motion: reduce){.ffs-leaf,.ffs-leaf svg,.ffs-page,.ffs-pop,.ffs-rise,.ffs-ring,.ffs-draw path,.ffs-word,.ffs-late,.ffs-load,.ffs-breathe{animation:none!important}.ffs-draw path{stroke-dashoffset:0}.ffs-load{width:100%}}
 </style>
 </helmet>
 <div class="ffs ffs-t" style="{{rootStyle}}">
-  <div aria-hidden="true" class="ffs-t" style="{{skyStyle}}"></div>
+  <sc-for list="{{skies}}" as="sk" hint-placeholder-count="0">
+    <div aria-hidden="true" style="{{sk.style}}">
+      <sc-for list="{{sk.dots}}" as="d" hint-placeholder-count="0"><span class="{{d.cls}}" style="{{d.style}}"></span></sc-for>
+      <sc-for list="{{sk.rays}}" as="r" hint-placeholder-count="0"><span style="{{r.style}}"></span></sc-for>
+    </div>
+  </sc-for>
   <div aria-hidden="true" style="{{leafLayer}}">
     <sc-for list="{{leaves}}" as="lf" hint-placeholder-count="0">
       <div class="ffs-leaf" style="{{lf.style}}">
@@ -54,14 +64,25 @@ a{color:#2E6B47}a:hover{color:#1B3F30}
   </div>
 
   <div style="position: relative; height: 844px; display: flex; flex-direction: column; padding: 54px 16px 30px; box-sizing: border-box">
-    <div style="display: flex; align-items: center; gap: 8px; height: 44px">
-      <button class="ffs-btn" onClick="{{back}}" aria-label="Back" style="width: 44px; height: 44px; border-radius: 22px; background: transparent; color: var(--accent); display: flex; align-items: center; justify-content: center">
+    <div style="position: relative; display: flex; flex-direction: column; align-items: center">
+      <button class="ffs-btn" onClick="{{back}}" aria-label="Back" style="{{backStyle}}">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
       </button>
-      <div style="flex: 1; display: flex; gap: 6px">
-        <sc-for list="{{progress}}" as="p" hint-placeholder-count="4"><div style="{{p.style}}"></div></sc-for>
+      <svg class="ffs-draw" role="img" aria-label="Finance Flow" width="52" height="43" viewBox="190 240 644 530" fill="none" style="stroke: var(--accent); transition: stroke 700ms">
+        <path pathLength="1" d="M 215 512 L 501 276 C 507 268, 517 268, 524 276 L 809 512" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"></path>
+        <path pathLength="1" d="M 268 470 V 700 C 268 726, 286 746, 307 746 H 414" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"></path>
+        <path pathLength="1" d="M 756 470 V 700 C 756 726, 738 746, 717 746 H 610" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"></path>
+        <path pathLength="1" d="M 512 656 V 748" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"></path>
+        <path pathLength="1" d="M 512 656 C 512 588, 578 508, 597 490 C 609 552, 584 636, 512 680 Z" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"></path>
+        <path pathLength="1" d="M 502 668 C 453 664, 432 592, 428 548 C 442 544, 486 566, 505 658" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+      <div class="ffs-word ffs-t" style="margin-top: 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.34em; padding-left: 0.34em; color: var(--accent)">FINANCE FLOW</div>
+      <div style="position: relative; width: 300px; height: 64px; margin-top: 4px">
+        <svg aria-hidden="true" width="300" height="64" viewBox="0 0 300 64" style="position: absolute; left: 0; top: 0"><path d="M 27 56.4 A 200 200 0 0 1 273 56.4" fill="none" stroke="var(--sep)" stroke-width="2" stroke-dasharray="2 7" stroke-linecap="round"></path></svg>
+        <sc-for list="{{arcTicks}}" as="t" hint-placeholder-count="4"><span style="{{t.style}}"></span></sc-for>
+        <div style="{{pivotStyle}}"><span style="{{orbStyle}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{orbIconStyle}}"><path d="{{orbIcon}}"></path></svg></span></div>
       </div>
-      <span class="ffs-t" style="width: 44px; text-align: right; font-size: 13px; color: var(--ink2)">{{stepOf}}</span>
+      <div class="ffs-t" style="font-size: 13px; font-weight: 600; color: var(--ink2)">{{eyebrow}}</div>
     </div>
 
     <div style="flex: 1; position: relative; padding: 0 8px">
@@ -202,11 +223,38 @@ var HELP = [
   { id: 'spending', title: 'See where my money goes', sub: 'Spending by category', chip: 'Where it went', icon: 'M12 3a9 9 0 1 0 9 9h-9zM15 3.5A9 9 0 0 1 20.5 9H15z' }
 ];
 var MOODS = [
-  { amount: '₱8,420.00', title: 'Looking good', note: 'Green while there’s plenty left', c: ['#2C5E48', '#1B3F30', '#122B21'], accent: '#2E6B47', tint: '#E6F0EA', leaf: 'rgba(46,107,71,0.10)', dAccent: '#5FC48A', dTint: '#15291D', dLeaf: 'rgba(95,196,138,0.10)' },
-  { amount: '₱1,200.00', title: 'Running low', note: 'Turns warm orange when it’s getting tight', c: ['#C25412', '#A33C00', '#7A2C00'], accent: '#A04208', tint: '#FCE6D6', leaf: 'rgba(212,80,10,0.11)', dAccent: '#F59055', dTint: '#3A2014', dLeaf: 'rgba(245,144,85,0.10)' },
-  { amount: '−₱650.00', title: 'Over by ₱650.00', note: 'Red when you’ve spent more than you have', c: ['#D12A36', '#B30F1F', '#850A16'], accent: '#B4234A', tint: '#FBDDE3', leaf: 'rgba(196,43,50,0.10)', dAccent: '#F28CA6', dTint: '#3A1620', dLeaf: 'rgba(242,107,107,0.09)' }
+  { amount: '₱8,420.00', title: 'Looking good', note: 'Green while there’s plenty left', c: ['#2C5E48', '#1B3F30', '#122B21'], accent: '#2E6B47', tint: '#E6F0EA', leaf: 'rgba(46,107,71,0.055)', dAccent: '#5FC48A', dTint: '#15291D', dLeaf: 'rgba(95,196,138,0.055)' },
+  { amount: '₱1,200.00', title: 'Running low', note: 'Turns warm orange when it’s getting tight', c: ['#C25412', '#A33C00', '#7A2C00'], accent: '#A04208', tint: '#FCE6D6', leaf: 'rgba(212,80,10,0.06)', dAccent: '#F59055', dTint: '#3A2014', dLeaf: 'rgba(245,144,85,0.055)' },
+  { amount: '−₱650.00', title: 'Over by ₱650.00', note: 'Red when you’ve spent more than you have', c: ['#D12A36', '#B30F1F', '#850A16'], accent: '#B4234A', tint: '#FBDDE3', leaf: 'rgba(196,43,50,0.055)', dAccent: '#F28CA6', dTint: '#3A1620', dLeaf: 'rgba(242,107,107,0.05)' }
 ];
 function seeded(seed) { var s = seed; return function () { s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296; }; }
+// The same time-of-day sky as Home (SkyGlow) and O3a; setup moves through the day, one step at a time.
+var PHASES = ['morning', 'afternoon', 'afternoon', 'evening'];
+var PHASE_NAME = ['Morning', 'Midday', 'Afternoon', 'Evening'];
+var LOOKS = {
+  light: { morning: ['#F6E2AE', 0.95, '#F3D9D2', 0.45, '#C9A24A'], afternoon: ['#F5D79C', 0.95, '#F4E7C8', 0.45, '#D9A75A'], evening: ['#F2BBAA', 0.95, '#E9C6D6', 0.45, '#B9708A'] },
+  dark: { morning: ['#5E5530', 0.9, '#3A3424', 0.45, '#E8D49A'], afternoon: ['#6B5126', 0.9, '#3E3020', 0.45, '#E9C58A'], evening: ['#6A3440', 0.9, '#3B2238', 0.45, '#F0C2CF'] }
+};
+var ORB = ['#F2A65A', '#F5B83D', '#E8892E', '#D9667A'];
+var ORB_ICONS = [
+  'M3 18h18M7 18a5 5 0 0 1 10 0M12 6v3M5.6 10.6l1.4 1.4M18.4 10.6l-1.4 1.4',
+  'M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
+  'M3 17h18M8 17a4 4 0 0 1 8 0M12 9v2M6.3 11.3l1.2 1.2M17.7 11.3l-1.2 1.2M6 21h12',
+  'M3 18h18M7 18a5 5 0 0 1 10 0M12 4v5M9.5 6.5L12 9l2.5-2.5'
+];
+var ARC_DEG = [-38, -12.7, 12.7, 38];
+function rgba(hex, a) { var n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; }
+function gauss(r) { return Math.sqrt(-2 * Math.log(r() || 1e-6)) * Math.cos(2 * Math.PI * r()); }
+function scatter(seed, n, sizes, omin, omax) {
+  var r = seeded(seed), out = [];
+  for (var i = 0; i < n; i++) {
+    var x = 390 - Math.abs(gauss(r) * 150), y = Math.abs(gauss(r) * 110), sz = sizes[Math.floor(r() * sizes.length)], o = omin + r() * (omax - omin);
+    if (x >= 0 && y <= 300) out.push({ x: x, y: y, r: sz, o: o });
+  }
+  return out;
+}
+var MOTES = scatter(5, 30, [1.6, 2, 2.6, 3.2], 0.2, 0.55);
+var DUSK = scatter(11, 14, [1.2, 1.6, 2], 0.25, 0.6);
 class Component extends DCLogic {
   constructor(p) {
     super(p);
@@ -230,11 +278,11 @@ class Component extends DCLogic {
     var vars = '';
     for (var key in v) vars += '--' + key + ':' + v[key] + ';';
     var leaves = [], r = seeded(33);
-    [[10, 16, 30, 40, 56, 0.6, 7], [9, 38, 74, 22, 32, 0.9, 18], [3, 110, 160, 12, 17, 0.95, 34]].forEach(function (d) {
+    [[10, 10, 18, 40, 56, 0.6, 6], [9, 22, 42, 22, 32, 0.9, 14], [3, 64, 96, 12, 17, 0.95, 26]].forEach(function (d) {
       for (var i = 0; i < d[0]; i++) {
         var w = Math.round(d[1] + r() * (d[2] - d[1])), dur = (d[3] + r() * (d[4] - d[3])).toFixed(1);
         leaves.push({ w: w, h: Math.round(w * 2.05), fill: v.leaf, vein: v.bg,
-          style: 'left:' + Math.round(r() * 420 - 30) + 'px;opacity:' + d[5] + ';animation-duration:' + dur + 's;animation-delay:-' + (r() * dur).toFixed(1) + 's' + (d[1] > 100 ? ';filter:blur(1.4px)' : ''),
+          style: 'left:' + Math.round(r() * 420 - 30) + 'px;opacity:' + d[5] + ';animation-duration:' + dur + 's;animation-delay:-' + (r() * dur).toFixed(1) + 's' + (d[1] > 60 ? ';filter:blur(1.4px)' : ''),
           sway: '--sw:' + d[6] + 'px;animation-duration:' + (3 + r() * 5).toFixed(1) + 's' });
       }
     });
@@ -256,6 +304,28 @@ class Component extends DCLogic {
       skyStyle: 'position:absolute;left:0;top:0;width:390px;height:340px;transition:opacity 700ms;background:' + (dark ? skyDark : skyLight),
       leafLayer: 'position:absolute;inset:0;transition:transform 1.3s cubic-bezier(.15,.85,.25,1),opacity 600ms;opacity:' + (s.leaves ? 1 : 0) + ';transform:translateX(' + (-(s.step - 1) * 70) + 'px)',
       leaves: leaves,
+      skies: ['light', 'dark'].reduce(function (all, mode) {
+        return all.concat(['morning', 'afternoon', 'evening'].map(function (ph) {
+          var L = LOOKS[mode][ph], on = mode === (dark ? 'dark' : 'light') && ph === PHASES[s.step - 1];
+          var g = 'radial-gradient(circle 370px at 392px -14px,' + rgba(L[0], L[1]) + ' 0%,' + rgba(L[0], L[1] * 0.7) + ' 20%,' + rgba(L[2], L[3]) + ' 48%,' + rgba(L[2], L[3] * 0.3) + ' 75%,' + rgba(L[2], 0) + ' 100%)';
+          var list = ph === 'morning' ? MOTES : ph === 'evening' ? DUSK : [];
+          return {
+            style: 'position:absolute;left:0;top:0;width:390px;height:340px;overflow:hidden;transition:opacity 1.2s ease-in-out;background:' + g + ';opacity:' + (on ? 1 : 0),
+            dots: list.map(function (d, i) { return { cls: ph === 'morning' ? 'ffs-mote' : (i % 4 === 0 ? 'ffs-tw' : ''), style: 'position:absolute;border-radius:50%;left:' + (d.x - d.r).toFixed(1) + 'px;top:' + (d.y - d.r).toFixed(1) + 'px;width:' + (d.r * 2) + 'px;height:' + (d.r * 2) + 'px;background:' + L[4] + ';opacity:' + d.o.toFixed(2) + ';animation-delay:-' + (i % 7) + 's' }; }),
+            rays: ph === 'afternoon' && mode === 'light' ? [118, 140, 162].map(function (deg) { return { style: 'position:absolute;left:392px;top:-14px;width:360px;height:56px;transform-origin:0 50%;transform:translateY(-50%) rotate(' + deg + 'deg);background:linear-gradient(90deg,rgba(255,244,220,0) 0%,rgba(255,244,220,0.34) 22%,rgba(255,244,220,0.12) 70%,rgba(255,244,220,0) 100%);filter:blur(7px);border-radius:28px' }; }) : []
+          };
+        }));
+      }, []),
+      backStyle: 'position:absolute;left:-8px;top:0;width:44px;height:44px;border-radius:22px;background:transparent;color:var(--accent);display:flex;align-items:center;justify-content:center;transition:opacity 300ms;opacity:' + (s.step > 1 ? 1 : 0),
+      eyebrow: s.step + ' of 4 · ' + PHASE_NAME[s.step - 1],
+      pivotStyle: 'position:absolute;left:150px;top:214px;width:0;height:0;transition:transform 1.2s cubic-bezier(.3,.8,.3,1);transform:rotate(' + ARC_DEG[s.step - 1] + 'deg)',
+      orbStyle: 'position:absolute;left:-14px;top:-214px;width:28px;height:28px;border-radius:14px;display:flex;align-items:center;justify-content:center;transition:background 1.2s,box-shadow 1.2s;background:' + ORB[s.step - 1] + ';box-shadow:0 0 0 4px ' + rgba(ORB[s.step - 1], 0.22) + ',0 0 20px 6px ' + rgba(ORB[s.step - 1], 0.45),
+      orbIcon: ORB_ICONS[s.step - 1],
+      orbIconStyle: 'stroke:#FFFFFF;transition:transform 1.2s cubic-bezier(.3,.8,.3,1);transform:rotate(' + (-ARC_DEG[s.step - 1]) + 'deg)',
+      arcTicks: ARC_DEG.map(function (deg, i) {
+        var a = deg * Math.PI / 180, x = 150 + 200 * Math.sin(a), y = 214 - 200 * Math.cos(a);
+        return { style: 'position:absolute;left:' + (x - 3).toFixed(1) + 'px;top:' + (y - 3).toFixed(1) + 'px;width:6px;height:6px;border-radius:3px;transition:background 300ms;background:' + (i < s.step ? 'var(--accent)' : 'var(--sep)') };
+      }),
       back: function () { if (s.step > 1) self.setState({ step: s.step - 1 }); },
       progress: [1, 2, 3, 4].map(function (i) { return { style: 'flex:1;height:4px;border-radius:2px;transition:background 300ms;background:' + (i <= s.step ? 'var(--accent)' : 'var(--sep)') }; }),
       stepOf: s.step + ' of 4',

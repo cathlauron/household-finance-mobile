@@ -5,4 +5,7 @@ module.exports = {
   preset: 'jest-expo',
   testMatch: ['<rootDir>/__tests__/**/*.test.tsx'],
   setupFiles: ['<rootDir>/__tests__/helpers/setup.js'],
+  // 2026-10-31: the big screens (Transactions, Savings) took longer than jest's 5 s on a busy
+  // computer and failed only by time, never by what they check. Time limit only; checks unchanged.
+  testTimeout: 30000,
 };

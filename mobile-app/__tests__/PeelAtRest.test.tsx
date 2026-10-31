@@ -34,5 +34,6 @@ test('every Appearance sticker lies flat when the page opens (the Dark mode one 
   // is drawn whole, clipped only to its own rounded rectangle.
   expect(keepShapes().length).toBe(0);
   const whole = screen.UNSAFE_root.findAll((n: any) => typeof n.props?.clipPath === 'string' && /^url\(#s[op]/.test(n.props.clipPath) && typeof n.type !== 'string');
-  expect(whole.length).toBe(14);
+  // 8 stickers x 2 faces (Day & night added 2026-10-31, mockup D3).
+  expect(whole.length).toBe(16);
 });

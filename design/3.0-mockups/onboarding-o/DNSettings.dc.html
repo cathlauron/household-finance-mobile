@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Day and night: Appearance</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2E6B47}a:hover{color:#1B3F30}
+.dns{font-family:ui-rounded,"SF Pro Rounded",Nunito,-apple-system,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.dns-btn{border:0;cursor:pointer;font:inherit;-webkit-tap-highlight-color:transparent}
+.dns-t{transition:background-color 1s ease-in-out,color 1s ease-in-out,border-color 1s ease-in-out,box-shadow 1s ease-in-out,opacity 300ms}
+.dns-rise{animation:dnsRise 300ms ease-out both}
+@keyframes dnsRise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){.dns-rise{animation:none!important}}
+</style>
+</helmet>
+<div class="dns dns-t" style="{{rootStyle}}">
+  <div aria-hidden="true" style="{{skyStyle}}"></div>
+  <div style="position: relative; padding: 54px 16px 30px">
+    <a href="#" class="dns-t" style="display: inline-flex; align-items: center; gap: 2px; min-height: 44px; font-size: 17px; text-decoration: none; color: var(--accent)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>Settings</a>
+    <h1 class="dns-t" style="margin: 4px 4px 0; font-size: 32px; line-height: 38px; font-weight: 700; color: var(--ink)">Appearance</h1>
+
+    <div class="dns-t" style="margin: 22px 16px 8px; font-size: 13px; text-transform: uppercase; color: var(--ink2)">Theme</div>
+
+    <sc-if value="{{isStickers}}" hint-placeholder-val="{{ true }}">
+      <div class="dns-t" style="border-radius: 16px; background: var(--surface); overflow: hidden">
+        <sc-for list="{{stickers}}" as="st" hint-placeholder-count="3">
+          <div class="dns-t" style="{{st.rowStyle}}">
+            <div style="flex: 1">
+              <div style="display: flex; align-items: center; gap: 8px"><span class="dns-t" style="font-size: 17px; color: var(--ink)">{{st.title}}</span><sc-if value="{{st.isNew}}" hint-placeholder-val="{{ false }}"><span style="font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: var(--tint); color: var(--accent)">NEW</span></sc-if></div>
+              <div class="dns-t" style="font-size: 15px; color: var(--ink2)">{{st.sub}}</div>
+            </div>
+            <button class="dns-btn" onClick="{{st.tap}}" role="switch" aria-checked="{{st.on}}" aria-label="{{st.title}}" aria-disabled="{{st.disabled}}" style="{{st.style}}">{{st.word}}<span aria-hidden="true" style="{{st.corner}}"></span></button>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isChoices}}" hint-placeholder-val="{{ false }}">
+      <div class="dns-t" role="radiogroup" aria-label="Theme" style="border-radius: 16px; background: var(--surface); overflow: hidden">
+        <sc-for list="{{choices}}" as="c" hint-placeholder-count="4">
+          <button class="dns-btn dns-t" onClick="{{c.pick}}" role="radio" aria-checked="{{c.on}}" style="{{c.style}}">
+            <span class="dns-t" style="width: 30px; height: 30px; border-radius: 8px; background: var(--tint); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{c.icon}}"></path><path d="{{c.fill}}" fill="var(--accent)" stroke="none"></path></svg></span>
+            <span style="flex: 1; text-align: left"><span class="dns-t" style="display: block; font-size: 17px; color: var(--ink)">{{c.label}}</span><span class="dns-t" style="display: block; font-size: 15px; color: var(--ink2)">{{c.sub}}</span></span>
+            <sc-if value="{{c.checked}}" hint-placeholder-val="{{ false }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></sc-if>
+          </button>
+        </sc-for>
+      </div>
+      <sc-if value="{{showDay}}" hint-placeholder-val="{{ true }}">
+        <div class="dns-rise">
+          <div class="dns-t" style="margin: 22px 16px 8px; font-size: 13px; text-transform: uppercase; color: var(--ink2)">Your day</div>
+          <div class="dns-t" style="border-radius: 16px; background: var(--surface); padding: 16px">
+            <div style="position: relative; height: 28px; border-radius: 8px; overflow: hidden; background: linear-gradient(90deg, #1C2450 0%, #1C2450 24.4%, #F6E2AE 26%, #F5D79C 50%, #F2BBAA 72%, #1C2450 74.3%, #1C2450 100%)">
+              <span style="{{nowStyle}}"></span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 13px">
+              <span class="dns-t" style="color: var(--ink2)">12 AM</span><span class="dns-t" style="color: var(--ink)">Sunrise 5:52 AM</span><span class="dns-t" style="color: var(--ink)">Sunset 5:38 PM</span><span class="dns-t" style="color: var(--ink2)">12 AM</span>
+            </div>
+            <div class="dns-t" style="margin-top: 10px; font-size: 15px; color: var(--ink2)">It's 7:10 PM, so the app is dark now. Light again at 5:52 AM.</div>
+          </div>
+        </div>
+      </sc-if>
+    </sc-if>
+
+    <p class="dns-t" style="margin: 8px 16px 0; font-size: 13px; line-height: 18px; color: var(--ink2)">{{footer}}</p>
+
+    <div class="dns-t" style="margin: 22px 16px 8px; font-size: 13px; text-transform: uppercase; color: var(--ink2)">Sky</div>
+    <div class="dns-t" style="border-radius: 16px; background: var(--surface); display: flex; align-items: center; min-height: 60px; padding: 8px 16px">
+      <span class="dns-t" style="flex: 1; font-size: 17px; color: var(--ink)">Time-of-day glow</span>
+      <span style="position: relative; width: 96px; height: 40px; border-radius: 12px; background: #2E6B47; color: #F2F2F7; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700">On</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"variant":{"editor":"enum","options":["stickers","choices"],"default":"stickers"},"$preview":{"width":390,"height":844}}'>
+// Demo time 7:10 PM: after today's sunset, so Day & night makes this page dark.
+var I = {
+  sun: 'M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
+  moon: 'M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z',
+  auto: 'M12 3.5a8.5 8.5 0 1 0 0 17a8.5 8.5 0 1 0 0-17z',
+  autoFill: 'M12 3.5a8.5 8.5 0 0 1 0 17z',
+  phone: 'M8 2.5h8a1.5 1.5 0 0 1 1.5 1.5v16a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 20V4A1.5 1.5 0 0 1 8 2.5zM11 18.5h2'
+};
+var NIGHT_NOW = true, PHONE_DARK = false;
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { auto: true, phone: false, dark: false }; }
+  renderVals() {
+    var self = this, s = this.state, variant = this.props.variant || 'stickers';
+    var mode = s.auto ? 'auto' : s.phone ? 'device' : s.dark ? 'dark' : 'light';
+    var dark = mode === 'auto' ? NIGHT_NOW : mode === 'device' ? PHONE_DARK : mode === 'dark';
+    var v = dark
+      ? { bg: '#000000', surface: '#1C1C1E', ink: '#FFFFFF', ink2: '#AEAEB2', sep: '#38383A', accent: '#5FC48A', tint: '#15291D' }
+      : { bg: '#F2F2F7', surface: '#FFFFFF', ink: '#111111', ink2: '#6C6C70', sep: '#C6C6C8', accent: '#2E6B47', tint: '#E6F0EA' };
+    var vars = ''; for (var k in v) vars += '--' + k + ':' + v[k] + ';';
+    function sticker(id, title, sub, on, disabled, isNew, i) {
+      return {
+        title: title, sub: sub, isNew: isNew, on: on ? 'true' : 'false', disabled: disabled ? 'true' : 'false', word: on ? 'On' : 'Off',
+        tap: function () {
+          if (disabled) return;
+          var o = {}; o[id] = !on;
+          if (id === 'auto' && !on) o.phone = false;
+          if (id === 'phone' && !on) o.auto = false;
+          if ((id === 'auto' || id === 'phone') && on) o.dark = dark;
+          self.setState(o);
+        },
+        rowStyle: 'display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 16px;' + (i ? 'border-top:1px solid var(--sep)' : ''),
+        style: 'position:relative;width:96px;height:40px;border-radius:12px;flex-shrink:0;font-size:15px;font-weight:700;transition:background 250ms,color 250ms,opacity 300ms;' + (on ? 'background:#2E6B47;color:#F2F2F7' : 'background:#FFF6ED;color:#3B2A1C;box-shadow:inset 0 0 0 1px #EBCFB2') + ';opacity:' + (disabled ? 0.45 : 1) + ';cursor:' + (disabled ? 'default' : 'pointer'),
+        corner: 'position:absolute;right:0;top:0;width:14px;height:14px;border-top-right-radius:12px;background:linear-gradient(225deg,rgba(255,255,255,0) 50%,' + (on ? '#4E8A66' : '#F7E7D6') + ' 50%)'
+      };
+    }
+    var locked = s.auto || s.phone;
+    var stickers = [
+      sticker('auto', 'Day & night', 'Dark from sunset to sunrise', s.auto, false, true, 0),
+      sticker('phone', 'Match my phone', 'Light or dark like your phone', s.phone, false, false, 1),
+      sticker('dark', 'Dark mode', locked ? (s.auto ? 'Set by Day & night: on until 5:52 AM' : 'Set by your phone') : 'Always dark', locked ? dark : s.dark, locked, false, 2)
+    ];
+    function pick(m) { return function () { self.setState({ auto: m === 'auto', phone: m === 'device', dark: m === 'dark' }); }; }
+    var choices = [
+      { m: 'light', label: 'Light', sub: 'Always light', icon: I.sun, fill: '' },
+      { m: 'dark', label: 'Dark', sub: 'Always dark', icon: I.moon, fill: '' },
+      { m: 'auto', label: 'Day & night', sub: 'Dark from sunset to sunrise', icon: I.auto, fill: I.autoFill },
+      { m: 'device', label: 'Match my phone', sub: 'Light or dark like your phone', icon: I.phone, fill: '' }
+    ].map(function (c, i) {
+      var on = mode === c.m;
+      return { label: c.label, sub: c.sub, icon: c.icon, fill: c.fill, on: on ? 'true' : 'false', checked: on, pick: pick(c.m),
+        style: 'width:100%;display:flex;align-items:center;gap:12px;min-height:60px;padding:8px 16px;background:transparent' + (i ? ';border-top:1px solid var(--sep)' : '') };
+    });
+    var nowPct = (19 * 60 + 10) / 1440 * 100;
+    return {
+      rootStyle: vars + 'width:390px;height:844px;position:relative;overflow:hidden;background:var(--bg);color:var(--ink)',
+      skyStyle: 'position:absolute;left:0;top:0;width:390px;height:300px;transition:background 1s;background:radial-gradient(circle 340px at 392px -14px,' + (dark ? 'rgba(47,61,120,0.9),rgba(28,36,80,0.45) 48%,rgba(28,36,80,0) 100%' : 'rgba(242,187,170,0.9),rgba(233,198,214,0.45) 48%,rgba(233,198,214,0) 100%') + ')',
+      isStickers: variant === 'stickers', isChoices: variant === 'choices',
+      stickers: stickers, choices: choices,
+      showDay: mode === 'auto',
+      nowStyle: 'position:absolute;top:-2px;bottom:-2px;width:3px;border-radius:2px;background:#FFFFFF;box-shadow:0 0 0 1px rgba(0,0,0,0.25);left:calc(' + nowPct.toFixed(1) + '% - 1px)',
+      footer: mode === 'auto' ? 'Today: dark from 5:38 PM to 5:52 AM, from your area’s sunset and sunrise (the same times as Home’s sky). The moon button on Home still works any time.' : mode === 'device' ? 'Light or dark follows your phone’s own setting.' : 'The moon button on Home switches between light and dark.'
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -25,6 +25,11 @@ export const FADE_OUT_MS = 140; // something going away
 export const DIP_MS = 160; // each half of a soft dip (dark mode, whole-screen changes)
 export const PEEL_TAP_MS = 1000; // a tapped peel-off sticker: one steady peel (Cath, mockup K2e, 2026-10-29)
 export const VOICE_PULSE_MS = 1600; // voice entry: the mic's soft pulse while listening (Cath, mockup V, 2026-10-30)
+export const AUTO_THEME_MS = 500; // Day & night switching by itself at sunset/sunrise: each half of a 1-second soft fade (Cath, 2026-10-31). Tapping stays instant.
+export const SUN_ARC_MS = 1200; // the welcome's / set-up's sun travelling along its arc to the next time of day (Cath, mockup O3a, 2026-10-31)
+export const WELCOME_MOMENT_MS = 4200; // the welcome's day: how long each time of day stays before the next (mockup O3a)
+export const WELCOME_HOLD_MS = 8000; // after a tap on a time, the day waits this long untouched, then carries on (mockup O3a)
+export const FINALE_MS = 2400; // set-up's "You're all set" screen before Home (logo draws, words rise; Cath, mockup S4, 2026-10-31)
 export const VOICE_WAVE_MS = 900; // voice entry: one rise and fall of the listening bars (mockup V)
 
 // 2026-10-26 fix (Cath's phone: "Interpolation property 'easing' is not supported by native

@@ -1,216 +1,405 @@
-import React, { useRef, useState } from 'react';
-import { View, StyleSheet, ScrollView, useWindowDimensions, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
-import { TouchableOpacity } from '../components/Tap';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
-import LogoMark from '../components/LogoMark';
-import SkyGlow from '../components/SkyGlow';
-import GradientFill from '../components/GradientFill';
+import DrawingLogo from '../components/DrawingLogo';
+import SkyFade from '../components/SkyFade';
+import SunArc, { SunLook } from '../components/SunArc';
 import { useTheme } from '../ThemeContext';
+import { setLookPreview } from '../lookPreview';
+import type { SkyPhase } from '../sky';
+import { CURVE, PAGE_OPEN_MS, VOICE_PULSE_MS, VOICE_WAVE_MS, WELCOME_HOLD_MS, WELCOME_MOMENT_MS } from '../motion';
+import { useReduceMotion } from '../reduceMotion';
 
-// Version 3 (approved Option B, canvas B1 / B1b / B1c): three welcome screens you can
-// swipe through. Logo top-left, Skip top-right (lined up with Back on the next screens),
-// a small picture of what each screen promises, then Next / Get started.
+// Version 3.3 welcome (Cath, mockup O3a, approved 2026-10-31): a day with Finance Flow.
+// It plays by itself through five moments (morning widgets, Say it at lunch, a bill nudge,
+// the household's changes, a calm night), with the sky and the sun on its arc following
+// the time, and the screen turning dark at night (shown only, nothing is saved).
+// Tapping a time holds it there; it carries on after a while untouched. With Reduce Motion
+// nothing moves by itself: tap the times.
 
 type Props = {
   onStart: () => void;
   onSignIn: () => void;
 };
 
-const SLIDES = [
-  { title: "Know what's left to spend", body: 'See at a glance how much you can still spend until payday.' },
-  { title: 'Never miss a bill', body: 'Friendly reminders before each bill is due, so nothing slips.' },
-  { title: 'Private by design', body: "Your money details are locked on your phone before they're saved." },
+const MOMENTS: { time: string; label: string; h: number; sky: SkyPhase; sun: SunLook; title: string }[] = [
+  { time: '7:30 AM', label: 'Morning', h: 7.5, sky: 'morning', sun: 'sunrise', title: 'One glance from your home screen' },
+  { time: '12:40 PM', label: 'Midday', h: 12.67, sky: 'afternoon', sun: 'midday', title: 'Say it at the till. Done.' },
+  { time: '5:00 PM', label: 'Afternoon', h: 17, sky: 'afternoon', sun: 'afternoon', title: 'A nudge before a bill is due' },
+  { time: '7:45 PM', label: 'Evening', h: 19.75, sky: 'evening', sun: 'sunset', title: 'See what your home added' },
+  { time: '10:00 PM', label: 'Night', h: 22, sky: 'night', sun: 'moon', title: 'Sleep knowing where you stand' },
 ];
+const NIGHT = 4;
+const HERO = ['#2C5E48', '#1B3F30', '#122B21'] as const;
 
 export default function WelcomeScreen({ onStart, onSignIn }: Props) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const [index, setIndex] = useState(0);
-  const scroller = useRef<ScrollView>(null);
+  const reduce = useReduceMotion();
+  const [k, setK] = useState(0);
+  const touched = useRef(0);
+
+  useEffect(() => {
+    if (reduce) return;
+    const t = setInterval(() => {
+      if (Date.now() - touched.current < WELCOME_HOLD_MS) return;
+      setK((n) => (n + 1) % MOMENTS.length);
+    }, WELCOME_MOMENT_MS);
+    return () => clearInterval(t);
+  }, [reduce]);
+
+  // Night shows the app dark (a preview, not a saved choice); daytime shows it light.
+  useEffect(() => {
+    setLookPreview({ dark: k === NIGHT });
+  }, [k]);
+  useEffect(() => () => setLookPreview({}), []);
+
+  const m = MOMENTS[k];
+  const arcW = Math.min(342, width - 48);
   const s = makeStyles(colors);
-  const last = index === SLIDES.length - 1;
-
-  function onScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
-    const i = Math.round(e.nativeEvent.contentOffset.x / width);
-    if (i !== index) setIndex(Math.max(0, Math.min(SLIDES.length - 1, i)));
-  }
-  function next() {
-    if (last) return onStart();
-    scroller.current?.scrollTo({ x: width * (index + 1), animated: true });
-  }
 
   return (
-    <View style={[s.container, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 20 }]}>
-      <SkyGlow />
-      <View style={s.topRow}>
-        <View style={s.brand} accessibilityRole="image" accessibilityLabel="Finance Flow">
-          <LogoMark width={40} wordmark={false} />
-          <Text style={[s.wordmark, { color: colors.gold }]}>FINANCE FLOW</Text>
-        </View>
-        <TouchableOpacity onPress={onStart} accessibilityRole="button" hitSlop={10} testID="welcome-skip">
-          <Text style={[s.link, { color: colors.gold }]}>Skip</Text>
-        </TouchableOpacity>
+    <View style={[s.container, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16 }]}>
+      <SkyFade phase={m.sky} />
+      <View style={{ alignItems: 'center' }}>
+        <DrawingLogo width={64} drawing={false} once />
       </View>
 
-      <ScrollView
-        ref={scroller}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        style={{ flex: 1 }}
-      >
-        {SLIDES.map((slide, i) => (
-          <View key={slide.title} style={{ width, paddingHorizontal: 28 }}>
-            <View style={s.pictureArea}>{i === 0 ? <LeftCard /> : i === 1 ? <BillsCard /> : <PrivateCard />}</View>
-            <Text style={[s.title, { color: colors.ink }]}>{slide.title}</Text>
-            <Text style={[s.body, { color: colors.inkDim }]}>{slide.body}</Text>
-          </View>
-        ))}
-      </ScrollView>
+      <Rise key={`t${k}`} style={{ paddingHorizontal: 8, marginTop: 18 }}>
+        <Text style={[s.when, { color: colors.inkDim }]}>{m.time} · {m.label}</Text>
+        <Text style={[s.title, { color: colors.ink }]} accessibilityRole="header">{m.title}</Text>
+      </Rise>
 
-      <View style={{ paddingHorizontal: 28 }}>
-        <View style={s.dots} accessibilityLabel={`Screen ${index + 1} of ${SLIDES.length}`}>
-          {SLIDES.map((_, i) => (
-            <View key={i} style={[s.dot, { width: i === index ? 24 : 8, backgroundColor: i === index ? colors.gold : colors.accentTint }]} />
-          ))}
-        </View>
-        <TouchableOpacity onPress={next} style={[s.primary, { backgroundColor: colors.buttonFill }]} accessibilityRole="button" testID="welcome-next">
-          <Text style={[s.primaryText, { color: colors.onButton }]}>{last ? 'Get started' : 'Next'}</Text>
+      <View style={{ flex: 1, justifyContent: 'center', overflow: 'hidden', paddingVertical: 8 }}>
+        {k === 0 && <Widgets />}
+        {k === 1 && <SayItMoment />}
+        {k === 2 && <BillMoment onTouch={() => (touched.current = Date.now())} />}
+        {k === 3 && <HouseholdMoment />}
+        {k === 4 && <NightMoment />}
+      </View>
+
+      <View style={{ alignItems: 'center' }}>
+        <SunArc
+          width={arcW}
+          radius={Math.min(140, arcW / 2 - 24)}
+          sweep={90}
+          at={(m.h - 6) / 16}
+          look={m.sun}
+          current={k}
+          stops={MOMENTS.map((x, i) => ({
+            at: (x.h - 6) / 16,
+            label: `Show ${x.label.toLowerCase()}, ${x.time}`,
+            onPress: () => {
+              touched.current = Date.now();
+              setK(i);
+            },
+          }))}
+        >
+          <View style={{ alignItems: 'center', marginBottom: 4 }} pointerEvents="none">
+            <Text style={[s.clock, { color: colors.ink }]}>{m.time}</Text>
+            <Text style={[s.phase, { color: colors.inkDim }]}>{m.label.toUpperCase()}</Text>
+          </View>
+        </SunArc>
+      </View>
+
+      <View style={{ paddingHorizontal: 8, gap: 2, marginTop: 14 }}>
+        <TouchableOpacity onPress={onStart} style={[s.primary, { backgroundColor: colors.buttonFill }]} accessibilityRole="button" testID="welcome-next">
+          <Text style={[s.primaryText, { color: colors.onButton }]}>Get started</Text>
         </TouchableOpacity>
-        <Text style={[s.signInLine, { color: colors.inkDim }]}>
-          Already using Finance Flow?{' '}
-          <Text onPress={onSignIn} style={{ color: colors.gold, fontWeight: '700' }} accessibilityRole="link">
-            Sign in
-          </Text>
-        </Text>
+        <TouchableOpacity onPress={onSignIn} style={s.link} accessibilityRole="button" testID="welcome-signin">
+          <Text style={{ fontSize: 17, color: colors.gold }}>I already have an account</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-// ---- The three small pictures ----
-const DARK_GREEN = ['#557165', '#1c4130', '#123024'] as const;
-
-function LeftCard() {
+// Each moment's pieces arrive with a soft rise, one after another.
+function Rise({ delay = 0, style, children }: { delay?: number; style?: object; children: React.ReactNode }) {
+  const v = useRef(new Animated.Value(0)).current;
+  const reduce = useReduceMotion();
+  useEffect(() => {
+    if (reduce) return v.setValue(1);
+    const a = Animated.timing(v, { toValue: 1, duration: PAGE_OPEN_MS, delay, easing: Easing.bezier(...CURVE), useNativeDriver: true });
+    a.start();
+    return () => a.stop();
+  }, [v, delay, reduce]);
   return (
-    <LinearGradient colors={DARK_GREEN} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} locations={[0, 0.55, 1]} style={pic.leftCard}>
-      <Text style={pic.leftLabel}>Left to spend</Text>
-      <Text style={pic.leftAmount}>₱8,420</Text>
-      <View style={pic.track}>
-        <View style={pic.fill} />
-      </View>
-      <View style={pic.leftFoot}>
-        <Text style={pic.leftFootText}>12 days to payday</Text>
-        <Text style={pic.leftFootText}>₱700 a day</Text>
-      </View>
-    </LinearGradient>
+    <Animated.View style={[style, { opacity: v, transform: [{ translateY: v.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] }]}>
+      {children}
+    </Animated.View>
   );
 }
 
-function BillsCard() {
-  const { colors } = useTheme();
-  const rows = [
-    { name: 'Meralco', sub: 'Due in 2 days', amount: '₱2,350', dot: '#e0a33a' },
-    { name: 'Internet', sub: 'Due Friday', amount: '₱1,699', dot: '#9fb8a8' },
-    { name: 'Rent', sub: 'Due on the 1st', amount: 'Paid', dot: '#9fb8a8', paid: true },
-  ];
+function Mic({ size, color, bg }: { size: number; color: string; bg?: string }) {
   return (
-    <View style={{ width: 310, gap: 12 }}>
-      <View style={[pic.reminder, { backgroundColor: colors.navy3 }]}>
-        <Ionicons name="notifications-outline" size={18} color={colors.gold} />
-        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.ink }}>Meralco is due in 2 days</Text>
-      </View>
-      <View style={pic.listCard}>
-        <GradientFill match={pic.listCard} />
-        <Text style={[pic.listHead, { color: colors.inkDim }]}>DUE SOON</Text>
-        {rows.map((r, i) => (
-          <View key={r.name} style={[pic.row, i < rows.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.navy4 }]}>
-            <View style={[pic.rowDot, { backgroundColor: r.dot }]} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.ink }}>{r.name}</Text>
-              <Text style={{ fontSize: 13, color: colors.inkDim }}>{r.sub}</Text>
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {bg ? <Circle cx={12} cy={12} r={12} fill={bg} /> : null}
+      <Rect x={9} y={3} width={6} height={11} rx={3} stroke={color} strokeWidth={2.2} />
+      <Path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" stroke={color} strokeWidth={2.2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+// Morning: the home screen widgets, green like the Left to Spend card.
+function Widgets() {
+  const { colors } = useTheme();
+  const pulse = useLoop(VOICE_PULSE_MS);
+  return (
+    <View style={{ gap: 10 }}>
+      <Rise delay={100}>
+        <LinearGradient colors={HERO} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={w.wide}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <View>
+              <Text style={w.label}>LEFT TO SPEND</Text>
+              <Text style={w.big}>₱9,860.00</Text>
+              <Text style={w.small}>₱1,095 a day · 9 days to payday</Text>
             </View>
-            {r.paid ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Ionicons name="checkmark" size={16} color={colors.gold} />
-                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.gold }}>Paid</Text>
-              </View>
-            ) : (
-              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.ink }}>{r.amount}</Text>
-            )}
+            <Svg width={92} height={40} viewBox="0 0 96 40">
+              <Path d="M2 30 L16 24 L30 28 L44 14 L58 20 L72 9 L94 16" stroke="#FFFFFF" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </Svg>
           </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-function PrivateCard() {
-  const { colors } = useTheme();
-  const ticks = ['Locked with your password', 'Only your household can read it', 'No ads, nothing sold'];
-  return (
-    <View style={{ width: 300, alignItems: 'center', gap: 22 }}>
-      <View>
-        <LinearGradient colors={DARK_GREEN} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} locations={[0, 0.55, 1]} style={pic.logoTile}>
-          <LogoMark width={58} color="#FFFFFF" wordmark={false} />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={[w.btn, { backgroundColor: '#FFFFFF' }]}>
+              <Mic size={14} color="#2E6B47" />
+              <Text style={[w.btnText, { color: '#2E6B47' }]}>Say it</Text>
+            </View>
+            <View style={[w.btn, { backgroundColor: 'rgba(255,255,255,0.22)' }]}>
+              <Text style={[w.btnText, { color: '#FFFFFF' }]}>+ Add</Text>
+            </View>
+          </View>
         </LinearGradient>
-        <View style={[pic.lockBadge, { backgroundColor: colors.navy3 }]}>
-          <Ionicons name="lock-closed-outline" size={20} color={colors.gold} />
-        </View>
-      </View>
-      <View style={[pic.listCard, { width: '100%' }]}>
-        <GradientFill match={pic.listCard} />
-        {ticks.map((t, i) => (
-          <View key={t} style={[pic.row, i < ticks.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.navy4 }]}>
-            <View style={[pic.tick, { backgroundColor: colors.accentTint }]}>
-              <Ionicons name="checkmark" size={15} color={colors.gold} />
+      </Rise>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <Rise delay={260} style={{ flex: 1 }}>
+          <LinearGradient colors={HERO} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={w.square}>
+            <View>
+              <Text style={w.label}>LEFT TO SPEND</Text>
+              <Text style={[w.big, { fontSize: 18, lineHeight: 24 }]}>₱9,860.00</Text>
             </View>
-            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.ink }}>{t}</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+              <Svg width={42} height={42} viewBox="0 0 60 60">
+                <Circle cx={30} cy={30} r={24} stroke="rgba(255,255,255,0.25)" strokeWidth={7} fill="none" />
+                <Circle cx={30} cy={30} r={24} stroke="#FFFFFF" strokeWidth={7} fill="none" strokeLinecap="round" strokeDasharray="150.8" strokeDashoffset={60} transform="rotate(-90 30 30)" />
+              </Svg>
+              <Text style={[w.small, { textAlign: 'right' }]}>{'9 days to\npayday'}</Text>
+            </View>
+          </LinearGradient>
+        </Rise>
+        <Rise delay={420} style={{ flex: 1 }}>
+          <View style={[w.square, { backgroundColor: colors.navy3, alignItems: 'center', justifyContent: 'center' }]}>
+            <Animated.View style={{ borderRadius: 24, transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }) }] }}>
+              <Mic size={46} color="#FFFFFF" bg="#2E6B47" />
+            </Animated.View>
+            <Text style={[w.btnText, { color: colors.gold, marginTop: 6 }]}>Say it</Text>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: colors.inkDim }}>“Spent 250 on…”</Text>
           </View>
-        ))}
+        </Rise>
       </View>
+      <Rise delay={560}>
+        <Text style={{ textAlign: 'center', fontSize: 13, color: colors.inkDim }}>Plus Due soon, Month at a glance and Trip</Text>
+      </Rise>
     </View>
   );
 }
 
-const pic = StyleSheet.create({
-  leftCard: { width: 300, borderRadius: 26, padding: 22, transform: [{ rotate: '-2deg' }] },
-  leftLabel: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.8)' },
-  leftAmount: { fontSize: 40, fontWeight: '800', color: '#FFFFFF', marginTop: 2 },
-  track: { height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.18)', marginTop: 16, overflow: 'hidden' },
-  fill: { width: '62%', height: '100%', borderRadius: 4, backgroundColor: '#34d399' },
-  leftFoot: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
-  leftFootText: { fontSize: 13, color: 'rgba(255,255,255,0.85)' },
-  reminder: { alignSelf: 'flex-end', flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 16, paddingVertical: 9, paddingHorizontal: 14, transform: [{ rotate: '1.5deg' }] },
-  listCard: { borderRadius: 22, overflow: 'hidden' },
-  listHead: { fontSize: 13, fontWeight: '700', letterSpacing: 1, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13, paddingHorizontal: 16 },
-  rowDot: { width: 10, height: 10, borderRadius: 5 },
-  logoTile: { width: 112, height: 112, borderRadius: 34, alignItems: 'center', justifyContent: 'center' },
-  lockBadge: { position: 'absolute', right: -10, bottom: -10, width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
-  tick: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+// A 0 → 1 → 0 loop for soft pulses; still with Reduce Motion.
+function useLoop(ms: number) {
+  const v = useRef(new Animated.Value(0)).current;
+  const reduce = useReduceMotion();
+  useEffect(() => {
+    if (reduce) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(v, { toValue: 1, duration: ms / 2, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(v, { toValue: 0, duration: ms / 2, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [v, ms, reduce]);
+  return v;
+}
+
+function Row({ title, sub, amount, first, tint }: { title: string; sub: string; amount: string; first?: boolean; tint?: boolean }) {
+  const { colors } = useTheme();
+  return (
+    <View style={[r.row, !first && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 }, tint && { backgroundColor: colors.accentTint }]}>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 17, fontWeight: tint ? '600' : '400', color: colors.ink }}>{title}</Text>
+        <Text style={{ fontSize: 13, color: colors.inkDim }}>{sub}</Text>
+      </View>
+      <Text style={{ fontSize: 17, fontWeight: '600', color: colors.negative }}>{amount}</Text>
+    </View>
+  );
+}
+
+function Bars() {
+  const { colors } = useTheme();
+  const v = useLoop(VOICE_WAVE_MS);
+  return (
+    <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center', height: 24, alignSelf: 'flex-end', paddingRight: 12 }}>
+      {[0.5, 1, 0.7, 0.9].map((h, i) => (
+        <Animated.View key={i} style={{ width: 4, height: 22, borderRadius: 2, backgroundColor: colors.gold, transform: [{ scaleY: v.interpolate({ inputRange: [0, 1], outputRange: [0.3 * h, h] }) }] }} />
+      ))}
+    </View>
+  );
+}
+
+function SayItMoment() {
+  const { colors } = useTheme();
+  return (
+    <View style={{ gap: 10 }}>
+      <Rise style={{ alignSelf: 'flex-end' }}>
+        <View style={[r.bubble, { backgroundColor: colors.buttonFill }]}>
+          <Mic size={20} color={colors.onButton} />
+          <Text style={{ fontSize: 20, fontWeight: '600', color: colors.onButton }}>“Lunch, 180”</Text>
+        </View>
+      </Rise>
+      <Rise delay={200}>
+        <Bars />
+      </Rise>
+      <Rise delay={500}>
+        <View style={[r.group, { backgroundColor: colors.navy3 }]}>
+          <Row first tint title="Lunch" sub="Food · just now · You" amount="−₱180.00" />
+          <Row title="Coffee" sub="Food · 8:10 AM · Ana" amount="−₱140.00" />
+        </View>
+      </Rise>
+      <Rise delay={800}>
+        <Text style={{ textAlign: 'center', fontSize: 15, fontWeight: '600', color: colors.ink }}>Left to spend now ₱9,680.00</Text>
+      </Rise>
+    </View>
+  );
+}
+
+function BillMoment({ onTouch }: { onTouch: () => void }) {
+  const { colors } = useTheme();
+  const [paid, setPaid] = useState(false);
+  return (
+    <View style={{ gap: 12 }}>
+      <Rise>
+        <View style={[r.card, { backgroundColor: colors.navy3 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ width: 18, height: 18, borderRadius: 5, backgroundColor: '#1B3F30' }} />
+            <Text style={{ fontSize: 13, color: colors.inkDim }}>Finance Flow · now</Text>
+          </View>
+          <Text style={{ fontSize: 17, fontWeight: '600', color: colors.ink, marginTop: 6 }}>Electricity is due tomorrow</Text>
+          <Text style={{ fontSize: 15, color: colors.inkDim }}>₱2,400.00 · already counted in Left to spend</Text>
+        </View>
+      </Rise>
+      <Rise delay={150}>
+        <TouchableOpacity
+          onPress={() => {
+            onTouch();
+            setPaid(true);
+          }}
+          accessibilityRole="button"
+          style={[s0.primary, { backgroundColor: paid ? colors.accentTint : colors.buttonFill }]}
+        >
+          <Text style={{ fontSize: 17, fontWeight: '600', color: paid ? colors.positive : colors.onButton }}>{paid ? 'Paid' : 'Pay now'}</Text>
+        </TouchableOpacity>
+      </Rise>
+      <Rise delay={250}>
+        <Text style={{ textAlign: 'center', fontSize: 15, color: colors.inkDim }}>{paid ? 'Logged from BPI Savings. Nothing else to do.' : 'One tap logs it from the right account.'}</Text>
+      </Rise>
+    </View>
+  );
+}
+
+function HouseholdMoment() {
+  const { colors } = useTheme();
+  return (
+    <View style={{ gap: 12 }}>
+      <Rise>
+        <View style={[r.card, { backgroundColor: colors.navy3, flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
+          <View style={r.avatar}>
+            <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>A</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 17, fontWeight: '600', color: colors.ink }}>Ana changed 2 things</Text>
+            <Text style={{ fontSize: 15, color: colors.inkDim }}>Groceries and the water bill</Text>
+          </View>
+        </View>
+      </Rise>
+      <Rise delay={350}>
+        <View style={[r.group, { backgroundColor: colors.navy3 }]}>
+          <Row first title="Groceries" sub="Added by Ana" amount="−₱850.00" />
+          <Row title="Water bill paid" sub="By Ana" amount="₱600.00" />
+        </View>
+      </Rise>
+    </View>
+  );
+}
+
+function NightMoment() {
+  const { colors } = useTheme();
+  const fill = useRef(new Animated.Value(0)).current;
+  const reduce = useReduceMotion();
+  useEffect(() => {
+    if (reduce) return fill.setValue(1);
+    Animated.timing(fill, { toValue: 1, duration: PAGE_OPEN_MS * 3, delay: 300, easing: Easing.bezier(...CURVE), useNativeDriver: true }).start();
+  }, [fill, reduce]);
+  return (
+    <View style={{ gap: 12 }}>
+      <Rise>
+        <LinearGradient colors={HERO} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={r.hero}>
+          <Text style={{ fontSize: 15, color: '#BFD3C8' }}>Left to spend</Text>
+          <Text style={{ fontSize: 40, lineHeight: 46, fontWeight: '700', color: '#FFFFFF' }}>₱8,830.00</Text>
+          <Text style={{ fontSize: 15, color: '#BFD3C8' }}>Looking good · 9 days to payday</Text>
+        </LinearGradient>
+      </Rise>
+      <Rise delay={300}>
+        <View style={[r.card, { backgroundColor: colors.navy3 }]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <Text style={{ fontSize: 17, fontWeight: '600', color: colors.ink }}>Baguio trip</Text>
+            <Text style={{ fontSize: 17, fontWeight: '600', color: colors.saving }}>₱6,200 of ₱10,000</Text>
+          </View>
+          <View style={{ height: 8, borderRadius: 4, backgroundColor: colors.navy1, marginTop: 10, overflow: 'hidden' }}>
+            <Animated.View style={{ height: 8, width: '62%', borderRadius: 4, backgroundColor: colors.saving, transformOrigin: 'left', transform: [{ scaleX: fill }] }} />
+          </View>
+        </View>
+      </Rise>
+    </View>
+  );
+}
+
+const s0 = StyleSheet.create({
+  primary: { minHeight: 53, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+});
+
+const w = StyleSheet.create({
+  wide: { height: 112, borderRadius: 22, paddingHorizontal: 14, paddingVertical: 10, justifyContent: 'space-between', overflow: 'hidden' },
+  square: { height: 108, borderRadius: 22, padding: 12, justifyContent: 'space-between', overflow: 'hidden' },
+  label: { fontSize: 11, fontWeight: '800', letterSpacing: 0.3, color: '#FFFFFF' },
+  big: { fontSize: 24, lineHeight: 28, fontWeight: '800', color: '#FFFFFF' },
+  small: { fontSize: 11, fontWeight: '700', color: '#FFFFFF' },
+  btn: { flex: 1, height: 32, borderRadius: 14, flexDirection: 'row', gap: 5, alignItems: 'center', justifyContent: 'center' },
+  btnText: { fontSize: 13, fontWeight: '800' },
+});
+
+const r = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingHorizontal: 16, paddingVertical: 6 },
+  group: { borderRadius: 16, overflow: 'hidden' },
+  card: { borderRadius: 18, paddingHorizontal: 16, paddingVertical: 14, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+  bubble: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 12, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomLeftRadius: 20, borderBottomRightRadius: 6 },
+  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#4B2E5C', alignItems: 'center', justifyContent: 'center' },
+  hero: { borderRadius: 24, padding: 20 },
 });
 
 function makeStyles(colors: any) {
   return StyleSheet.create({
-    container: { flex: 1, backgroundColor: 'transparent' },
-    topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 28 },
-    brand: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginTop: -7 },
-    wordmark: { fontSize: 13, lineHeight: 13, fontWeight: '700', letterSpacing: 3, marginBottom: -1 },
-    link: { fontSize: 17, fontWeight: '600', paddingVertical: 8 },
-    pictureArea: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10 },
-    title: { fontSize: 32, lineHeight: 38, fontWeight: '600', letterSpacing: -0.3 },
-    body: { fontSize: 18, lineHeight: 26, marginTop: 12, marginBottom: 8 },
-    dots: { flexDirection: 'row', gap: 8, marginVertical: 24 },
-    dot: { height: 8, borderRadius: 4 },
-    primary: { borderRadius: 28, paddingVertical: 17, alignItems: 'center' },
-    primaryText: { fontSize: 17, fontWeight: '700' },
-    signInLine: { fontSize: 15, textAlign: 'center', marginTop: 16 },
+    container: { flex: 1, paddingHorizontal: 16, backgroundColor: 'transparent' },
+    when: { fontSize: 15, fontWeight: '600' },
+    title: { fontSize: 28, lineHeight: 34, fontWeight: '700', letterSpacing: -0.3, marginTop: 4 },
+    clock: { fontSize: 30, lineHeight: 34, fontWeight: '700', fontVariant: ['tabular-nums'] },
+    phase: { fontSize: 13, letterSpacing: 1.5, marginTop: 2 },
+    primary: { minHeight: 53, borderRadius: 14, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderColor: colors.navy4 },
+    primaryText: { fontSize: 17, fontWeight: '600' },
+    link: { alignSelf: 'center', paddingVertical: 10, minHeight: 44, justifyContent: 'center' },
   });
 }

@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Day and night: Home</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2E6B47}a:hover{color:#1B3F30}
+.dnh{font-family:ui-rounded,"SF Pro Rounded",Nunito,-apple-system,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.dnh-btn{border:0;cursor:pointer;font:inherit;-webkit-tap-highlight-color:transparent}
+.dnh-t{transition:background-color 1s ease-in-out,color 1s ease-in-out,border-color 1s ease-in-out,box-shadow 1s ease-in-out,stroke 1s ease-in-out}
+.dnh-pop{animation:dnhPop 220ms cubic-bezier(.2,1,.3,1) both;transform-origin:92% 0}
+@keyframes dnhPop{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+.dnh-toast{animation:dnhToast 3.4s ease-in-out both}
+@keyframes dnhToast{0%{opacity:0;transform:translateY(-14px)}10%,85%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-8px)}}
+.dnh-tw{animation:dnhTw 2.6s ease-in-out infinite alternate}
+@keyframes dnhTw{from{opacity:.2}to{opacity:1}}
+@media (prefers-reduced-motion: reduce){.dnh-pop,.dnh-toast,.dnh-tw{animation:none!important}}
+</style>
+</helmet>
+<div class="dnh dnh-t" style="{{rootStyle}}">
+  <sc-for list="{{skies}}" as="sk" hint-placeholder-count="0">
+    <div aria-hidden="true" style="{{sk.style}}">
+      <sc-for list="{{sk.dots}}" as="d" hint-placeholder-count="0"><span class="{{d.cls}}" style="{{d.style}}"></span></sc-for>
+    </div>
+  </sc-for>
+
+  <div style="position: relative; height: 844px; display: flex; flex-direction: column; padding: 54px 16px 0; box-sizing: border-box">
+    <div style="display: flex; align-items: center; gap: 8px; height: 44px">
+      <span style="width: 36px; height: 36px; border-radius: 18px; background: #1B3F30; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 700">C</span>
+      <span class="dnh-t" style="margin-left: 4px; padding: 6px 12px; border-radius: 999px; background: var(--glass); color: var(--ink); font-size: 15px; font-weight: 600">Fri, Oct 31 · {{clock}}</span>
+      <span style="flex: 1"></span>
+      <button class="dnh-btn dnh-t" onClick="{{tapIcon}}" aria-label="{{iconLabel}}" aria-haspopup="{{hasMenu}}" style="position: relative; width: 44px; height: 44px; border-radius: 22px; background: var(--glass); color: var(--ink); display: flex; align-items: center; justify-content: center">
+        <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{iconPath}}"></path><path d="{{iconFill}}" fill="currentColor" stroke="none"></path></svg>
+        <sc-if value="{{showBadge}}" hint-placeholder-val="{{ false }}"><span style="position: absolute; right: 7px; top: 7px; width: 9px; height: 9px; border-radius: 5px; background: var(--accent); box-shadow: 0 0 0 2px var(--bg)"></span></sc-if>
+      </button>
+      <span class="dnh-t" style="width: 44px; height: 44px; border-radius: 22px; background: var(--glass); color: var(--ink); display: flex; align-items: center; justify-content: center">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"></path></svg>
+      </span>
+    </div>
+
+    <div class="dnh-t" style="margin: 18px 4px 0; font-size: 28px; line-height: 34px; font-weight: 700; color: var(--ink)">{{greeting}}, Cath</div>
+
+    <div style="margin-top: 16px; border-radius: 24px; padding: 20px; color: #FFFFFF; background: linear-gradient(135deg, #2C5E48, var(--hero) 55%, #122B21); box-shadow: var(--heroShadow); transition: box-shadow 1s">
+      <div style="font-size: 15px; color: #BFD3C8">Left to spend</div>
+      <div style="font-size: 40px; line-height: 46px; font-weight: 700">₱9,680.00</div>
+      <div style="font-size: 15px; color: #BFD3C8">Looking good · 9 days to payday</div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.2)">
+        <div><div style="font-size: 12px; color: #BFD3C8">In</div><div style="font-size: 15px; font-weight: 600">₱28,000</div></div>
+        <div><div style="font-size: 12px; color: #BFD3C8">Out</div><div style="font-size: 15px; font-weight: 600">₱15,320</div></div>
+        <div><div style="font-size: 12px; color: #BFD3C8">Saved</div><div style="font-size: 15px; font-weight: 600">₱3,000</div></div>
+      </div>
+    </div>
+
+    <div class="dnh-t" style="margin: 24px 16px 8px; font-size: 13px; text-transform: uppercase; color: var(--ink2)">Wallet</div>
+    <div style="display: flex; gap: 10px">
+      <div class="dnh-t" style="flex: 1; border-radius: 16px; padding: 12px 14px; background: var(--surface)"><div style="display: flex; align-items: center; gap: 6px; font-size: 15px; color: var(--ink)"><span style="width: 10px; height: 10px; border-radius: 2px; background: #1E3A5F"></span>BPI Savings</div><div style="font-size: 17px; font-weight: 600; color: var(--positive)">₱24,300.00</div></div>
+      <div class="dnh-t" style="flex: 1; border-radius: 16px; padding: 12px 14px; background: var(--surface)"><div style="display: flex; align-items: center; gap: 6px; font-size: 15px; color: var(--ink)"><span style="width: 10px; height: 10px; border-radius: 2px; background: #13524E"></span>GCash</div><div style="font-size: 17px; font-weight: 600; color: var(--positive)">₱1,250.00</div></div>
+    </div>
+
+    <div class="dnh-t" style="margin: 24px 16px 8px; font-size: 13px; text-transform: uppercase; color: var(--ink2)">Due soon</div>
+    <div class="dnh-t" style="border-radius: 16px; background: var(--surface); overflow: hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; min-height: 54px; padding: 0 16px"><div><div class="dnh-t" style="font-size: 17px; color: var(--ink)">Electricity</div><div class="dnh-t" style="font-size: 13px; color: var(--warning)">Due tomorrow</div></div><span class="dnh-t" style="font-size: 17px; font-weight: 600; color: var(--negative)">₱2,400.00</span></div>
+      <div class="dnh-t" style="display: flex; justify-content: space-between; align-items: center; min-height: 54px; padding: 0 16px; border-top: 1px solid var(--sep)"><div><div class="dnh-t" style="font-size: 17px; color: var(--ink)">Internet</div><div class="dnh-t" style="font-size: 13px; color: var(--ink2)">Nov 3</div></div><span class="dnh-t" style="font-size: 17px; font-weight: 600; color: var(--negative)">₱1,699.00</span></div>
+    </div>
+
+    <div style="flex: 1"></div>
+    <div class="dnh-t" style="margin: 0 -16px; padding: 8px 8px 30px; background: var(--surface); border-top: 1px solid var(--sep); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))">
+      <sc-for list="{{tabs}}" as="tb" hint-placeholder-count="4">
+        <div style="{{tb.style}}"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{tb.icon}}"></path></svg><span style="font-size: 11px; font-weight: 600">{{tb.label}}</span></div>
+      </sc-for>
+    </div>
+  </div>
+
+  <sc-if value="{{menuOpen}}" hint-placeholder-val="{{ false }}">
+    <button class="dnh-btn" onClick="{{closeMenu}}" aria-label="Close menu" style="position: absolute; inset: 0; background: rgba(0,0,0,0.08)"></button>
+    <div class="dnh-pop dnh-t" role="menu" aria-label="Look" style="position: absolute; right: 16px; top: 104px; width: 270px; border-radius: 16px; background: var(--surface); box-shadow: var(--float); overflow: hidden">
+      <sc-for list="{{choices}}" as="c" hint-placeholder-count="4">
+        <button class="dnh-btn dnh-t" onClick="{{c.pick}}" role="menuitemradio" aria-checked="{{c.on}}" style="{{c.style}}">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{c.icon}}"></path><path d="{{c.fill}}" fill="var(--accent)" stroke="none"></path></svg>
+          <span style="flex: 1; text-align: left"><span style="display: block; font-size: 17px; color: var(--ink)">{{c.label}}</span><span style="display: block; font-size: 13px; color: var(--ink2)">{{c.sub}}</span></span>
+          <sc-if value="{{c.checked}}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></sc-if>
+        </button>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-for list="{{toastA}}" as="ts" hint-placeholder-count="0">
+    <div class="dnh-toast" role="status" style="position: absolute; left: 16px; right: 16px; top: 104px; pointer-events: none; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--surface); box-shadow: var(--float)">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ts.icon}}"></path></svg>
+      <div style="flex: 1"><div style="font-size: 15px; font-weight: 600; color: var(--ink)">{{ts.title}}</div><div style="font-size: 13px; color: var(--ink2)">{{ts.sub}}</div></div>
+    </div>
+  </sc-for>
+  <sc-for list="{{toastB}}" as="ts" hint-placeholder-count="0">
+    <div class="dnh-toast" role="status" style="position: absolute; left: 16px; right: 16px; top: 104px; pointer-events: none; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--surface); box-shadow: var(--float)">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ts.icon}}"></path></svg>
+      <div style="flex: 1"><div style="font-size: 15px; font-weight: 600; color: var(--ink)">{{ts.title}}</div><div style="font-size: 13px; color: var(--ink2)">{{ts.sub}}</div></div>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"variant":{"editor":"enum","options":["menu","override"],"default":"menu"},"$preview":{"width":390,"height":844}}'>
+// Demo clock: the evening around sunset (5:30 -> 5:50 PM), then the morning around sunrise
+// (5:42 -> 6:02 AM), on a loop. Sunset 5:38 PM and sunrise 5:52 AM stand in for the times the
+// app already works out for Home's sky.
+var SUNSET = 17 * 60 + 38, SUNRISE = 5 * 60 + 52;
+var LOOPS = [[17 * 60 + 30, 17 * 60 + 50], [5 * 60 + 42, 6 * 60 + 2]];
+var I = {
+  sun: 'M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
+  moon: 'M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z',
+  auto: 'M12 3.5a8.5 8.5 0 1 0 0 17a8.5 8.5 0 1 0 0-17z',
+  autoFill: 'M12 3.5a8.5 8.5 0 0 1 0 17z',
+  phone: 'M8 2.5h8a1.5 1.5 0 0 1 1.5 1.5v16a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 20V4A1.5 1.5 0 0 1 8 2.5zM11 18.5h2',
+  sunset: 'M3 18h18M7 18a5 5 0 0 1 10 0M12 4v5M9.5 6.5L12 9l2.5-2.5',
+  sunrise: 'M3 18h18M7 18a5 5 0 0 1 10 0M12 9V4M9.5 6.5L12 4l2.5 2.5'
+};
+var LOOK = {
+  light: { morning: ['#F6E2AE', 0.95, '#F3D9D2', 0.45, '#C9A24A'], evening: ['#F2BBAA', 0.95, '#E9C6D6', 0.45, '#B9708A'] },
+  dark: { night: ['#2F3D78', 0.95, '#1C2450', 0.5, '#FFFFFF'], evening: ['#6A3440', 0.9, '#3B2238', 0.45, '#F0C2CF'] }
+};
+function rgba(hex, a) { var n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')'; }
+function seeded(seed) { var s = seed; return function () { s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296; }; }
+var STARS = (function () { var r = seeded(7), out = []; for (var i = 0; i < 30; i++) out.push({ x: 160 + r() * 230, y: r() * 200, r: 1 + r() * 1.2, o: 0.3 + r() * 0.5 }); return out; })();
+function fmt(m) { var h = Math.floor(m / 60), mm = m % 60, ap = h >= 12 ? 'PM' : 'AM'; return (h % 12 || 12) + ':' + (mm < 10 ? '0' : '') + mm + ' ' + ap; }
+function nightAt(m) { return m >= SUNSET || m < SUNRISE; }
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { loop: 0, min: LOOPS[0][0], mode: 'auto', override: null, menu: false, toast: null, toastKey: 0 }; }
+  componentDidMount() {
+    var self = this;
+    this.timer = setInterval(function () {
+      var s = self.state, L = LOOPS[s.loop], next = s.min + 1, o = {};
+      if (next > L[1] + 6) { var nl = (s.loop + 1) % 2; o = { loop: nl, min: LOOPS[nl][0], override: null }; }
+      else {
+        o.min = next;
+        if (nightAt(next) !== nightAt(s.min)) {
+          o.override = null;
+          o.toast = s.mode !== 'auto' ? null : nightAt(next) ? { icon: I.sunset, title: 'Sunset: dark until sunrise', sub: 'Day & night is on. Light again at ' + fmt(SUNRISE) + '.' } : { icon: I.sunrise, title: 'Sunrise: back to light', sub: 'Dark again at ' + fmt(SUNSET) + '.' };
+          o.toastKey = s.toastKey + 1;
+        }
+      }
+      self.setState(o);
+    }, 320);
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+  renderVals() {
+    var self = this, s = this.state, variant = this.props.variant || 'menu';
+    var night = nightAt(s.min);
+    var dark = s.mode === 'dark' || s.mode === 'device' && false || (s.mode === 'auto' && (s.override !== null ? s.override : night));
+    var v = dark
+      ? { bg: '#000000', surface: '#1C1C1E', ink: '#FFFFFF', ink2: '#AEAEB2', sep: '#38383A', accent: '#5FC48A', positive: '#4CD07D', negative: '#FF6961', warning: '#FFB340', hero: '#1E4A37', glass: 'rgba(28,28,30,0.7)', float: '0 4px 16px rgba(0,0,0,0.5)', heroShadow: 'none', tint: '#15291D' }
+      : { bg: '#F2F2F7', surface: '#FFFFFF', ink: '#111111', ink2: '#6C6C70', sep: '#C6C6C8', accent: '#2E6B47', positive: '#1E7B3E', negative: '#D70015', warning: '#B83200', hero: '#1B3F30', glass: 'rgba(255,255,255,0.7)', float: '0 4px 16px rgba(0,0,0,0.10)', heroShadow: '0 8px 24px rgba(27,63,48,0.18)', tint: '#E6F0EA' };
+    var vars = ''; for (var k in v) vars += '--' + k + ':' + v[k] + ';';
+    var pm = s.min >= 12 * 60;
+    var curLook = dark ? (pm ? 'dark-evening' : 'dark-night') : (pm ? 'light-evening' : 'light-morning');
+    var skies = [['light', 'morning'], ['light', 'evening'], ['dark', 'evening'], ['dark', 'night']].map(function (x) {
+      var L = LOOK[x[0]][x[1]], on = curLook === x[0] + '-' + x[1];
+      return {
+        style: 'position:absolute;left:0;top:0;width:390px;height:340px;overflow:hidden;transition:opacity 1s ease-in-out;opacity:' + (on ? 1 : 0) + ';background:radial-gradient(circle 370px at 392px -14px,' + rgba(L[0], L[1]) + ' 0%,' + rgba(L[0], L[1] * 0.7) + ' 20%,' + rgba(L[2], L[3]) + ' 48%,' + rgba(L[2], L[3] * 0.3) + ' 75%,' + rgba(L[2], 0) + ' 100%)',
+        dots: x[0] === 'dark' ? STARS.map(function (d, i) { return { cls: i % 4 ? '' : 'dnh-tw', style: 'position:absolute;border-radius:50%;left:' + d.x.toFixed(1) + 'px;top:' + d.y.toFixed(1) + 'px;width:' + (d.r * 2).toFixed(1) + 'px;height:' + (d.r * 2).toFixed(1) + 'px;background:' + L[4] + ';opacity:' + (x[1] === 'evening' ? d.o * 0.5 : d.o).toFixed(2) }; }) : []
+      };
+    });
+    var autoNow = s.mode === 'auto';
+    var icon = autoNow && variant === 'menu' ? [I.auto, I.autoFill] : dark ? [I.sun, ''] : [I.moon, ''];
+    var nextEvent = night ? 'sunrise' : 'sunset';
+    function pick(m) { return function () { self.setState({ mode: m, override: null, menu: false }); }; }
+    var choices = [
+      { m: 'light', label: 'Light', sub: 'Always light', icon: I.sun, fill: '' },
+      { m: 'dark', label: 'Dark', sub: 'Always dark', icon: I.moon, fill: '' },
+      { m: 'auto', label: 'Day & night', sub: 'Dark ' + fmt(SUNSET) + ' to ' + fmt(SUNRISE), icon: I.auto, fill: I.autoFill },
+      { m: 'device', label: 'Match my phone', sub: 'Follows your phone’s setting', icon: I.phone, fill: '' }
+    ].map(function (c, i) {
+      var on = s.mode === c.m;
+      return { label: c.label, sub: c.sub, icon: c.icon, fill: c.fill, on: on ? 'true' : 'false', checked: on, pick: pick(c.m),
+        style: 'width:100%;display:flex;align-items:center;gap:12px;min-height:56px;padding:6px 16px;background:' + (on ? 'var(--tint)' : 'transparent') + (i ? ';border-top:1px solid var(--sep)' : '') };
+    });
+    var TABS = [['Home', 'M4 11l8-7 8 7v9h-5v-6H9v6H4z'], ['Transactions', 'M4 6h16M4 12h16M4 18h10'], ['To-Pay', 'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6'], ['Plan', 'M4 5h16v15H4zM4 10h16M9 3v4M15 3v4']];
+    return {
+      rootStyle: vars + 'width:390px;height:844px;position:relative;overflow:hidden;background:var(--bg);color:var(--ink)',
+      skies: skies,
+      clock: fmt(s.min),
+      greeting: s.min < 12 * 60 ? 'Good morning' : 'Good evening',
+      iconPath: icon[0], iconFill: icon[1],
+      iconLabel: variant === 'menu' ? 'Light or dark' : (dark ? 'Switch to light' : 'Switch to dark'),
+      hasMenu: variant === 'menu' ? 'menu' : 'false',
+      showBadge: autoNow && variant === 'override',
+      tapIcon: function () {
+        if (variant === 'menu') { self.setState({ menu: !s.menu }); return; }
+        if (s.mode === 'auto') {
+          self.setState({ override: !dark, toast: { icon: dark ? I.sun : I.moon, title: (dark ? 'Light' : 'Dark') + ' until ' + nextEvent, sub: 'Then Day & night carries on by itself.' }, toastKey: s.toastKey + 1 });
+        } else self.setState({ mode: dark ? 'light' : 'dark' });
+      },
+      menuOpen: s.menu,
+      closeMenu: function () { self.setState({ menu: false }); },
+      choices: choices,
+      // Two slots that take turns, so each new note plays its drop-in again.
+      toastA: s.toast && s.toastKey % 2 ? [s.toast] : [],
+      toastB: s.toast && !(s.toastKey % 2) ? [s.toast] : [],
+      tabs: TABS.map(function (t, i) { return { label: t[0], icon: t[1], style: 'display:flex;flex-direction:column;align-items:center;gap:2px;min-height:44px;color:' + (i === 0 ? 'var(--accent)' : 'var(--ink2)') }; })
+    };
+  }
+}
+</script>
+</body>
+</html>

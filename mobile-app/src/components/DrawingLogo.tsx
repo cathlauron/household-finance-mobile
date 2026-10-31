@@ -6,6 +6,7 @@ import { Text } from './AppText';
 import { useTheme } from '../ThemeContext';
 import { LOGO_PATHS } from './LogoMark';
 import { SheetHero } from './SimpleForm';
+import { reduceMotionNow } from '../reduceMotion';
 
 // Version 2.1 (Cath, round 5): while signing in or unlocking, the logo that's already on
 // the screen draws itself like the opening (leaf, then roof, then walls), holds, fades and
@@ -52,15 +53,21 @@ function Stroke({ d, len, at, t, color, sw }: { d: string; len: number; at: numb
   );
 }
 
-export default function DrawingLogo({ width = 84, drawing, color, wordmark = true }: { width?: number; drawing: boolean; color?: string; wordmark?: boolean }) {
+// once (2026-10-31, welcome O3a): draws itself one time, like the opening, and stays.
+export default function DrawingLogo({ width = 84, drawing, once, color, wordmark = true }: { width?: number; drawing: boolean; once?: boolean; color?: string; wordmark?: boolean }) {
   const { colors } = useTheme();
   const stroke = color ?? colors.gold;
   const height = Math.round((width * 530) / 644);
   const sw = width < 50 ? 30 : 22; // small logos get thicker lines so they stay visible
   const t = useSharedValue(1);
 
+  const drawOnce = !!once && !drawing && !reduceMotionNow();
   useEffect(() => {
-    if (drawing) {
+    if (drawOnce) {
+      // Up to the moment every stroke is in (before the loop's hold and fade).
+      t.value = 0;
+      t.value = withTiming(1.3 / CYCLE, { duration: 1300, easing: Easing.linear });
+    } else if (drawing) {
       t.value = 0;
       t.value = withRepeat(withTiming(1, { duration: CYCLE * 1000, easing: Easing.linear }), -1, false);
     } else {
@@ -68,12 +75,12 @@ export default function DrawingLogo({ width = 84, drawing, color, wordmark = tru
       t.value = 1; // fully drawn
     }
     return () => cancelAnimation(t);
-  }, [drawing, t]);
+  }, [drawing, drawOnce, t]);
 
   return (
     <View style={{ alignItems: 'center' }} accessible accessibilityRole="image" accessibilityLabel="Finance Flow">
       <Svg width={width} height={height} viewBox="190 240 644 530" fill="none">
-        {drawing
+        {drawing || drawOnce
           ? STROKES.map((p, i) => <Stroke key={i} d={p.d} len={p.len} at={p.at} t={t} color={stroke} sw={sw} />)
           : LOGO_PATHS.map((d, i) => <Path key={i} d={d} stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" />)}
       </Svg>
