@@ -76,3 +76,10 @@ test('while the screen is still turning over from a peel, Dark mode waits (a qui
   await act(async () => { peel.releaseScreenPeel(); });
   expect(getByGestureTestId('settings-theme-dark-tap').config.enabled).toBe(true);
 });
+
+// Cath's screenshot 2026-10-30: after ~4 quick taps the Dark mode sticker stayed half cut and blank.
+test('at rest the sticker is always drawn whole, and a peel always finishes', () => {
+  const src = require('fs').readFileSync('src/components/PeelSticker.tsx', 'utf8');
+  expect(src).toMatch(/d: busy\.value \? pathOf\(stickerPeel\(W, H, \[px\.value, py\.value\]\)\.keep, PAD, PAD\) : flatKeep/);
+  expect(src).not.toMatch(/if \(ok\) done\(\)/);
+});

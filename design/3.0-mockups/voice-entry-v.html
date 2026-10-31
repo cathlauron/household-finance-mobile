@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup V: Voice entry</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root { --page:#F4EEF0; --ink:#2A1A20; --muted:#7A6670; --pink:#F28AA6; --pinkInk:#3B0F1E; --tint:#FBE3EA; --gold:#C2185B; --card:#FFFFFF; --line:#EFE3E7; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--page); color:var(--ink); font-family:Nunito,system-ui,sans-serif; font-size:15px; line-height:1.5; padding:28px 16px 56px; }
+.wrap { max-width:1260px; margin:0 auto; }
+.eyebrow { font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--gold); font-weight:800; }
+h1 { font-size:30px; line-height:1.15; margin:4px 0 8px; }
+p.lead { color:var(--muted); margin:0 0 12px; max-width:86ch; }
+.hero { display:grid; grid-template-columns:320px 1fr; gap:28px; align-items:start; margin:14px 0 26px; }
+@media (max-width:860px){ .hero { grid-template-columns:1fr; justify-items:center; } }
+.grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:18px; align-items:start; }
+@media (max-width:1150px){ .grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:640px){ .grid { grid-template-columns:1fr; } }
+.col { display:grid; gap:8px; justify-items:center; }
+.col h3 { margin:0; font-size:16px; text-align:center; }
+.col > p { margin:0; color:var(--muted); font-size:13.5px; text-align:center; max-width:34ch; }
+.phone { width:290px; max-width:100%; height:600px; border-radius:36px; background:#FBF7F8; box-shadow:0 18px 50px rgba(60,20,35,.18); overflow:hidden; position:relative; padding:44px 14px 16px; }
+.bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.bar b { font-size:17px; }
+.bar span { color:var(--gold); font-weight:700; font-size:14px; }
+.form { background:var(--card); border-radius:16px; overflow:hidden; }
+.row { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border-bottom:1px solid var(--line); font-size:14.5px; min-height:46px; }
+.row:last-child { border-bottom:0; }
+.row .v { color:var(--muted); font-weight:700; transition:color .3s; }
+.row.filled .v { color:var(--ink); }
+.row.flash { animation:flash 1.1s ease-out; }
+@keyframes flash { 0% { background:var(--tint); } 100% { background:transparent; } }
+.amount { text-align:center; padding:14px 0 10px; }
+.amount .n { font-size:38px; font-weight:800; letter-spacing:-.5px; }
+.amount .n.empty { color:#CBB9C0; }
+.mic { display:inline-flex; align-items:center; gap:6px; background:var(--tint); color:var(--gold); font-weight:800; border-radius:20px; padding:7px 14px; font-size:14px; margin:4px auto 12px; }
+.mic.hl { outline:3px solid #F2B705; outline-offset:3px; }
+.dim { position:absolute; inset:0; background:rgba(40,10,20,.38); opacity:0; transition:opacity .28s; pointer-events:none; }
+.sheet { position:absolute; left:0; right:0; bottom:0; background:#FBF7F8; border-radius:24px 24px 0 0; padding:10px 16px 20px; transform:translateY(105%); transition:transform .28s cubic-bezier(.32,.72,0,1); }
+.grab { width:38px; height:5px; border-radius:3px; background:#D9C8CF; margin:2px auto 14px; }
+.listen { text-align:center; }
+.circle { width:86px; height:86px; border-radius:50%; background:var(--pink); margin:6px auto 10px; display:grid; place-items:center; position:relative; }
+.circle::before, .circle::after { content:""; position:absolute; inset:0; border-radius:50%; background:var(--pink); opacity:.35; animation:pulse 1.6s ease-out infinite; }
+.circle::after { animation-delay:.8s; }
+@keyframes pulse { 0% { transform:scale(1); opacity:.35; } 100% { transform:scale(1.7); opacity:0; } }
+.circle svg { position:relative; }
+.wave { display:flex; gap:4px; justify-content:center; align-items:center; height:30px; margin:4px 0 10px; }
+.wave i { width:4px; border-radius:2px; background:var(--gold); height:8px; animation:wave 0.9s ease-in-out infinite; }
+.wave i:nth-child(2){animation-delay:.1s} .wave i:nth-child(3){animation-delay:.2s} .wave i:nth-child(4){animation-delay:.3s} .wave i:nth-child(5){animation-delay:.4s} .wave i:nth-child(6){animation-delay:.5s} .wave i:nth-child(7){animation-delay:.6s}
+@keyframes wave { 0%,100% { height:6px; } 50% { height:26px; } }
+.heard { font-size:19px; font-weight:800; min-height:56px; padding:0 6px; }
+.heard .w { opacity:0; transition:opacity .25s; }
+.heard .w.on { opacity:1; }
+.hint { color:var(--muted); font-size:13px; }
+.btn { border-radius:24px; padding:12px; text-align:center; font-weight:800; background:var(--pink); color:var(--pinkInk); margin-top:10px; }
+.quiet { text-align:center; color:var(--gold); font-weight:700; margin-top:10px; font-size:14px; }
+.chip { display:inline-block; background:var(--tint); color:var(--gold); border-radius:10px; padding:2px 8px; font-size:12px; font-weight:800; margin-left:6px; }
+.list .item { display:flex; justify-content:space-between; align-items:center; background:var(--card); border-radius:14px; padding:11px 12px; margin-bottom:8px; font-size:14px; }
+.list .item small { display:block; color:var(--muted); font-size:12px; }
+.list .item.new { animation:arrive 1.6s ease-out both; }
+@keyframes arrive { 0% { opacity:0; transform:translateY(-8px); box-shadow:0 0 0 0 rgba(242,138,166,.0); } 25% { opacity:1; transform:none; box-shadow:0 0 0 4px rgba(242,138,166,.55); } 100% { box-shadow:0 0 0 0 rgba(242,138,166,0); } }
+.toast { position:absolute; left:50%; bottom:24px; transform:translateX(-50%); background:#2A1A20; color:#fff; border-radius:20px; padding:8px 14px; font-size:13px; font-weight:700; white-space:nowrap; opacity:0; transition:opacity .3s; }
+.say { background:#fff; border-radius:16px; padding:14px 16px; }
+.say h3 { margin:0 0 6px; font-size:16px; }
+.say ul { margin:0; padding-left:18px; }
+.say li { margin:5px 0; }
+.say li q { font-weight:700; }
+.say li span { color:var(--muted); font-size:13.5px; }
+.ctrl { display:flex; gap:10px; margin-top:12px; }
+.ctrl button { font:inherit; font-weight:800; border:0; border-radius:20px; padding:8px 14px; background:var(--pink); color:var(--pinkInk); cursor:pointer; }
+.ctrl button.alt { background:#fff; color:var(--gold); }
+.static .sheet { transform:none; }
+.static .dim { opacity:1; }
+@media (prefers-reduced-motion: reduce) { .circle::before, .circle::after, .wave i { animation:none; } }
+</style>
+</head>
+<body><div class="wrap">
+<div class="eyebrow">Mockup V · voice entry · Cath 2026-10-30</div>
+<h1>Say it, check it, save it</h1>
+<p class="lead">A mic button on every “add” form (transactions, bills, debts, loans, and everything on the Plan page). You say it the way you'd tell a friend, the app fills in the form, and you check it before anything is saved. Free: the phone's own speech recognition hears you, and the app's own rules understand it (no AI service, nothing sent anywhere by us).</p>
+
+<div class="hero">
+  <div class="col">
+    <h3>Watch it (plays on a loop)</h3>
+    <div class="phone" id="live">
+      <div class="bar"><span>Cancel</span><b>New expense</b><span style="opacity:.4">Save</span></div>
+      <div class="amount"><div class="n empty" id="amt">₱0</div></div>
+      <div style="text-align:center"><span class="mic hl" id="micbtn">🎙 Say it</span></div>
+      <div class="form">
+        <div class="row" id="r-cat"><span>Category</span><span class="v">Choose</span></div>
+        <div class="row" id="r-date"><span>Date</span><span class="v">Today</span></div>
+        <div class="row" id="r-note"><span>Note</span><span class="v">Optional</span></div>
+        <div class="row" id="r-who"><span>Paid by</span><span class="v">Me</span></div>
+      </div>
+      <div class="list" id="txlist" style="display:none">
+        <div class="item new"><div>Groceries<small>Yesterday · Me</small></div><b>−₱250</b></div>
+        <div class="item"><div>Transport<small>Oct 28 · Me</small></div><b>−₱120</b></div>
+        <div class="item"><div>Salary<small>Oct 25 · Me</small></div><b style="color:#2E7D52">+₱18,000</b></div>
+      </div>
+      <div class="dim" id="dim"></div>
+      <div class="sheet" id="sheet">
+        <div class="grab"></div>
+        <div class="listen" id="listenView">
+          <div class="circle"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#3B0F1E" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
+          <div class="wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="heard" id="heard"><span class="w">Spent</span> <span class="w">250</span> <span class="w">on</span> <span class="w">groceries</span> <span class="w">yesterday</span></div>
+          <div class="hint">Listening… tap anywhere when you're done</div>
+        </div>
+      </div>
+      <div class="toast" id="toast">Saved · Groceries −₱250</div>
+    </div>
+    <div class="ctrl"><button id="replay">Play again</button><button class="alt" id="pause">Pause</button></div>
+  </div>
+  <div class="say">
+    <h3>What you can say</h3>
+    <ul>
+      <li><q>Spent 250 on groceries yesterday</q> <span>→ expense, ₱250, Groceries, yesterday</span></li>
+      <li><q>Got my salary 18,000 today</q> <span>→ income, ₱18,000, Salary, today</span></li>
+      <li><q>Electric bill 2,400 due on the 15th every month</q> <span>→ new bill, monthly, due the 15th</span></li>
+      <li><q>Paid the internet bill</q> <span>→ marks that bill paid this month</span></li>
+      <li><q>I lent Ana 1,000 today</q> <span>→ new loan (I lent), Ana, ₱1,000</span></li>
+      <li><q>Credit card 15,000, minimum 1,500 on the 20th</q> <span>→ new debt</span></li>
+      <li><q>Put 500 in the travel pot</q> <span>→ adds to that savings pot</span></li>
+    </ul>
+    <p class="hint" style="margin-top:10px">Categories, bills, people and pots are matched to <b>your</b> names. If something isn't clear (no amount, an unknown category), that field stays empty and is highlighted for you to fill. Nothing is ever saved without you tapping Save.</p>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="col"><h3>V1 · The mic button</h3><p>On every add form, under the amount. Also on Bill / Debt / Loan and the Plan pages.</p>
+    <div class="phone">
+      <div class="bar"><span>Cancel</span><b>New bill</b><span style="opacity:.4">Save</span></div>
+      <div class="amount"><div class="n empty">₱0</div></div>
+      <div style="text-align:center"><span class="mic hl">🎙 Say it</span></div>
+      <div class="form"><div class="row"><span>Name</span><span class="v">e.g. Electric</span></div><div class="row"><span>Repeats</span><span class="v">Monthly</span></div><div class="row"><span>Due</span><span class="v">Choose</span></div></div>
+    </div></div>
+  <div class="col"><h3>V2 · Listening</h3><p>A sheet rises; the words appear as you speak. Tap to stop.</p>
+    <div class="phone static">
+      <div class="bar"><span>Cancel</span><b>New bill</b><span style="opacity:.4">Save</span></div>
+      <div class="dim"></div>
+      <div class="sheet"><div class="grab"></div><div class="listen">
+        <div class="circle"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#3B0F1E" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
+        <div class="wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="heard">Electric bill 2,400 due on the 15th every month</div>
+        <div class="hint">Listening… tap anywhere when you're done</div></div></div>
+    </div></div>
+  <div class="col"><h3>V3 · Check it</h3><p>The form fills in, each field glowing as it lands. Anything unsure is left for you.</p>
+    <div class="phone">
+      <div class="bar"><span>Cancel</span><b>New bill</b><span>Save</span></div>
+      <div class="amount"><div class="n">₱2,400</div></div>
+      <div style="text-align:center"><span class="mic">🎙 Say it again</span></div>
+      <div class="form"><div class="row filled" style="background:var(--tint)"><span>Name</span><span class="v">Electric</span></div><div class="row filled" style="background:var(--tint)"><span>Repeats</span><span class="v">Monthly</span></div><div class="row filled" style="background:var(--tint)"><span>Due</span><span class="v">Every 15th</span></div><div class="row"><span>Pay from</span><span class="v" style="color:#C2185B">Choose ›</span></div></div>
+      <p class="hint" style="text-align:center;margin-top:10px">Heard: “Electric bill 2,400 due on the 15th every month”</p>
+    </div></div>
+  <div class="col"><h3>V4 · Saved</h3><p>Same as saving by hand: the new row arrives with the app's usual glow.</p>
+    <div class="phone">
+      <div class="bar"><b>Bills</b><span>+</span></div>
+      <div class="list"><div class="item new" style="animation-iteration-count:infinite;animation-duration:3s"><div>Electric<small>Due Nov 15 · monthly</small></div><b>₱2,400</b></div><div class="item"><div>Internet<small>Due Nov 3 · monthly</small></div><b>₱1,699</b></div><div class="item"><div>Water<small>Due Nov 8 · monthly</small></div><b>₱650</b></div></div>
+    </div></div>
+</div>
+<p class="lead" style="margin-top:22px"><b>Good to know:</b> the listening part needs a real build of the app (it won't work in Expo Go). By default the phone may send your voice to Google or Apple to turn it into words, exactly like the keyboard's mic; where the phone can do it on the device, that's switched on. Works with Remove animations too (no pulsing, the sheet just appears).</p>
+</div>
+<script>
+(function(){
+  const $=(id)=>document.getElementById(id);
+  const words=[...document.querySelectorAll('#heard .w')];
+  let timers=[], paused=false;
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function at(ms,fn){ timers.push(setTimeout(fn,ms)); }
+  function reset(){
+    timers.forEach(clearTimeout); timers=[];
+    $('amt').textContent='₱0'; $('amt').classList.add('empty');
+    [['r-cat','Choose'],['r-date','Today'],['r-note','Optional'],['r-who','Me']].forEach(([id,v])=>{ const r=$(id); r.classList.remove('filled','flash'); r.querySelector('.v').textContent=v; r.style.background=''; });
+    words.forEach(w=>w.classList.remove('on'));
+    $('dim').style.opacity=0; $('sheet').style.transform='translateY(105%)';
+    $('txlist').style.display='none'; document.querySelector('#live .form').style.display=''; document.querySelector('#live .amount').style.display=''; $('micbtn').parentElement.style.display='';
+    $('toast').style.opacity=0;
+    document.querySelector('#live .bar').innerHTML='<span>Cancel</span><b>New expense</b><span style="opacity:.4">Save</span>';
+  }
+  function fill(id,v){ const r=$(id); r.querySelector('.v').textContent=v; r.classList.add('filled'); r.classList.remove('flash'); void r.offsetWidth; r.classList.add('flash'); }
+  function play(){
+    reset();
+    at(700,()=>{ $('micbtn').style.transform='scale(.94)'; });
+    at(850,()=>{ $('micbtn').style.transform=''; $('dim').style.opacity=1; $('sheet').style.transform='translateY(0)'; });
+    words.forEach((w,i)=>at(1500+i*520,()=>w.classList.add('on')));
+    at(4600,()=>{ $('dim').style.opacity=0; $('sheet').style.transform='translateY(105%)'; });
+    at(5000,()=>{ $('amt').textContent='₱250'; $('amt').classList.remove('empty'); });
+    at(5300,()=>fill('r-cat','Groceries'));
+    at(5600,()=>fill('r-date','Yesterday, Oct 29'));
+    at(5900,()=>{ document.querySelector('#live .bar').innerHTML='<span>Cancel</span><b>New expense</b><span>Save</span>'; });
+    at(7200,()=>{ document.querySelector('#live .bar span:last-child').style.transform='scale(.92)'; });
+    at(7400,()=>{ document.querySelector('#live .form').style.display='none'; document.querySelector('#live .amount').style.display='none'; $('micbtn').parentElement.style.display='none'; document.querySelector('#live .bar').innerHTML='<b>Transactions</b><span>+</span>'; const l=$('txlist'); l.style.display=''; const n=l.querySelector('.new'); n.classList.remove('new'); void n.offsetWidth; n.classList.add('new'); $('toast').style.opacity=1; });
+    at(8700,()=>{ $('toast').style.opacity=0; });
+    at(10200,()=>{ if(!paused) play(); });
+  }
+  function still(){ reset(); words.forEach(w=>w.classList.add('on')); $('amt').textContent='₱250'; $('amt').classList.remove('empty'); fill('r-cat','Groceries'); fill('r-date','Yesterday, Oct 29'); }
+  $('replay').onclick=()=>{ paused=false; $('pause').textContent='Pause'; play(); };
+  $('pause').onclick=()=>{ paused=!paused; $('pause').textContent=paused?'Resume':'Pause'; if(paused){ timers.forEach(clearTimeout); timers=[]; } else play(); };
+  if(reduce) still(); else play();
+})();
+</script>
+</body></html>

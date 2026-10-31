@@ -122,7 +122,11 @@ export default function PeelSticker({
   }, []);
 
   // The shapes for the finger's place, on the animation thread.
-  const keepProps = useAnimatedProps(() => ({ d: pathOf(stickerPeel(W, H, [px.value, py.value]).keep, PAD, PAD) }));
+  // Cath's screenshot 2026-10-30 (after ~4 quick taps the Dark mode sticker was left half cut
+  // and blank): when no peel is going on, the sticker is always drawn whole and flat, whatever
+  // the finger point says.
+  const flatKeep = pathOf(stickerPeel(W, H, C).keep, PAD, PAD);
+  const keepProps = useAnimatedProps(() => ({ d: busy.value ? pathOf(stickerPeel(W, H, [px.value, py.value]).keep, PAD, PAD) : flatKeep }));
   // Dark mode: the screen peels as far as the sticker has (only while a peel is going on).
   useAnimatedReaction(
     () => (busy.value ? stickerPeel(W, H, [px.value, py.value]).k : -1),
@@ -171,8 +175,10 @@ export default function PeelSticker({
     }
     const easing = linear ? Easing.linear : Easing.bezier(CURVE[0], CURVE[1], CURVE[2], CURVE[3]);
     py.value = withTiming(to[1], { duration: ms, easing });
-    px.value = withTiming(to[0], { duration: ms, easing }, (ok) => {
-      if (ok) done();
+    // Always finishes, even if the move was interrupted, so a sticker can never stay "busy"
+    // (stuck half peeled and unresponsive).
+    px.value = withTiming(to[0], { duration: ms, easing }, () => {
+      done();
     });
   }
 

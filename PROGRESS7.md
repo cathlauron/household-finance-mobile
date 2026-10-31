@@ -1411,3 +1411,7 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   making each sticker layer its own drawing in a fading view. Lesson: ask for the phone log
   (adb logcat -c / reproduce / logcat -d -b main,system,crash) as soon as the app CLOSES,
   instead of guessing (two guesses were wrong).
+- 2026-10-30 19:31: Crash fix CONFIRMED by Cath (app stays open). New: after ~4 quick taps the
+  Dark mode sticker stuck half cut (B-082, changed not yet confirmed). Mockup V (voice entry,
+  animated) published: design/3.0-mockups/voice-entry-v.html, artifact 627b6cc1... WAITING for her
+  OK. She dropped the iPhone/TestFlight questions for now.
