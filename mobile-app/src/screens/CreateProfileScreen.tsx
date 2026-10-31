@@ -1,4 +1,5 @@
 import { isEmailFormat, emailTypoSuggestion } from '../typingHelpers';
+import SaveKeyButton from '../components/SaveKeyButton';
 import React, { useState } from 'react';
 import { paintBusy } from '../components/BusyOverlay';
 import { claimUsername } from '../usernameClaim';
@@ -358,6 +359,7 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn, gu
                 </Text>
               </View>
 
+              <SaveKeyButton username={createdInfo?.username ?? ''} recoveryKey={recoveryCode ?? ''} onSaved={() => setSavedAcknowledged(true)} />
               <TouchableOpacity
                 style={[styles.copyButton, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }]}
                 onPress={async () => {

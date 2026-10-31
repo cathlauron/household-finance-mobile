@@ -4,6 +4,7 @@ import { animateNextLayout } from '../animateLayout';
 import { APP_VERSION } from '../appVersion';
 import { useHelpSeen, markHelpSeen } from '../helpSeen';
 import EmailCheckNote, { EmailRow } from '../components/EmailCheckNote';
+import SaveKeyButton from '../components/SaveKeyButton';
 import AppearancePage, { type ScrollFrame } from './AppearancePage';
 import { PRIVACY_URL } from '../helpFaq';
 import { readyToAutoSave } from '../autoSaveInput';
@@ -2295,6 +2296,9 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
                 <Text selectable adjustsFontSizeToFit numberOfLines={1} style={[styles.recoveryKeyText, { color: colors.gold }]}>
                   {retroactiveSuccessCode}
                 </Text>
+              </View>
+              <View style={{ paddingHorizontal: 12 }}>
+                <SaveKeyButton username={username ?? ''} recoveryKey={retroactiveSuccessCode} />
               </View>
               <TouchableOpacity
                 style={styles.sheetAccentRow}

@@ -303,3 +303,7 @@ K3 (new key after someone leaves) is checked on your computer with the rules tes
 3. On the approving phone: type the code in small letters: no extra letters, it's accepted.
 4. Tap the bell's "sign-in help request": it opens the Household page (with Review & Approve).
 5. Appearance › Dark mode: tap it twice, three times, quickly and slowly: the app stays open; the 2nd tap works once the first has finished.
+
+## 21. 2026-10-30 night. NOT YET TESTED.
+1. Appearance › Dark mode: peel/tap it 3+ times in a row (both ways). The app stays open; no flash of the other look before the peel.
+2. (Installed app only, after the 3.2.0 build) Settings › Account & Security › Secret Recovery Key › make a new key: "Save to password manager" → your phone asks "Save password?" → Save → "Saved in your password manager ✓". Then check Google Password Manager has "Finance Flow Recovery Key – (your username)". Same button when making a new account. Not shown in Expo Go.

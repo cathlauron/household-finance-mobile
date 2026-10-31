@@ -42,8 +42,27 @@ const listeners = new Set<(p: Peel | null) => void>();
 function emit() {
   listeners.forEach((l) => l(current));
 }
-// Where the page's scrolling part sits inside the host, and how far it is scrolled.
-export const peelFrame = { top: makeMutable(0), height: makeMutable(0), scroll: makeMutable(0) };
+// Where the page's scrolling part sits inside the host, and how far it is scrolled. Plain
+// values (Cath's 2nd video, 2026-10-30: the app still closed; animating the copy's top and
+// height on the animation thread is the likeliest cause, so the copy is laid out normally).
+export type CopyFrame = { top: number; height: number; scroll: number };
+let copyFrame: CopyFrame = { top: 0, height: 0, scroll: 0 };
+const frameListeners = new Set<(f: CopyFrame) => void>();
+export function setCopyFrame(f: CopyFrame) {
+  copyFrame = f;
+  frameListeners.forEach((l) => l(f));
+}
+export function useCopyFrame(): CopyFrame {
+  const [f, setF] = useState(copyFrame);
+  useEffect(() => {
+    frameListeners.add(setF);
+    setF(copyFrame);
+    return () => {
+      frameListeners.delete(setF);
+    };
+  }, []);
+  return f;
+}
 let hostRef: View | null = null;
 export function measurePeelHost(): Promise<number> {
   return new Promise((resolve) => {
@@ -156,14 +175,18 @@ export function ScreenPeelHost() {
   const back = toDark ? ['#FFFFFF', '#F2F2F7', '#C9C9D0'] : ['#3A3A3C', '#1C1C1E', '#000000'];
   return (
     <AView
-      ref={(r: any) => {
-        hostRef = r;
-      }}
-      collapsable={false}
-      style={[StyleSheet.absoluteFill, whole]}
+      // Only prepared (no peel yet): drawn but fully see-through, so nothing can show early.
+      style={[StyleSheet.absoluteFill, whole, peel.toDark === null ? { opacity: 0 } : null]}
       pointerEvents="none"
       testID={peel.toDark === null ? 'screen-peel-ready' : 'screen-peel'}
     >
+      <View
+        ref={(r) => {
+          hostRef = r;
+        }}
+        collapsable={false}
+        style={StyleSheet.absoluteFill}
+      />
       <AView style={[{ position: 'absolute', left: W - D, top: -D, width: 2 * D, height: 2 * D, overflow: 'hidden' }, outer]}>
         <AView style={[{ position: 'absolute', left: 0, top: 0, width: 2 * D, height: 2 * D }, inner]}>
           <View style={{ position: 'absolute', left: D - W, top: D, width: W, height: H, overflow: 'hidden' }}>

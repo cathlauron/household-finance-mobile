@@ -1395,3 +1395,10 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   artifact 05c17b42...): R1 Save to password manager, R2 the phone's save prompt, R3 unlock
   options (approve from your other phone first, fill key from password manager, household),
   R4 "Is this you signing in?" on the other phone. WAITING for her OK before building.
+- 2026-10-30 night: Cath picked R1 only (Save to password manager). Built: modules/ff-keysave
+  (Android Credential Manager CreatePasswordRequest; androidx.credentials 1.3.0 +
+  play-services-auth), src/keySave.ts, components/SaveKeyButton.tsx (Settings new key sheet +
+  sign-up key). NATIVE: only compiles in the EAS build (can't be compiled here); hidden in Expo
+  Go. Peel crash 2nd try (B-081): copy laid out normally, prepared copy see-through.
+  Her questions answered: Wispr Flow (works today as keyboard/bubble; no in-app embed planned),
+  iPhone testers (TestFlight needs Apple Developer Program $99/yr; Expo Go route uncertain).

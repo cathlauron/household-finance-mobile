@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, InteractionManager, View } from 'react-native';
-import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { SettingsGroup, PlainRow, SegmentRow } from '../components/SettingsHub';
 import PeelSticker from '../components/PeelSticker';
 import { useTheme } from '../ThemeContext';
@@ -10,7 +9,7 @@ import { useFabSide, setFabSide } from '../fabSide';
 import { useSkyPrefs, setSkyGlowOn, setLiveWeatherOn, setRainAnimOn, usePreviewWeather, setPreviewWeather } from '../sky';
 import { getHomeZoneCity, setHomeZoneToPhone, phoneTimeZone, cityOf } from '../travelTime';
 import LargeHeader from '../navigation/LargeHeader';
-import { darkSticker, endScreenPeel, measurePeelHost, peelFrame, prepareScreenPeel, releaseScreenPeel, screenPeelK, showScreenPeel, useScreenPeelSettling } from '../screenPeel';
+import { darkSticker, endScreenPeel, measurePeelHost, setCopyFrame, useCopyFrame, prepareScreenPeel, releaseScreenPeel, screenPeelK, showScreenPeel, useScreenPeelSettling } from '../screenPeel';
 
 // Settings › Appearance. Version 3.2 (mockup K2e, approved by Cath 2026-10-29): the on/off
 // settings are peel-off stickers. Theme is "Match my phone" + "Dark mode" (Cath's pick);
@@ -73,9 +72,7 @@ export default function AppearancePage({
     const f = await getFrame?.().catch(() => null);
     if (!f) return false;
     const hostY = await measurePeelHost();
-    peelFrame.top.value = f.y - hostY;
-    peelFrame.height.value = f.height;
-    peelFrame.scroll.value = f.scrollY;
+    setCopyFrame({ top: f.y - hostY, height: f.height, scroll: f.scrollY });
     return true;
   }
   if (!model) return null;
@@ -267,21 +264,24 @@ export default function AppearancePage({
 
 // The Appearance page as it sits on the screen right now (header, then the page scrolled to
 // the same place), for the screen peel. It is drawn in the other look by the peel host.
-// The page part follows peelFrame (shared values), so lining it up never redraws the copy.
+// The page part follows the copy frame (plain layout; only this wrapper redraws).
 const PAD_TOP = 16;
 const PAD_X = 12;
+// Only the wrapper above moves when the frame changes; the page copy itself is drawn once.
+const StillPage = React.memo(function StillPage() {
+  return <AppearancePage still />;
+});
 function PeelCopy() {
   const { colors } = useTheme();
-  const box = useAnimatedStyle(() => ({ top: peelFrame.top.value, height: peelFrame.height.value }));
-  const shift = useAnimatedStyle(() => ({ transform: [{ translateY: -peelFrame.scroll.value }] }));
+  const f = useCopyFrame();
   return (
     <View style={{ flex: 1, backgroundColor: colors.navy2 }} pointerEvents="none">
       <LargeHeader navigation={{ goBack() {} }} route={{ name: 'SettingsPage' }} options={{ title: 'Appearance', headerBackTitle: 'Settings' }} back={{ title: 'Settings' }} />
-      <Animated.View style={[{ position: 'absolute', left: 0, right: 0, overflow: 'hidden' }, box]}>
-        <Animated.View style={[{ paddingHorizontal: PAD_X, paddingTop: PAD_TOP }, shift]}>
-          <AppearancePage still />
-        </Animated.View>
-      </Animated.View>
+      <View style={{ position: 'absolute', left: 0, right: 0, overflow: 'hidden', top: f.top, height: f.height }}>
+        <View style={{ paddingHorizontal: PAD_X, paddingTop: PAD_TOP, transform: [{ translateY: -f.scroll }] }}>
+          <StillPage />
+        </View>
+      </View>
     </View>
   );
 }
