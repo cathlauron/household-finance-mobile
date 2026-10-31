@@ -7,11 +7,20 @@
   "boards": {
     "Main.dc.html": { "x": 0, "y": 0, "w": 390, "h": 844, "title": "O1 · Try it: every feature is a little demo", "is_interactive": true, "radius": 44 },
     "O2.dc.html": { "x": 470, "y": 0, "w": 390, "h": 844, "title": "O2 · Make your number: tap to build Left to Spend", "is_interactive": true, "radius": 44 },
-    "O3.dc.html": { "x": 940, "y": 0, "w": 390, "h": 844, "title": "O3 · A day with Finance Flow: why every day", "is_interactive": true, "radius": 44 }
+    "O3.dc.html": { "x": 940, "y": 0, "w": 390, "h": 844, "title": "O3 · A day with Finance Flow: why every day", "is_interactive": true, "radius": 44 },
+    "Day.dc.html": { "x": 0, "y": 1230, "w": 390, "h": 844, "title": "O3a · Sun arc: the sun rides across the day", "is_interactive": true, "radius": 44 },
+    "O3b.dc.html": { "x": 470, "y": 1230, "w": 390, "h": 844, "title": "O3b · Time ruler: the hours slide under a marker", "is_interactive": true, "radius": 44 },
+    "O3c.dc.html": { "x": 940, "y": 1230, "w": 390, "h": 844, "title": "O3c · Icon pill + night turns dark", "is_interactive": true, "radius": 44 },
+    "Setup.dc.html": { "x": 0, "y": 2460, "w": 390, "h": 844, "title": "S1 · What should we call you?", "is_interactive": true, "radius": 44 },
+    "S2.dc.html": { "x": 470, "y": 2460, "w": 390, "h": 844, "title": "S2 · What do you want help with?", "is_interactive": true, "radius": 44 },
+    "S3.dc.html": { "x": 940, "y": 2460, "w": 390, "h": 844, "title": "S3 · Make it feel like yours", "is_interactive": true, "radius": 44 },
+    "S4.dc.html": { "x": 1410, "y": 2460, "w": 390, "h": 844, "title": "S4 · Does anyone else use your phone?", "is_interactive": true, "radius": 44 }
   },
-  "order": ["Main.dc.html", "O2.dc.html", "O3.dc.html"],
+  "order": ["Main.dc.html", "O2.dc.html", "O3.dc.html", "Day.dc.html", "O3b.dc.html", "O3c.dc.html", "Setup.dc.html", "S2.dc.html", "S3.dc.html", "S4.dc.html"],
   "notes": {
-    "t": { "x": 0, "y": -260, "text": "New onboarding: 3 samples (press Play on each)", "kind": "title1", "maxW": 1330 }
+    "t": { "x": 0, "y": -260, "text": "New onboarding: 3 samples (press Play on each)", "kind": "title1", "maxW": 1330 },
+    "t2": { "x": 0, "y": 970, "text": "O3 variations: real logo, the app's sky, falling leaves", "kind": "title1", "maxW": 1330 },
+    "t3": { "x": 0, "y": 2200, "text": "The 4 setup screens after it, same feel", "kind": "title1", "maxW": 1800 }
   },
   "designSystems": [
     { "title": "Finance Flow", "namespace": "finance-flow", "artifact": "https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ", "version": "1792004719-e46a", "copiedAt": "2026-10-31T18:30:00Z" }

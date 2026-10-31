@@ -1477,3 +1477,11 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   household banner F2/F3, private + "why every day"), O2 "Make your number" (tap pay + payday +
   bills, number counts live, leaf burst reveal), O3 "A day with Finance Flow" (morning widget,
   lunch Say it, bill nudge, household changes, night; sky changes, auto-plays). WAITING for her pick.
+- 2026-10-31 (later): Cath liked O3 (times of day, plays by itself). Asked: a different time
+  display above Get started, the real logo, a background like the app (not cartoony), falling
+  leaves, variations, and the 4 setup screens after it in the same feel. Added to mockup O:
+  O3a sun arc / O3b time ruler / O3c icon pill + night turns dark (Day.dc.html, one screen
+  with a variant switch; the app's SkyGlow colours per phase, real line logo drawing itself,
+  real leaf shape falling with the tab-switch gust), and S1-S4 (Setup.dc.html: name with a
+  live "Good morning" preview, help-with chips, theme/leaves/mood live preview incl. dark,
+  phone lock animation, then "You're all set!" with the opening-screen logo). WAITING for picks.
