@@ -1,4 +1,6 @@
 import { firstTimeOpen } from '../handledOpen';
+import { SayItButton } from '../components/SayIt';
+import { parseVoice, nextDueDate as voiceDueDate } from '../voiceParse';
 import { dateText, todayISO } from '../dateUtils';
 import { redUnlessZero, toneUnlessZero } from '../moneyColor';
 import { useToday } from '../useToday';
@@ -303,6 +305,27 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
     setNewPaymentMethod(undefined);
     setPaymentError('');
     setModalOpen(true);
+  }
+
+  // Voice entry: "I lent Ana 1,000 today" fills the form; nothing is saved until Save.
+  function applyVoice(text: string) {
+    const h = parseVoice(text, { people: (model?.people || []).map((p) => p.name).filter(Boolean) });
+    if (h.loanDirection) setDirectionInput(h.loanDirection);
+    if (h.person || h.name) setNameInput((h.person || h.name) as string);
+    if (h.amount !== undefined) setTotalAmountInput(h.amount);
+    if (h.ratePercent !== undefined) setInterestRateInput(String(h.ratePercent));
+    if (h.minimum !== undefined) setExpectedPaymentInput(h.minimum);
+    if (h.repeat === 'monthly' || h.dueDay) {
+      setRecurTypeInput('monthly');
+      const first = h.dueDay ? voiceDueDate(h.dueDay) : h.date;
+      if (first) {
+        setFirstDateInput(first);
+        setDayInput(String(new Date(first + 'T00:00:00').getDate()));
+      }
+    } else if (h.date) {
+      setRecurTypeInput('onetime');
+      setOnetimeDateInput(h.date);
+    }
   }
 
   function closeModal() {
@@ -725,6 +748,8 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
           <Guided key="pay-form-amount" {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
             <BigAmount mark="required" label="Loan amount" value={totalAmountInput} onChange={setTotalAmountInput} color={directionInput === 'lent' ? colors.positive : colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
           </Guided>
+          {/* Voice entry (mockup V, Cath 2026-10-30). */}
+          <SayItButton onHeard={applyVoice} example="I lent Ana 1,000 today" />
 
           <FormGroup>
             <Guided {...fieldErrors.props('name')} focusRef={nameRef}>

@@ -24,6 +24,8 @@ export const FADE_IN_MS = 180; // something appearing (page content, a title, a 
 export const FADE_OUT_MS = 140; // something going away
 export const DIP_MS = 160; // each half of a soft dip (dark mode, whole-screen changes)
 export const PEEL_TAP_MS = 1000; // a tapped peel-off sticker: one steady peel (Cath, mockup K2e, 2026-10-29)
+export const VOICE_PULSE_MS = 1600; // voice entry: the mic's soft pulse while listening (Cath, mockup V, 2026-10-30)
+export const VOICE_WAVE_MS = 900; // voice entry: one rise and fall of the listening bars (mockup V)
 
 // 2026-10-26 fix (Cath's phone: "Interpolation property 'easing' is not supported by native
 // animated module"). Android's native animation engine can't bend an `interpolate` with a

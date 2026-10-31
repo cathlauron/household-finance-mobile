@@ -91,6 +91,16 @@
           "microphonePermission": false,
           "recordAudioAndroid": false
         }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Finance Flow uses the microphone only while you tap \"Say it\", to fill in a form from what you say.",
+          "speechRecognitionPermission": "Finance Flow turns what you say into words to fill in a form. Nothing is saved until you tap Save.",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
+        }
       ]
     ],
     "extra": {

@@ -1,4 +1,6 @@
 import { firstTimeOpen } from '../handledOpen';
+import { SayItButton } from '../components/SayIt';
+import { parseVoice, nextDueDate as voiceDueDate } from '../voiceParse';
 import { toneUnlessZero } from '../moneyColor';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, alertNotDeleted } from '../messages';
@@ -300,6 +302,22 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, 
     );
     setErrorMsg('');
     setModalOpen(true);
+  }
+
+  // Voice entry: "Salary from ABC Corp 18,000 every 15th" fills the income; Save saves it.
+  function applyVoice(text: string) {
+    const h = parseVoice(text, { people: (model?.people || []).map((p) => p.name).filter(Boolean) });
+    if (h.amount !== undefined) setAmountInput(h.amount);
+    const from = /\bfrom\s+([A-Za-zñ0-9&. ]{2,40}?)(?=\s+(?:₱|php|p|\$)?\d|\s+every|\s+on|\s*$)/i.exec(text)?.[1];
+    if (from) setSourceNameInput(from.trim());
+    if (h.repeat === 'weekly') setFrequencyInput('weekly');
+    else if (h.repeat === 'biweekly') setFrequencyInput('biweekly');
+    else if (h.repeat === 'monthly' || h.dueDay) setFrequencyInput('monthly');
+    if (h.dueDay) setMonthlyDayInput(String(h.dueDay));
+    if (h.date && !h.repeat && !h.dueDay) {
+      setFrequencyInput('onetime');
+      setOnetimeDateInput(h.date);
+    }
   }
 
   function closeModal() {
@@ -798,6 +816,8 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, 
         header={<SheetBar title={editingId ? 'Edit income' : 'New income'} onCancel={closeModal} onDone={handleSave} doneLabel="Save" busy={saving} />}
       >
         <BigAmount mark="optional" label="Expected each payday" value={amountInput} onChange={setAmountInput} color={colors.planned} autoFocus={!editingId} />
+        {/* Voice entry (mockup V, Cath 2026-10-30). */}
+        {!editingId && <SayItButton onHeard={applyVoice} example="Salary from ABC Corp 18,000 every 15th" />}
 
         <FormGroup>
           <InputRow mark="optional" label="Source" value={sourceNameInput} onChangeText={setSourceNameInput} placeholder="e.g. ABC Corp" testID="income-source-input" />

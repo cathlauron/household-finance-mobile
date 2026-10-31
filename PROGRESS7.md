@@ -1415,3 +1415,19 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   Dark mode sticker stuck half cut (B-082, changed not yet confirmed). Mockup V (voice entry,
   animated) published: design/3.0-mockups/voice-entry-v.html, artifact c5b57d30... WAITING for her
   OK. She dropped the iPhone/TestFlight questions for now.
+- 2026-10-30 evening: Cath APPROVED mockup V (voice entry) and asked for it EVERYWHERE (Plan pages,
+  sub-pages, to-do, budget, grocery list, everything). Built on v3:
+  - src/voiceParse.ts (our own rules: amount incl. words/"2.5k", date words, repeat, due day,
+    minimum, %, lent/borrowed + person, your categories/names, lists) + tests/voiceParse.test.mjs
+  - src/voiceListen.ts (expo-speech-recognition 3.1.3, on-device where possible; plugin in app.json)
+  - src/components/SayIt.tsx (button + sheet; pulse/wave from motion.ts VOICE_*; Reduce Motion;
+    Expo Go fallback = type box, keyboard mic works)
+  VOICE INVENTORY (add forms; done = has Say it):
+    done: Transactions (+), Bills, Debts, Loans, Income (new income), Savings (new pot), Goals,
+          Events, Travel (budget items + to-do quick add), Groceries (item, several items,
+          meal ingredients), Envelopes (monthly budget), Shared expenses
+    to do: Travel "New trip" form, Income "Log payday", Pot page "add money", Accounts (new
+          account), Transfer, Investments, Home simple-mode quick add (CalmHome), Event items list
+  - NEEDS a new build for real listening (native); npm install needed on her PC.
+- 2026-10-30 19:48: Peel STILL sticks after 2 taps (B-082 open); couldn't reproduce in the hidden
+  browser (many taps fine). Asked Cath for a short screen recording of it sticking.

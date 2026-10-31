@@ -1,4 +1,6 @@
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { SayItButton } from '../components/SayIt';
+import { parseVoice, nextDueDate as voiceDueDate } from '../voiceParse';
 import { notSaved } from '../messages';
 import { showLeafTick } from '../components/LeafTick';
 import LoadingView from '../components/LoadingView';
@@ -219,6 +221,20 @@ export default function SharedExpensesScreen() {
     mode === 'equal'
       ? included.length && total > 0 ? `Each person's share is about ${formatPeso(total / included.length)}.` : ''
       : total > 0 ? (Math.abs(customLeft) < 0.01 ? 'The amounts add up to the total.' : customLeft > 0 ? `${formatPeso(customLeft)} still to assign.` : `${formatPeso(-customLeft)} more than the total.`) : '';
+
+  // Voice entry: "Pizza night 1,200, Ana paid, yesterday" fills it; Add saves it.
+  function applyVoice(text: string) {
+    if (!model) return;
+    const h = parseVoice(text, { people: members.map((p) => p.name) });
+    if (h.amount !== undefined) setAmount(h.amount);
+    if (h.date) setDate(h.date);
+    const payer = members.find((p) => new RegExp(`\\b${p.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b\\s+paid|paid by\\s+${p.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i').test(text));
+    if (payer) setPaidBy(payer.id);
+    else if (/\b(i|me)\s+paid|paid by me\b/i.test(text) && myId) setPaidBy(myId);
+    const name = h.name ?? text.split(/,|\s+(?:₱|php|p|\$)?\d/)[0].trim();
+    if (name) setLabel(name.charAt(0).toUpperCase() + name.slice(1));
+    setError('');
+  }
 
   async function saveExpense() {
     if (!model) return;
@@ -565,6 +581,8 @@ export default function SharedExpensesScreen() {
         header={<SheetBar title={editingId ? 'Edit shared expense' : 'New shared expense'} onCancel={() => setSheetOpen(false)} onDone={saveExpense} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
       >
         <BigAmount mark="required" label="Total" value={amount} onChange={(v) => { setAmount(v); setError(''); }} color={colors.negative} autoFocus={!editingId} />
+        {/* Voice entry (mockup V, Cath 2026-10-30). */}
+        {!editingId && <SayItButton onHeard={applyVoice} example="Pizza night 1,200, Ana paid, yesterday" />}
         <FormGroup>
           <InputRow mark="required" label="For" value={label} onChangeText={(t) => { setLabel(t); setError(''); }} placeholder="e.g. Pizza night" testID="shared-label-input" />
           <PickerRow mark="required" label="Paid by" value={paidBy ? name(paidBy) : 'Choose'} open={openRow === 'paid'} onToggle={() => toggleRow('paid')}>

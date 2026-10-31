@@ -1,4 +1,6 @@
 import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
+import { SayItButton } from '../components/SayIt';
+import { parseVoice, nextDueDate as voiceDueDate } from '../voiceParse';
 import { redUnlessZero, toneUnlessZero } from '../moneyColor';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, notDeleted, alertNotDeleted } from '../messages';
@@ -316,6 +318,21 @@ export default function EventsScreen() {
     setItemsInput(ev.items ? ev.items.map((i) => ({ ...i })) : []);
     setErrorMsg('');
     setModalOpen(true);
+  }
+
+  // Voice entry: "Mama's birthday on March 12, budget 3,000" fills the form; Add saves it.
+  function applyVoice(text: string) {
+    const h = parseVoice(text);
+    if (h.amount !== undefined) setBudgetInput(h.amount);
+    const name = h.name ?? text.replace(/(?:₱|php|p|\$)?\s?\d[\d,]*(?:\.\d+)?\s?(?:k|thousand)?/gi, ' ').replace(/\b(?:yesterday|today|tomorrow|on|by|for|every month|monthly|target|of|a|an|the|save|saving|goal|pot|budget)\b/gi, ' ').replace(/\s+/g, ' ').trim();
+    if (name) setNameInput(name.charAt(0).toUpperCase() + name.slice(1));
+    if (h.date) {
+      const d = new Date(h.date + 'T00:00:00');
+      setOnetimeDateInput(h.date);
+      setMonthInput(String(d.getMonth() + 1));
+      setDayInput(String(d.getDate()));
+    }
+    if (/birthday/i.test(text)) setTypeInput('birthday');
   }
 
   function closeModal() {
@@ -659,6 +676,8 @@ export default function EventsScreen() {
         ) : (
           <BigTotal label="What it will cost" value={formatPeso(itemsTotal)} sub="Adds up from the items below" color={colors.planned} />
         )}
+        {/* Voice entry (mockup V, Cath 2026-10-30). */}
+        {!editingId && <SayItButton onHeard={applyVoice} example="Mama's birthday on March 12, budget 3,000" />}
 
         <FormGroup>
           <Guided {...fieldErrors.props('name')} focusRef={nameRef}>

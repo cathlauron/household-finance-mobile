@@ -307,3 +307,13 @@ K3 (new key after someone leaves) is checked on your computer with the rules tes
 ## 21. 2026-10-30 night. NOT YET TESTED.
 1. Appearance › Dark mode: peel/tap it 3+ times in a row (both ways). The app stays open; no flash of the other look before the peel.
 2. (Installed app only, after the 3.2.0 build) Settings › Account & Security › Secret Recovery Key › make a new key: "Save to password manager" → your phone asks "Save password?" → Save → "Saved in your password manager ✓". Then check Google Password Manager has "Finance Flow Recovery Key – (your username)". Same button when making a new account. Not shown in Expo Go.
+
+## 22. Voice entry (mockup V), 2026-10-30. NOT YET TESTED.
+In Expo Go "Say it" opens a box to type in (tap your keyboard's mic to speak into it); real listening comes with the next build.
+1. + (new transaction): Say it → "Spent 250 on groceries yesterday" → Money out, ₱250, Groceries, yesterday filled; nothing saved until Add.
+2. "Got my salary 18,000 today" → Money in, ₱18,000.
+3. Bills: "Electric bill 2,400 due on the 15th every month" → name, amount, every month, first due the next 15th.
+4. Debts: "Credit card 15,000, minimum 1,500 on the 20th". Loans: "I lent Ana 1,000 today".
+5. Groceries: + item → Say it → "milk, eggs and bread" → "Adds 3 items" → Add puts all 3 on the list. Meal → "Say the ingredients".
+6. Travel trip: mic in the Budget "Add an item" row ("Hotel 4,500") and the To-do row ("book the hotel, buy sunscreen and pack chargers" → Add adds all 3).
+7. Income, Savings (new pot), Goals, Events, Shared expenses, Budgets (Envelopes): Say it fills the form.

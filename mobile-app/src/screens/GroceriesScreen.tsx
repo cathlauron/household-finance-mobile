@@ -1,4 +1,6 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
+import { SayItButton } from '../components/SayIt';
+import { parseVoice, splitItems } from '../voiceParse';
 import { animateNextLayout } from '../animateLayout';
 import { redUnlessZero, toneUnlessZero } from '../moneyColor';
 import { showLeafTick } from '../components/LeafTick';
@@ -66,6 +68,8 @@ export default function GroceriesScreen() {
   const [sheet, setSheet] = useState<Sheet>(null);
   useEffect(() => setFocusIngredientId(null), [sheet]);
   const [nameIn, setNameIn] = useState('');
+  // Voice entry: several items said at once ("milk, eggs and bread") are all added on Add.
+  const [voiceItems, setVoiceItems] = useState<string[] | null>(null);
   const [plannedIn, setPlannedIn] = useState<number | ''>('');
   const [actualIn, setActualIn] = useState<number | ''>('');
   const [ingredients, setIngredients] = useState<IngredientRow[]>([]);
@@ -108,10 +112,32 @@ export default function GroceriesScreen() {
   const shown = showAll ? items : items.slice(0, SHOW_FIRST);
 
   function openItem(g?: GroceryItem) {
+    setVoiceItems(null);
     setNameIn(g?.item ?? '');
     setPlannedIn(g && typeof g.plannedAmount === 'number' ? g.plannedAmount : '');
     setActualIn(g && typeof g.actualAmount === 'number' ? g.actualAmount : '');
     setSheet({ kind: 'item', id: g?.id });
+  }
+
+  // Voice entry (mockup V, Cath 2026-10-30): an item ("Rice 5 kg, 320"), several items, or a
+  // meal's ingredients. Nothing is saved until Add / Save.
+  function applyVoice(text: string) {
+    const h = parseVoice(text);
+    const list = h.items && h.items.length ? h.items : splitItems(text);
+    if (sheet?.kind === 'meal') {
+      const names = list.filter(Boolean);
+      if (names.length) setIngredients((rows) => [...rows.filter((r) => r.name.trim()), ...names.map((n) => ({ id: makeId('ing'), name: n, price: '' as const }))]);
+      return;
+    }
+    if (list.length > 1 && h.amount === undefined) {
+      setVoiceItems(list);
+      setNameIn(list.join(', '));
+      return;
+    }
+    setVoiceItems(null);
+    if (h.amount !== undefined) setPlannedIn(h.amount);
+    const name = (h.name ?? text.replace(/(?:₱|php|p|\$)?\s?\d[\d,]*(?:\.\d+)?/gi, '').replace(/\s+/g, ' ').trim()).replace(/^(?:add|buy|get)\s+/i, '');
+    if (name) setNameIn(name.charAt(0).toUpperCase() + name.slice(1));
   }
 
   function openMeal(m?: MealIdea) {
@@ -127,6 +153,13 @@ export default function GroceriesScreen() {
     const name = nameIn.trim();
     if (!name) {
       Alert.alert(sheet.kind === 'meal' ? 'Name the meal' : 'Name the item', 'Add a name first.');
+      return;
+    }
+    if (sheet.kind === 'item' && !sheet.id && voiceItems && voiceItems.length > 1) {
+      const added = voiceItems.map((n) => ({ id: makeId('grocery'), item: n, plannedAmount: '' as const, actualAmount: '' as const, purchased: false }));
+      await saveModel({ ...model, groceries: [...items, ...added] });
+      showLeafTick(`Added ${added.length}`);
+      setSheet(null);
       return;
     }
     if (sheet.kind === 'item') {
@@ -483,8 +516,12 @@ export default function GroceriesScreen() {
         {sheet?.kind === 'item' && (
           <>
             <BigAmount mark="optional" label="Planned price" value={plannedIn} onChange={setPlannedIn} color={colors.planned} />
+            {!sheet.id && <SayItButton onHeard={applyVoice} example="Milk, eggs and bread" />}
+            {!!voiceItems && voiceItems.length > 1 && (
+              <Text style={{ textAlign: 'center', color: colors.inkDim, marginBottom: 6 }}>Adds {voiceItems.length} items to the list.</Text>
+            )}
             <FormGroup>
-              <InputRow mark="required" label="Item" value={nameIn} onChangeText={setNameIn} placeholder="e.g. Rice, 5 kg" autoFocus={!sheet.id} testID="groceries-name-input" />
+              <InputRow mark="required" label="Item" value={nameIn} onChangeText={(t) => { setVoiceItems(null); setNameIn(t); }} placeholder="e.g. Rice, 5 kg" autoFocus={!sheet.id} testID="groceries-name-input" />
               {!!sheet.id && <AmountRow mark="optional" label="What you paid" value={actualIn} onChange={setActualIn} placeholder="If different" />}
             </FormGroup>
           </>
@@ -495,6 +532,7 @@ export default function GroceriesScreen() {
             <FormGroup>
               <InputRow mark="required" label="Name" value={nameIn} onChangeText={setNameIn} placeholder="e.g. Chicken adobo" autoFocus={!sheet.id} testID="groceries-name-input" />
             </FormGroup>
+            <SayItButton onHeard={applyVoice} label="Say the ingredients" example="Chicken, soy sauce, vinegar and garlic" />
             <GroupLabel>Ingredients</GroupLabel>
             <FormGroup>
               {ingredients.map((ing, i) => (

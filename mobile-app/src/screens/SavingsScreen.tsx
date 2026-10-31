@@ -1,4 +1,6 @@
 import { firstTimeOpen } from '../handledOpen';
+import { SayItButton } from '../components/SayIt';
+import { parseVoice, nextDueDate as voiceDueDate } from '../voiceParse';
 import { investmentSummary } from '../investments';
 import { toneUnlessZero } from '../moneyColor';
 import ErrorNote from '../components/ErrorNote';
@@ -266,6 +268,15 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce, formOnl
     setAutoAmtInput(goal.autoAdd?.amount || '');
     setErrorMsg('');
     setModalOpen(true);
+  }
+
+  // Voice entry: "Travel fund 50,000 by December" fills the pot; Add saves it.
+  function applyVoice(text: string) {
+    const h = parseVoice(text);
+    if (h.amount !== undefined) setTargetAmountInput(String(h.amount));
+    if (h.date) setTargetDateInput(h.date);
+    const name = text.replace(/(?:₱|php|p|\$)?\s?\d[\d,]*(?:\.\d+)?\s?(?:k|thousand)?/gi, ' ').replace(/\b(?:yesterday|today|tomorrow|on|by|for|every month|monthly|target|of|a|an|the|save|saving|goal|pot|budget)\b/gi, ' ').replace(/\s+/g, ' ').trim();
+    if (name) setNameInput(name.charAt(0).toUpperCase() + name.slice(1));
   }
 
   function closeModal() {
@@ -859,6 +870,8 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
           onChange={(v) => setTargetAmountInput(v === '' ? '' : String(v))}
           color={colors.saving}
         />
+        {/* Voice entry (mockup V, Cath 2026-10-30). */}
+        {!editingId && <SayItButton onHeard={applyVoice} example="Travel fund 50,000" />}
         </Guided>
 
         <FormGroup>

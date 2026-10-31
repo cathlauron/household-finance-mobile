@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
+import { SayItButton } from '../components/SayIt';
+import { parseVoice, splitItems } from '../voiceParse';
 import { animateNextLayout } from '../animateLayout';
 import { redUnlessZero, toneUnlessZero } from '../moneyColor';
 import ErrorNote from '../components/ErrorNote';
@@ -171,6 +173,8 @@ export default function TravelScreen() {
   // Version 2.1 (approved T1): Budget | To-do on the Travel page itself, under the trip.
   const [pageTab, setPageTab] = useStickyState<'budget' | 'todo'>('travel.pageTab', 'budget');
   const [pageTodoText, setPageTodoText] = useState('');
+  const [voiceTodos, setVoiceTodos] = useState<string[] | null>(null);
+  const [voiceItems, setVoiceItems] = useState<string[] | null>(null);
   const [pageTodoDate, setPageTodoDate] = useState('');
   const [pageTodoDateOpen, setPageTodoDateOpen] = useState(false);
   const [pageItemText, setPageItemText] = useState('');
@@ -315,10 +319,42 @@ export default function TravelScreen() {
     if (!model) return;
     await saveModel({ ...model, travel: trips.map((t) => (t.id === trip.id ? { ...t, todos: next } : t)) });
   }
+  // Voice entry (mockup V, Cath 2026-10-30): to-dos and budget items said in one go are all
+  // added when Add is tapped (nothing is saved before that).
+  function applyVoiceTodo(text: string) {
+    const h = parseVoice(text);
+    const list = h.items && h.items.length ? h.items : splitItems(text);
+    setVoiceTodos(list.length > 1 ? list : null);
+    setPageTodoText(list.length > 1 ? list.join(', ') : list[0] ?? text);
+    if (h.date) setPageTodoDate(h.date);
+  }
+  function applyVoiceItem(text: string) {
+    const h = parseVoice(text);
+    if (h.amount === undefined) {
+      const list = h.items && h.items.length ? h.items : splitItems(text);
+      setVoiceItems(list.length > 1 ? list : null);
+      setPageItemText(list.length > 1 ? list.join(', ') : list[0] ?? text);
+      return;
+    }
+    setVoiceItems(null);
+    setPageItemCost(String(h.amount));
+    const name = (h.name ?? text.replace(/(?:₱|php|p|\$)?\s?\d[\d,]*(?:\.\d+)?/gi, '').replace(/\s+/g, ' ').trim()).replace(/^(?:add|for|the)\s+/i, '');
+    if (name) setPageItemText(name.charAt(0).toUpperCase() + name.slice(1));
+  }
+
   async function addPageTodo(trip: TravelTrip) {
     const text = pageTodoText.trim();
     if (!text) return;
     hapticSelection();
+    if (voiceTodos && voiceTodos.length > 1 && text === voiceTodos.join(', ')) {
+      const many = voiceTodos;
+      setVoiceTodos(null);
+      setPageTodoText('');
+      setPageTodoDate('');
+      setPageTodoDateOpen(false);
+      await saveTripTodos(trip, [...(trip.todos || []), ...many.map((t) => ({ id: makeId('todo'), text: t, done: false, ...(pageTodoDate ? { date: pageTodoDate } : {}) }))]);
+      return;
+    }
     setPageTodoText('');
     setPageTodoDate('');
     setPageTodoDateOpen(false);
@@ -433,7 +469,9 @@ export default function TravelScreen() {
     hapticSelection();
     setPageItemText('');
     setPageItemCost('');
-    const draft: TravelTrip = { ...trip, checklist: [...(trip.checklist || []), { id: makeId('travelitem'), title, cost, checked: false }] };
+    const titles = voiceItems && voiceItems.length > 1 && title === voiceItems.join(', ') ? voiceItems : [title];
+    setVoiceItems(null);
+    const draft: TravelTrip = { ...trip, checklist: [...(trip.checklist || []), ...titles.map((tt, k) => ({ id: makeId('travelitem'), title: tt, cost: k === 0 ? cost : ('' as const), checked: false }))] };
     const budget = tripFullChecklistTotal(draft);
     const { goals, savingsGoalId } = syncTripSavingsGoal(draft, budget, model.savingsGoals ?? []);
     await saveModel({ ...model, savingsGoals: goals, travel: trips.map((x) => (x.id === trip.id ? { ...draft, budget, savingsGoalId } : x)) });
@@ -865,13 +903,14 @@ export default function TravelScreen() {
                         <TextInput
                           style={[styles.tripName, { flex: 1, minWidth: 0, paddingVertical: 4 }]}
                           value={pageItemText}
-                          onChangeText={setPageItemText}
+                          onChangeText={(v) => { setVoiceItems(null); setPageItemText(v); }}
                           placeholder="Add an item"
                           placeholderTextColor={colors.inkFaint}
                           returnKeyType="next"
                           maxLength={80}
                           testID="travel-page-item-input"
                         />
+                        <SayItButton compact onHeard={applyVoiceItem} example="Hotel 4,500" testID="travel-item-say-it" />
                         <TextInput
                           style={[styles.tripName, styles.costInput, !!pageItemText.trim() && { width: 76 }]}
                           value={pageItemCost}
@@ -931,7 +970,7 @@ export default function TravelScreen() {
                       <TextInput
                         style={[styles.tripName, { flex: 1, paddingVertical: 4 }]}
                         value={pageTodoText}
-                        onChangeText={setPageTodoText}
+                        onChangeText={(v) => { setVoiceTodos(null); setPageTodoText(v); }}
                         placeholder="Add to the list"
                         placeholderTextColor={colors.inkFaint}
                         returnKeyType="done"
@@ -939,6 +978,7 @@ export default function TravelScreen() {
                         maxLength={120}
                         testID="travel-page-todo-input"
                       />
+                      <SayItButton compact onHeard={applyVoiceTodo} example="Book the hotel, buy sunscreen and pack chargers" testID="travel-todo-say-it" />
                       <TouchableOpacity onPress={() => { animateNextLayout(); setPageTodoDateOpen((v) => !v); }} accessibilityRole="button" accessibilityLabel="Add a date (optional)" hitSlop={8} style={{ marginHorizontal: 8 }}>
                         <Ionicons name="calendar-outline" size={20} color={pageTodoDate ? colors.gold : colors.inkFaint} />
                       </TouchableOpacity>

@@ -1,4 +1,6 @@
 import { firstTimeOpen } from '../handledOpen';
+import { SayItButton } from '../components/SayIt';
+import { parseVoice } from '../voiceParse';
 import { transfersForList, investmentMovesForList, TransferRow } from '../transfersList';
 import { animateNextLayout } from '../animateLayout';
 import { redUnlessZero, isZeroAmount, toneUnlessZero } from '../moneyColor';
@@ -678,6 +680,19 @@ export default function TransactionsScreen({
     setAmountInput(val);
     applyGuess(labelInput, val === '' ? NaN : val);
   }
+  // Voice entry: fills the form from what was said; nothing is saved until Add.
+  function applyVoice(text: string) {
+    if (!model) return;
+    const h = parseVoice(text, { categories: categoryOptions(model) });
+    if (h.direction) setDirectionInput(h.direction);
+    if (h.amount !== undefined) setAmountInput(h.amount);
+    if (h.date) setDateInput(h.date);
+    const label = h.name ?? h.category;
+    if (label) setLabelInput(label);
+    if (h.category) pickCategory(h.category);
+    else if (label) applyGuess(label, h.amount ?? NaN);
+    clearFieldError();
+  }
   function pickCategory(c: string) {
     setCategoryInput(c);
     setRuleFilled(false);
@@ -1200,6 +1215,8 @@ export default function TransactionsScreen({
             onChangeAmount={handleAmountChange}
           />
         </Guided>
+        {/* Voice entry (mockup V, Cath 2026-10-30). */}
+        <SayItButton onHeard={applyVoice} example="Spent 250 on groceries yesterday" />
 
         {/* Trip items and savings have their own places, so they aren't counted twice. */}
         {directionInput === 'out' && !editingId && (

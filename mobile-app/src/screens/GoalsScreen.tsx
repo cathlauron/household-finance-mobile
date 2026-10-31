@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
+import { SayItButton } from '../components/SayIt';
+import { parseVoice, nextDueDate as voiceDueDate } from '../voiceParse';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, notDeleted, alertNotDeleted } from '../messages';
 import { showLeafTick } from '../components/LeafTick';
@@ -172,6 +174,15 @@ export default function GoalsScreen() {
     setLinkInput(g.linkedTo);
     setErrorMsg('');
     setModalOpen(true);
+  }
+
+  // Voice entry: "Pay off the credit card, 30,000" fills the goal; Add saves it.
+  function applyVoice(text: string) {
+    const h = parseVoice(text);
+    if (h.amount !== undefined) setTargetAmountInput(h.amount);
+    if (h.date) setTargetDateInput(h.date);
+    const name = text.replace(/,?\s*(?:₱|php|p|\$)?\s?\d[\d,]*(?:\.\d+)?\s?(?:k|thousand)?/gi, ' ').replace(/\s+/g, ' ').trim();
+    if (name) setTitleInput(name.charAt(0).toUpperCase() + name.slice(1));
   }
 
   function closeModal() {
@@ -414,6 +425,8 @@ export default function GoalsScreen() {
         grouped
         header={<SheetBar title={editingId ? 'Edit goal' : 'New goal'} onCancel={closeModal} onDone={handleSaveGoal} doneLabel={editingId ? 'Save' : 'Add'} />}
       >
+        {/* Voice entry (mockup V, Cath 2026-10-30). */}
+        {!editingId && <SayItButton onHeard={applyVoice} example="Pay off the credit card, 30,000" />}
         <FormGroup>
           <Guided {...fieldErrors.props('title')} focusRef={titleRef}>
             <InputRow mark="required" label="Name" value={titleInput} onChangeText={setTitleInput} placeholder="e.g. Pay off credit card" autoFocus={!editingId} testID="goal-name-input" inputRef={titleRef} invalid={fieldErrors.field === 'title'} />
