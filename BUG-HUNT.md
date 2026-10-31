@@ -244,3 +244,12 @@ Scope: everything since 3.2.0's main (batch 2, K3/K5, peel, voice entry, R1, wid
 - Open (not bugs, for Cath): widgets show amounts while the app is locked (that's what a
   widget is; the eye / Hide amounts switches them to ••••). Island (live chip) not built yet:
   needs Android 16 phone-side code, planned after this build proves the new native parts.
+
+- 2026-10-31 (B-087 sweep): the save gate (`npm run check:all`) could not run on Windows at all
+  (npx/npm need the shell there; fixed in tools/check-all.mjs), and two logic checks failed only on
+  Windows (motion.test.mjs folder path, webPages.test.mjs line endings; fixed, same checks). The
+  flaky screen checks above struck again once (InlineHeights, HomeData, EditLoanPayments timed out
+  in the full run, pass alone and on the next full run). Still to do: make them wait properly.
+- H-57 (possible, not checked): Say it asks for on-phone recognition whenever the phone supports
+  it; if the phone's offline English pack isn't downloaded, some phones may refuse instead of
+  using online recognition. Only a real phone can show it: check with Cath's build.

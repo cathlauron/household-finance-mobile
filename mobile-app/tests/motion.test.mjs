@@ -2,12 +2,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // Smoothness check (2026-10-23, Cath: "everything should move the same way, and smoothly").
 // Reads the app's source and fails when something moves in a way that breaks the house
 // rules in .claude/skills/finance-flow-smoothness-check/SKILL.md.
 
-const here = path.dirname(new URL(import.meta.url).pathname);
+// fileURLToPath: on Windows the URL path (/C:/...) is not a real folder.
+const here = path.dirname(fileURLToPath(import.meta.url));
 const src = path.join(here, '..', 'src');
 function walk(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((d) => {

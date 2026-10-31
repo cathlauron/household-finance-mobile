@@ -6,7 +6,8 @@ import { readFileSync, existsSync } from 'node:fs';
 import { supportPage } from '../tools/build-web-pages.mjs';
 import { FAQ, SUPPORT_URL, PRIVACY_URL, DELETE_ACCOUNT_URL, searchFaq, faqMatches } from '../src/helpFaq.ts';
 
-const page = (name) => readFileSync(new URL(`../hosting/${name}`, import.meta.url), 'utf8');
+// Line endings ignored: a Windows checkout turns them into CRLF; the words must still match.
+const page = (name) => readFileSync(new URL(`../hosting/${name}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
 test('the support web page matches the app Help & FAQ (rebuild it after changing src/helpFaq.ts)', () => {
   assert.equal(page('support.html'), supportPage());

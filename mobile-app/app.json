@@ -71,7 +71,7 @@
         "expo-image-picker",
         {
           "photosPermission": "Allow Finance Flow to access your photos so you can choose a profile picture or attach receipts.",
-          "microphonePermission": false
+          "microphonePermission": "Finance Flow uses the microphone only while you tap \"Say it\", to fill in a form from what you say."
         }
       ],
       "expo-font",
@@ -88,7 +88,7 @@
         "expo-camera",
         {
           "cameraPermission": "Finance Flow uses the camera to scan a household invite QR code.",
-          "microphonePermission": false,
+          "microphonePermission": "Finance Flow uses the microphone only while you tap \"Say it\", to fill in a form from what you say.",
           "recordAudioAndroid": false
         }
       ],

@@ -328,3 +328,9 @@ In Expo Go "Say it" opens a box to type in (tap your keyboard's mic to speak int
    - Add something in the app: the widgets update within a few seconds.
    - Tap the eye (hide amounts): the widgets show ₱ ••••. Sign out: they say "Open the app once".
 5. Time "Check sign-in speed" (Settings › About & Help) 3 times and send me the numbers.
+
+## 24. Voice in the installed app (B-087), 2026-10-31. Needs a NEW build (from v3). NOT YET TESTED.
+1. Install the new build over the old one.
+2. + → Say it → the phone asks to use the microphone → Allow.
+3. Say "Spent 250 on groceries yesterday" → Money out, ₱250, Groceries, yesterday; nothing saved until Add.
+4. Home-screen Say it widget → opens on the listening sheet and hears you.

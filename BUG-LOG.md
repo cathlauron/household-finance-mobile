@@ -169,3 +169,4 @@ TEST-2.1). All rows below were phone-confirmed fixed unless the status says othe
 The full, current list lives in PROGRESS7.md, "Known issues / gotchas — still open"
 (additive log, on `main`). The bug hunt (BUG-HUNT.md) re-checks each one against the real
 code and records here whether it is still real.
+| B-087 | Cath's video 2026-10-31: voice entry (Say it) did nothing in the installed 3.2.0 build | The photo picker's and camera's "microphonePermission": false in app.json told the build to REMOVE the microphone permission on Android (and dropped the microphone text on iPhone), so the phone could never ask for the mic and listening never started | app.json: photo picker and camera use the same microphone text as Say it (no "false"), so the build keeps RECORD_AUDIO and the iPhone text | tests/voicePermission.test.mjs (reads the real build settings; red on the old app.json, green now, red again with the fix undone); Needs your phone (new build) |

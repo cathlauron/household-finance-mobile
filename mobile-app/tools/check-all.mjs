@@ -12,8 +12,10 @@ const steps = [
 ];
 
 for (const [name, cmd, args] of steps) {
-  const r = spawnSync(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' });
-  const out = `${r.stdout ?? ''}${r.stderr ?? ''}`;
+  // Windows (2026-10-31): npx/npm are .cmd files there and only start through the shell;
+  // without it nothing ran and every step "failed".
+  const r = spawnSync(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', shell: process.platform === 'win32' });
+  const out = `${r.stdout ?? ''}${r.stderr ?? ''}${r.error ? `\n${r.error}` : ''}`;
   if (r.status !== 0) {
     console.log(out.split('\n').slice(-60).join('\n'));
     console.log(`\nFAILED: ${name}`);
