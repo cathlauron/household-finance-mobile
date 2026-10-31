@@ -75,3 +75,4 @@ test("the moon button's menu: picking Dark, then Day & night, changes the look a
   fireEvent.press(screen.getByTestId('theme-menu-device'));
   expect(screen.getByTestId('probe').props.children).toMatch(/^device /);
 });
+

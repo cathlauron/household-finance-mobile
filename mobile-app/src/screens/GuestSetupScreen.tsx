@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, TextInput } from '../components/AppText';
 import SkyFade from '../components/SkyFade';
+import SegmentedControl from '../components/SegmentedControl';
 import DrawingLogo from '../components/DrawingLogo';
 import SunArc, { SunLook } from '../components/SunArc';
 import type { SkyPhase } from '../sky';
@@ -269,30 +270,18 @@ export default function GuestSetupScreen({ setup, onChange, onBackToWelcome, onD
         {step === 3 && (
           <>
             <Text style={[s.title, { color: colors.ink }]}>Make it feel like yours</Text>
-            <View style={[s.segment, { backgroundColor: colors.navy4 }]}>
-              {(
-                [
-                  ['light', 'Light'],
-                  ['dark', 'Dark'],
-                  ['auto', 'Day & night'],
-                  ['device', 'Device'],
-                ] as const
-              ).map(([id, label]) => (
-                <TouchableOpacity
-                  key={id}
-                  testID={`guest-look-${id}`}
-                  onPress={() => {
-                    hapticSelection();
-                    setMode(id);
-                  }}
-                  style={[s.segmentItem, mode === id && { backgroundColor: colors.navy3 }]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: mode === id }}
-                >
-                  <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 14, fontWeight: '700', color: mode === id ? colors.ink : colors.inkDim }}>{label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            {/* Smoothness rule (10-23): the highlight glides (shared SegmentedControl, haptic tick). */}
+            <SegmentedControl<'light' | 'dark' | 'auto' | 'device'>
+              accessibilityLabel="Look"
+              options={[
+                { id: 'light', label: 'Light', testID: 'guest-look-light' },
+                { id: 'dark', label: 'Dark', testID: 'guest-look-dark' },
+                { id: 'auto', label: 'Day & night', testID: 'guest-look-auto' },
+                { id: 'device', label: 'Device', testID: 'guest-look-device' },
+              ]}
+              value={mode}
+              onChange={(v) => setMode(v)}
+            />
             {mode === 'auto' && <Text style={[s.footnote, { color: colors.inkDim, marginTop: -6 }]}>Light by day, dark from sunset to sunrise.</Text>}
             <View style={s.card}>
               <GradientFill match={s.card} />

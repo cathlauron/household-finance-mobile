@@ -137,3 +137,11 @@ Could not be checked here (stays "Needs your phone"):
 - Look (fixed): the Forgot password email box had no border / mail icon; now matches sign-in.
 - Seen in the hidden browser (both directions): copy lines up, nothing shows before the peel,
   clean sticker after. The feel on the phone: Needs your phone.
+
+## 2026-10-31 (night): new welcome, set-up, Day & night
+- S-22 FIXED: set-up S3's look switch didn't glide (decision 10-23); now SegmentedControl.
+- Checked: every new motion uses motion.ts (SUN_ARC_MS, WELCOME_MOMENT_MS/HOLD_MS, FINALE_MS,
+  AUTO_THEME_MS, PAGE_OPEN_MS, VOICE_*), runs on the native thread, and stops with Reduce
+  Motion (the welcome doesn't play by itself). The sunset fade and the welcome's night preview
+  use one shared soft fade (veil to 85%, never a blank screen). Tapping a look stays instant.
+- Needs your phone: the feel of the sun arc, the sky fading between times, the sunset fade.

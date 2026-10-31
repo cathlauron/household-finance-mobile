@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 // Claude's background tester (2026-10-22, bug-check work). Builds nothing itself: it opens
 // the web build in a hidden browser shaped like a phone, does the steps you list, and saves
 // a picture after each one. Guest mode only: it never signs in or creates an account.
@@ -18,7 +19,8 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const here = path.dirname(new URL(import.meta.url).pathname);
+// fileURLToPath: on Windows the URL path (/C:/...) is not a real folder (2026-10-31).
+const here = path.dirname(fileURLToPath(import.meta.url));
 const root = process.env.WALK_ROOT || path.join(here, '..', 'web-build'); // WALK_ROOT: a copied build
 const out = process.env.WALK_OUT || path.join(here, '..', 'web-shots'); // WALK_OUT: own folder, so two walks can run at once
 fs.rmSync(out, { recursive: true, force: true });

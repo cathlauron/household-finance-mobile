@@ -250,6 +250,22 @@ Scope: everything since 3.2.0's main (batch 2, K3/K5, peel, voice entry, R1, wid
   Windows (motion.test.mjs folder path, webPages.test.mjs line endings; fixed, same checks). The
   flaky screen checks above struck again once (InlineHeights, HomeData, EditLoanPayments timed out
   in the full run, pass alone and on the next full run). Still to do: make them wait properly.
-- H-57 (possible, not checked): Say it asks for on-phone recognition whenever the phone supports
+- H-61 (was mislabelled H-57 earlier today; possible, not checked): Say it asks for on-phone recognition whenever the phone supports
   it; if the phone's offline English pack isn't downloaded, some phones may refuse instead of
   using online recognition. Only a real phone can show it: check with Cath's build.
+
+## Bug + smoothness hunt 2026-10-31 (night): this batch's new code first, then its siblings
+Areas: Day & night (theme, Home menu, Appearance), welcome O3a, set-up S1-S4, widgets, voice on
+8 more forms. Read as a stranger + hidden-browser walk (welcome, set-up in dark, Home's menu).
+- FIXED (B-088, smoothness rule 10-23 "Light / Dark in set-up" glides): set-up's look switch was
+  its own static buttons; now the shared SegmentedControl. Check: SetupDay (red-green).
+- FIXED (B-089): voice read the 2 in "MP2" as an amount. Check: voiceParse (red-green).
+- Checked, nothing wrong: a look picked right at start isn't undone by the saved one loading (it
+  saves first); the welcome's night preview never saves; leaving the welcome fades to the real
+  look; set-up's "You're all set" blocks taps until Home; transfers by voice never put a credit
+  card in "From"; event items by voice only drop blank rows; nothing new writes to Firestore.
+- H-62 (question for Cath, low): with "Hide amounts" on, the widgets show ₱ •••• but still take
+  the mood colour, so a red widget tells someone looking that you're over. Home's card does the
+  same today. Keep it (same as Home), or make hidden widgets always green?
+- Can't reach in the hidden browser: Settings (account only) — Appearance covered by
+  PeelSwitches "Day & night sticker" instead.

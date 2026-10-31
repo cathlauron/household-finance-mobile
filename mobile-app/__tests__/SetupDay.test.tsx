@@ -50,6 +50,8 @@ test('all four steps, then "You\'re all set" and Home', async () => {
 
   expect(screen.getByText('3 of 4 · Afternoon')).toBeTruthy();
   expect(screen.getByTestId('probe').props.children).toBe('auto');
+  // Smoothness rule (10-23, 'Light / Dark in set-up'): the shared switch whose highlight glides.
+  expect(screen.UNSAFE_getByType(require('../src/components/SegmentedControl').default)).toBeTruthy();
   fireEvent.press(screen.getByTestId('guest-look-dark'));
   expect(screen.getByTestId('probe').props.children).toBe('dark');
   fireEvent.press(screen.getByTestId('guest-look-auto'));

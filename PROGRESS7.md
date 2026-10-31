@@ -1469,7 +1469,7 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   rows were stale ("mockup first") although built and phone-tested on 10-29: marked DONE.
   NEXT = "Still open after the build" above: voice on the remaining forms (New trip, Log payday,
   pot add money, new account, transfer, investments, Home quick add); sign-in times -> K5 step 9
-  + remove "Check sign-in speed"; republish hosting; island; optional K3 re-lock; H-57.
+  + remove "Check sign-in speed"; republish hosting; island; optional K3 re-lock; H-61 (on-device listening).
 - 2026-10-31: Cath asked for a new onboarding: more interactive and animated, showing the features
   and why you'd use it every day, 3+ samples. Mockup O (canvas, artifact 8BiGD7MErYc4aXhd2hVjq1;
   copy in design/3.0-mockups/onboarding-o/): O1 "Try it" (5 steps, each a working mini demo:
@@ -1512,3 +1512,9 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   night sticker, new WelcomeScreen (O3a; IntroSlides uses it), SunArc, SkyFade, DrawingLogo once,
   set-up S1-S4 restyle + "You're all set". Screen checks get 30 s each (were timing out).
   NEXT: widgets green + mood, voice on remaining forms, bug + smoothness hunt, TEST-3 list.
+- 2026-10-31 (late night): widgets green + mood (B-? feature, Widgets check), Say it on the last 8
+  forms (SayIt inventory + voiceParse helpers), bug + smoothness hunt of the new batch (B-088
+  set-up switch glides, B-089 "MP2" amount; H-62 question; S-22), hidden-browser walk works on
+  Windows again (walk tool path + Playwright browser installed). Phone list: TEST-3 s25 (+ s24
+  for the build). NEXT: Cath's phone test of s25, then push v3 + EAS build (3.3.0?) for s24/s25
+  build-only items.

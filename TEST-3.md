@@ -334,3 +334,25 @@ In Expo Go "Say it" opens a box to type in (tap your keyboard's mic to speak int
 2. + → Say it → the phone asks to use the microphone → Allow.
 3. Say "Spent 250 on groceries yesterday" → Money out, ₱250, Groceries, yesterday; nothing saved until Add.
 4. Home-screen Say it widget → opens on the listening sheet and hears you.
+
+## 25. Batch 2026-10-31 night: welcome, set-up, Day & night, green widgets, voice everywhere. NOT YET TESTED.
+In Expo Go (cd C:\Projects\household-finance-mobile, git pull, cd mobile-app, npx expo start -c):
+1. Welcome (log out, or a new guest): the logo draws itself; the day plays by itself (morning
+   green widgets, lunch Say it, 5 PM bill, evening household, night). The sun moves along the arc
+   and changes look; the sky changes; at night the screen softly turns dark. Tap a time: it stays
+   there, then carries on. Phone's "Remove animations" on: nothing plays by itself.
+2. Get started: set-up has the logo, the sun moving up the arc with each step, "1 of 4 · Morning".
+   S1 your name appears in "Good morning, …". S2 picks show "Home will show first" chips.
+   S3 Light / Dark / Day & night / Device (the highlight glides). S4 the lock closes (Yes) or
+   opens (No). See my Home: "You're all set, [name]!" then Home.
+3. Home's moon button: a small menu (Light, Dark, Day & night with tonight's times, Match my phone).
+   Picking one changes the look at once. With Day & night the button is a half-filled circle.
+4. Settings › Appearance: a Day & night sticker. On: Match my phone turns off, Dark mode greys out
+   and says "Set by Day & night: on until …".
+5. Day & night at sunset (leave the app open around 6 PM, or your sunset with Live weather on):
+   it softly fades to dark with a note "Sunset: dark until sunrise". Sunrise: back to light.
+6. Say it on: New trip ("Baguio weekend, November 14 to 16"), Log payday ("18,000 today"), a pot's
+   Add money, new account ("BPI savings 24,300"), Transfer ("Move 2,000 from BPI savings to
+   GCash"), new investment, Home's "Estimate the rest", and an event's items ("Cake 1,500, gift
+   2,000 and balloons 500"). (Expo Go: the typing box; real listening in the build.)
+Needs the NEW build: widgets green (orange when running low, red when over); real listening (s24).

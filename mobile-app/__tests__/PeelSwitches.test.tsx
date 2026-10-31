@@ -57,6 +57,21 @@ test('turning on Dark mode, then Match my phone greys out Dark mode', async () =
   expect(checked('settings-theme-dark').disabled).toBe(true);
 }, 30000);
 
+// Day & night (Cath, 2026-10-31, mockup D3): a third Theme sticker. Turning it on turns Match my
+// phone off and greys out Dark mode, which then says what decides it.
+test('Day & night sticker: on turns Match my phone off and greys out Dark mode', async () => {
+  await require('@react-native-async-storage/async-storage').removeItem('colorModePreference'); // (an earlier check saved Match my phone)
+  await openAppearance();
+  await act(async () => { fireEvent(screen.getByTestId('settings-theme-match'), 'accessibilityAction', { nativeEvent: { actionName: 'activate' } }); });
+  expect(checked('settings-theme-match').checked).toBe(true);
+  await act(async () => { fireEvent(screen.getByTestId('settings-theme-daynight'), 'accessibilityAction', { nativeEvent: { actionName: 'activate' } }); });
+  expect(checked('settings-theme-daynight').checked).toBe(true);
+  expect(checked('settings-theme-match').checked).toBe(false);
+  expect(checked('settings-theme-dark').disabled).toBe(true);
+  expect(screen.getByText(/^Set by Day & night: (on|off) until /)).toBeTruthy();
+  expect(screen.getByText(/^Today: dark from /)).toBeTruthy();
+}, 30000);
+
 test('a setting sticker saves the setting (Falling leaves off, then on again)', async () => {
   await openAppearance();
   expect(checked('settings-falling-leaves').checked).toBe(true);
