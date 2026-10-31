@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
 import { SayItButton } from '../components/SayIt';
-import { parseVoice, nextDueDate as voiceDueDate } from '../voiceParse';
+import { parseVoice, nextDueDate as voiceDueDate, voiceItems } from '../voiceParse';
 import { redUnlessZero, toneUnlessZero } from '../moneyColor';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, notDeleted, alertNotDeleted } from '../messages';
@@ -736,6 +736,15 @@ export default function EventsScreen() {
           >
             <Text style={{ fontSize: 17, fontWeight: '700', color: colors.gold }}>+ Add an item</Text>
           </TouchableOpacity>
+          <SayItButton
+            compact
+            testID="event-items-say-it"
+            example="Cake 1,500, gift 2,000 and balloons 500"
+            onHeard={(text) => {
+              const heard = voiceItems(text);
+              if (heard.length) setItemsInput((rows) => [...rows.filter((r) => r.name.trim() || r.cost !== ''), ...heard.map((h) => ({ id: makeId('evitem'), name: h.name, cost: h.amount ?? ('' as const) }))]);
+            }}
+          />
         </FormGroup>
         <Footnote>List the cake, gift and so on, and the cost adds itself up. Or just type one amount at the top.</Footnote>
 

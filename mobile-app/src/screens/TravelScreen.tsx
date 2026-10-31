@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
 import { SayItButton } from '../components/SayIt';
-import { parseVoice, splitItems } from '../voiceParse';
+import { parseVoice, splitItems, voiceTrip } from '../voiceParse';
 import { animateNextLayout } from '../animateLayout';
 import { redUnlessZero, toneUnlessZero } from '../moneyColor';
 import ErrorNote from '../components/ErrorNote';
@@ -1055,6 +1055,17 @@ export default function TravelScreen() {
         header={<SheetBar title={editingId ? 'Edit trip' : 'New trip'} onCancel={closeModal} onDone={handleSaveTrip} doneLabel={editingId ? 'Save' : 'Add'} />}
       >
         {/* The budget isn't typed: it's everything on the checklist added up (blue = planned). */}
+        {!editingId && (
+          <SayItButton
+            example="Baguio weekend, November 14 to 16"
+            onHeard={(text) => {
+              const v = voiceTrip(text);
+              if (v.name) setNameInput(v.name);
+              if (v.start) setStartDateInput(v.start);
+              if (v.end) setEndDateInput(v.end);
+            }}
+          />
+        )}
         {tripTab === 'budget' && <BigTotal label="Budget" value={formatPeso(formBudget)} sub="Adds up from your checklist" color={colors.planned} />}
 
         <FormGroup>

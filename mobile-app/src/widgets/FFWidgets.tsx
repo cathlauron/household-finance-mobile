@@ -5,24 +5,29 @@ import type { WidgetSnapshot } from './widgetData';
 
 // Home screen widgets (mockup W2, approved by Cath 2026-10-30), drawn with the widget
 // library's own pieces (not app screens). Colours are the app's: the crimson Left-to-spend
-// card, soft paper cards, pink buttons. Tapping 🎙 Say it opens the app on voice entry,
+// card (green by default, following the mood since 2026-10-31), soft paper cards. Tapping 🎙 Say it opens the app on voice entry,
 // + Add on a new transaction, anywhere else opens the app.
 
 export const WIDGET_NAMES = ['LeftToSpend', 'SayIt', 'SpendSay', 'DueSoon', 'Month', 'Trip'] as const;
 export type WidgetName = (typeof WIDGET_NAMES)[number];
 
-const C = {
-  ink: '#2A1A20',
-  muted: '#7A6670',
-  pink: '#F28AA6',
-  pinkInk: '#3B0F1E',
-  tint: '#FBE3EA',
-  rose: '#C2185B',
-  red: '#B3262E',
-  white: '#FFFFFF',
-} as const;
-const CRIMSON = { from: '#E2556F', to: '#7E0F27', orientation: 'TR_BL' } as const;
-const PAPER = { from: '#FFFFFF', to: '#FFF4F6', orientation: 'TOP_BOTTOM' } as const;
+// 2026-10-31 (Cath): green by default, like the Left to Spend card, and following the mood like
+// Home: burnt orange when running low, red when over (green with Mood colours off). Was crimson.
+type Mood = 'good' | 'low' | 'over';
+type Hex = `#${string}`;
+const MOODS: Record<Mood, { hero: [Hex, Hex]; accent: Hex; tint: Hex; paperTo: Hex }> = {
+  good: { hero: ['#2C5E48', '#122B21'], accent: '#2E6B47', tint: '#E6F0EA', paperTo: '#F1F7F3' },
+  low: { hero: ['#C25412', '#7A2C00'], accent: '#A04208', tint: '#FCE6D6', paperTo: '#FFF4EC' },
+  over: { hero: ['#D12A36', '#850A16'], accent: '#B4234A', tint: '#FBDDE3', paperTo: '#FFF4F6' },
+};
+export function widgetColours(mood?: Mood | null) {
+  const m = MOODS[mood ?? 'good'];
+  return {
+    C: { ink: '#111111' as Hex, muted: '#6C6C70' as Hex, pink: m.accent, pinkInk: '#FFFFFF' as Hex, tint: m.tint, rose: m.accent, red: '#B3262E' as Hex, white: '#FFFFFF' as Hex },
+    CRIMSON: { from: m.hero[0], to: m.hero[1], orientation: 'TR_BL' } as const,
+    PAPER: { from: '#FFFFFF', to: m.paperTo, orientation: 'TOP_BOTTOM' } as const,
+  };
+}
 const BLUE = { from: '#5C8DE8', to: '#1D3C86', orientation: 'TR_BL' } as const;
 
 export const VOICE_URI = 'financeflow://voice';
@@ -50,7 +55,8 @@ function bar(pct: number, color: string, w = 150): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="8" viewBox="0 0 ${w} 8"><rect width="${w}" height="8" rx="4" fill="#F1E4E8"/><rect width="${fill.toFixed(1)}" height="8" rx="4" fill="${color}"/></svg>`;
 }
 
-function Buttons({ onCrimson }: { onCrimson: boolean }) {
+function Buttons({ onCrimson, s, heroInk }: { onCrimson: boolean; s?: WidgetSnapshot | null; heroInk?: Hex }) {
+  const { C } = widgetColours(s?.mood);
   return (
     <FlexWidget style={{ flexDirection: 'row', width: 'match_parent', marginTop: 10, flexGap: 8 }}>
       <FlexWidget
@@ -58,7 +64,7 @@ function Buttons({ onCrimson }: { onCrimson: boolean }) {
         clickActionData={{ uri: VOICE_URI }}
         style={{ flex: 1, height: 36, borderRadius: 14, backgroundColor: onCrimson ? C.white : C.pink, justifyContent: 'center', alignItems: 'center' }}
       >
-        {T('🎙 Say it', 13, onCrimson ? C.rose : C.pinkInk, '900')}
+        {T('🎙 Say it', 13, onCrimson ? heroInk ?? C.rose : C.pinkInk, '900')}
       </FlexWidget>
       <FlexWidget
         clickAction="OPEN_URI"
@@ -74,6 +80,7 @@ function Buttons({ onCrimson }: { onCrimson: boolean }) {
 const payday = (s: WidgetSnapshot) => (s.daysToPayday === null ? 'until month end' : `${s.daysToPayday} ${s.daysToPayday === 1 ? 'day' : 'days'} to payday`);
 
 export function LeftToSpendWidget({ s }: { s: WidgetSnapshot }) {
+  const { C, CRIMSON, PAPER } = widgetColours(s.mood);
   return (
     <FlexWidget clickAction="OPEN_APP" style={{ height: 'match_parent', width: 'match_parent', borderRadius: 24, padding: 14, backgroundGradient: CRIMSON, justifyContent: 'space-between' }}>
       <FlexWidget style={{ flexDirection: 'column' }}>
@@ -88,7 +95,8 @@ export function LeftToSpendWidget({ s }: { s: WidgetSnapshot }) {
   );
 }
 
-export function SayItWidget() {
+export function SayItWidget({ s }: { s?: WidgetSnapshot | null } = {}) {
+  const { C, PAPER } = widgetColours(s?.mood);
   const mic = `<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 72 72"><circle cx="36" cy="36" r="36" fill="${C.pink}" fill-opacity="0.3"/><circle cx="36" cy="36" r="28" fill="${C.pink}"/><g transform="translate(24 22)" fill="none" stroke="${C.pinkInk}" stroke-width="2.4" stroke-linecap="round"><rect x="8" y="1" width="8" height="15" rx="4"/><path d="M3 12a9 9 0 0 0 18 0M12 21v4"/></g></svg>`;
   return (
     <FlexWidget clickAction="OPEN_URI" clickActionData={{ uri: VOICE_URI }} style={{ height: 'match_parent', width: 'match_parent', borderRadius: 24, padding: 12, backgroundGradient: PAPER, justifyContent: 'center', alignItems: 'center' }}>
@@ -100,6 +108,7 @@ export function SayItWidget() {
 }
 
 export function SpendSayWidget({ s }: { s: WidgetSnapshot }) {
+  const { C, CRIMSON, PAPER } = widgetColours(s.mood);
   return (
     <FlexWidget clickAction="OPEN_APP" style={{ height: 'match_parent', width: 'match_parent', borderRadius: 24, padding: 14, backgroundGradient: CRIMSON, justifyContent: 'space-between' }}>
       <FlexWidget style={{ flexDirection: 'row', width: 'match_parent', justifyContent: 'space-between' }}>
@@ -110,12 +119,13 @@ export function SpendSayWidget({ s }: { s: WidgetSnapshot }) {
         </FlexWidget>
         <SvgWidget svg={sparkSvg(s.week, '#FFFFFF', 110, 46)} style={{ width: 110, height: 46 }} />
       </FlexWidget>
-      <Buttons onCrimson />
+      <Buttons onCrimson s={s} />
     </FlexWidget>
   );
 }
 
 function DueRows({ s, max }: { s: WidgetSnapshot; max: number }) {
+  const { C } = widgetColours(s.mood);
   if (!s.due.length) return T('Nothing due in the next month', 12, C.muted, '700', { marginTop: 6 });
   return (
     <FlexWidget style={{ flexDirection: 'column', width: 'match_parent' }}>
@@ -135,6 +145,7 @@ function DueRows({ s, max }: { s: WidgetSnapshot; max: number }) {
 }
 
 export function DueSoonWidget({ s }: { s: WidgetSnapshot }) {
+  const { C, CRIMSON, PAPER } = widgetColours(s.mood);
   return (
     <FlexWidget clickAction="OPEN_APP" style={{ height: 'match_parent', width: 'match_parent', borderRadius: 24, padding: 14, backgroundGradient: PAPER }}>
       <FlexWidget style={{ flexDirection: 'row', width: 'match_parent', justifyContent: 'space-between' }}>
@@ -147,6 +158,7 @@ export function DueSoonWidget({ s }: { s: WidgetSnapshot }) {
 }
 
 export function MonthWidget({ s }: { s: WidgetSnapshot }) {
+  const { C, CRIMSON, PAPER } = widgetColours(s.mood);
   const colors = [C.pink, '#3D6FD9', '#E2556F'];
   return (
     <FlexWidget clickAction="OPEN_APP" style={{ height: 'match_parent', width: 'match_parent', borderRadius: 24, padding: 14, backgroundGradient: PAPER, justifyContent: 'space-between' }}>
@@ -167,12 +179,13 @@ export function MonthWidget({ s }: { s: WidgetSnapshot }) {
         ))}
       </FlexWidget>
       <DueRows s={s} max={2} />
-      <Buttons onCrimson={false} />
+      <Buttons onCrimson={false} s={s} />
     </FlexWidget>
   );
 }
 
 export function TripWidget({ s }: { s: WidgetSnapshot }) {
+  const { C, CRIMSON, PAPER } = widgetColours(s.mood);
   if (!s.trip) {
     return (
       <FlexWidget clickAction="OPEN_APP" style={{ height: 'match_parent', width: 'match_parent', borderRadius: 24, padding: 14, backgroundGradient: BLUE, justifyContent: 'center' }}>
@@ -194,12 +207,13 @@ export function TripWidget({ s }: { s: WidgetSnapshot }) {
         <FlexWidget style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: 'rgba(255, 255, 255, 0.2)' }}>{T(`${tr.left} left`, 11, C.white, '800')}</FlexWidget>
       </FlexWidget>
       <SvgWidget svg={track} style={{ width: 'match_parent', height: 8 }} />
-      <Buttons onCrimson />
+      <Buttons onCrimson s={s} heroInk="#2F5FC4" />
     </FlexWidget>
   );
 }
 
 export function EmptyWidget() {
+  const { C, PAPER } = widgetColours('good');
   return (
     <FlexWidget clickAction="OPEN_APP" style={{ height: 'match_parent', width: 'match_parent', borderRadius: 24, padding: 14, backgroundGradient: PAPER, justifyContent: 'center', alignItems: 'center' }}>
       {T('Finance Flow', 14, C.rose, '900')}
@@ -209,7 +223,7 @@ export function EmptyWidget() {
 }
 
 export function widgetFor(name: string, s: WidgetSnapshot | null): React.JSX.Element {
-  if (name === 'SayIt') return <SayItWidget />;
+  if (name === 'SayIt') return <SayItWidget s={s} />;
   if (!s) return <EmptyWidget />;
   switch (name) {
     case 'LeftToSpend':

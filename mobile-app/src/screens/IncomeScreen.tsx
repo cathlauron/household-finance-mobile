@@ -1,6 +1,6 @@
 import { firstTimeOpen } from '../handledOpen';
 import { SayItButton } from '../components/SayIt';
-import { parseVoice, nextDueDate as voiceDueDate } from '../voiceParse';
+import { parseVoice, nextDueDate as voiceDueDate, voiceThing } from '../voiceParse';
 import { toneUnlessZero } from '../moneyColor';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, alertNotDeleted } from '../messages';
@@ -787,6 +787,13 @@ export default function IncomeScreen({ openIncomeId, openIncomeNonce, personId, 
       >
         {!!logSheet && (
           <>
+            <SayItButton
+              example="18,000 today"
+              onHeard={(text) => {
+                const v = voiceThing(text);
+                setLogSheet((l) => (l ? { ...l, ...(v.amount !== undefined ? { amount: v.amount } : {}), ...(v.date ? { date: v.date } : {}) } : l));
+              }}
+            />
             <BigAmount
               label={`What arrived from ${(model.income || []).find((x) => x.id === logSheet.sourceId)?.sourceName || 'this source'}`}
               mark="required"

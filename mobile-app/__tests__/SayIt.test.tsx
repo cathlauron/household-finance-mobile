@@ -31,3 +31,28 @@ test('every add form has Say it (inventory, Cath: "everything")', () => {
     expect([f, fs.readFileSync(`src/screens/${f}Screen.tsx`, 'utf8').includes('<SayItButton')]).toEqual([f, true]);
   }
 });
+
+// 2026-10-31 (Cath: "add voice on forms that don't have it yet"): the rest of the inventory.
+test('the rest of the forms have Say it too (new trip, Log payday, Add money, new account, transfer, investment, estimate, event items)', () => {
+  const fs = require('fs');
+  const places: [string, string][] = [
+    ['src/screens/TravelScreen.tsx', 'Baguio weekend, November 14 to 16'],
+    ['src/screens/IncomeScreen.tsx', '18,000 today'],
+    ['src/screens/PotDetailScreen.tsx', '2,000 from GCash'],
+    ['src/screens/AccountsScreen.tsx', 'BPI savings 24,300'],
+    ['src/screens/TransferScreen.tsx', 'Move 2,000 from BPI savings to GCash'],
+    ['src/screens/InvestmentsScreen.tsx', 'Pag-IBIG MP2, put in 50,000'],
+    ['src/components/CalmHome.tsx', 'About 2,000'],
+    ['src/screens/EventsScreen.tsx', 'Cake 1,500, gift 2,000 and balloons 500'],
+  ];
+  for (const [file, example] of places) {
+    const src = fs.readFileSync(file, 'utf8');
+    expect([file, src.includes('<SayItButton') && src.includes(`example="${example}"`)]).toEqual([file, true]);
+  }
+});
+
+test('a transfer said out loud fills the amount and both accounts', async () => {
+  jest.resetModules();
+  const { voiceTransfer } = require('../src/voiceParse');
+  expect(voiceTransfer('Move 2,000 from BPI savings to GCash', ['BPI Savings', 'GCash', 'Cash'])).toMatchObject({ amount: 2000, from: 'BPI Savings', to: 'GCash' });
+});

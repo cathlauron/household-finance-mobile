@@ -3,7 +3,7 @@
 // widgets can draw without opening the app. Only these display numbers are kept (never the
 // household data itself), and with "Hide amounts" on they're kept as ••••.
 import type { HouseholdModel } from '../types';
-import { computeLeftToSpend, formatPeso } from '../balanceProjection';
+import { computeLeftToSpend, formatPeso, getLeftToSpendStatus } from '../balanceProjection';
 import { computeEnvelopes } from '../envelopes';
 import { getUpcomingDue } from '../screens/DashboardScreen';
 import { getOverdueItems } from '../overdue';
@@ -13,6 +13,7 @@ export type WidgetSnapshot = {
   hidden: boolean;
   lts: string;
   ltsNegative: boolean;
+  mood: 'good' | 'low' | 'over'; // the widgets' colour, like Home's card (green with Mood colours off)
   daysToPayday: number | null; // null: no payday set (Left to spend runs to month end)
   periodPct: number; // how much of the period is still ahead, 0-100 (the ring)
   perDay: string;
@@ -93,6 +94,7 @@ export function makeWidgetSnapshot(model: HouseholdModel, opts: { hidden: boolea
     hidden: opts.hidden,
     lts: m(lts.amount),
     ltsNegative: lts.amount < 0,
+    mood: model.settings?.moodColorsEnabled === false ? 'good' : getLeftToSpendStatus(lts.amount, model, { error: '', orange: '', ok: '' }).mood,
     daysToPayday,
     periodPct,
     perDay: lts.amount > 0 ? m(lts.amount / days) : m(0),

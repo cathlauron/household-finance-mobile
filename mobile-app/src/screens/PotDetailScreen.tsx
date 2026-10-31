@@ -18,6 +18,8 @@ import DeleteRow from '../components/DeleteRow';
 import { WhoFootnote, useWho } from '../components/WhoLogged';
 import { withoutSavingsPot } from '../deleteRecords';
 import AmountInput from '../components/AmountInput';
+import { SayItButton } from '../components/SayIt';
+import { voiceThing } from '../voiceParse';
 import AccountPicker, { accountProblem } from '../components/AccountPicker';
 import { useTheme } from '../ThemeContext';
 import SavingsScreen from './SavingsScreen';
@@ -334,6 +336,15 @@ export default function PotDetailScreen() {
         <View style={{ paddingHorizontal: 16, paddingBottom: 24, gap: 12 }}>
           {sheet !== 'keptIn' && (
             <>
+              {sheet === 'add' && (
+                <SayItButton
+                  example="2,000 from GCash"
+                  onHeard={(text) => {
+                    const v = voiceThing(text);
+                    if (v.amount !== undefined) setAmount(v.amount);
+                  }}
+                />
+              )}
               <MarkedLabel
                 text={sheet === 'auto' ? 'Amount to add on each payday' : sheet === 'out' ? `Up to ${formatPeso(saved)}` : 'Amount'}
                 mark="required"

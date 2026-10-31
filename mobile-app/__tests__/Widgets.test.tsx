@@ -78,3 +78,28 @@ test('the build has every phone-side part the app asks for (widgets, listening)'
   const names = app.expo.plugins.map((p: any) => (typeof p === 'string' ? p : p[0]));
   expect(names).toEqual(expect.arrayContaining(['react-native-android-widget', 'expo-speech-recognition']));
 });
+
+// Cath, 2026-10-31: "this is supposed to be green as default". The widgets take the Left to
+// Spend card's colour: green, burnt orange when running low, red when over; green with Mood
+// colours off. (They were crimson from mockup W2.)
+test('widgets are green by default and follow the mood like Home', () => {
+  const { widgetColours } = require('../src/widgets/FFWidgets');
+  const bal = require('../src/balanceProjection');
+  const spy = jest.spyOn(bal, 'getLeftToSpendStatus').mockReturnValue({ color: '', label: 'Looking good', mood: 'good' });
+  const green = makeWidgetSnapshot(model(), { hidden: false, now: new Date(2026, 9, 30, 12) });
+  expect(widgetColours(green.mood).CRIMSON.from).toBe('#2C5E48');
+  const leaf = (el: any) => el.type(el.props);
+  expect(leaf(widgetFor('LeftToSpend', green)).props.style.backgroundGradient.from).toBe('#2C5E48');
+  expect(leaf(widgetFor('SayIt', null)).props.style.backgroundGradient.to).toBe('#F1F7F3');
+
+  spy.mockReturnValue({ color: '', label: 'Over budget', mood: 'over' });
+  const over = makeWidgetSnapshot(model(), { hidden: false, now: new Date(2026, 9, 30, 12) });
+  expect(over.mood).toBe('over');
+  expect(leaf(widgetFor('SpendSay', over)).props.style.backgroundGradient.from).toBe('#D12A36');
+  spy.mockReturnValue({ color: '', label: 'Running low', mood: 'low' });
+  expect(makeWidgetSnapshot(model(), { hidden: false, now: new Date(2026, 9, 30, 12) }).mood).toBe('low');
+  const off: any = model();
+  off.settings = { ...off.settings, moodColorsEnabled: false };
+  expect(makeWidgetSnapshot(off, { hidden: false, now: new Date(2026, 9, 30, 12) }).mood).toBe('good');
+  spy.mockRestore();
+});

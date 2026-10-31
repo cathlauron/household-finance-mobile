@@ -24,6 +24,8 @@ import Button from '../components/Button';
 import SegmentedControl from '../components/SegmentedControl';
 import AccountPicker, { accountProblem } from '../components/AccountPicker';
 import { SheetBar, BigAmount, FormGroup, InputRow, AmountRow, PickerRow, SwitchRow, Footnote, Choices, useOpenRow, ordinal } from '../components/SimpleForm';
+import { SayItButton } from '../components/SayIt';
+import { voiceThing } from '../voiceParse';
 import { showLeafTick } from '../components/LeafTick';
 import { notSaved } from '../messages';
 import { formatPeso } from '../balanceProjection';
@@ -278,6 +280,16 @@ export default function InvestmentsScreen() {
 
       {/* New / edit */}
       <BottomSheet visible={formOpen} onClose={() => setFormOpen(false)} grouped header={<SheetBar title={editingId ? 'Edit investment' : 'New investment'} onCancel={() => setFormOpen(false)} onDone={saveInvestment} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}>
+        {!editingId && (
+          <SayItButton
+            example="Pag-IBIG MP2, put in 50,000"
+            onHeard={(text) => {
+              const v = voiceThing(text);
+              if (v.name) setName(v.name.replace(/,?\s*put in\s*$/i, ''));
+              if (v.amount !== undefined) setStartPutIn(v.amount);
+            }}
+          />
+        )}
         <FormGroup>
           <PickerRow mark="required" label="Kind" value={kindInfo(kind).label} open={openRow === 'kind'} onToggle={() => toggleRow('kind')} testID="investment-kind-row">
             <Choices options={INVESTMENT_KINDS.map((k) => ({ id: k.id, label: k.label }))} value={kind} onChange={(v) => setKind(v as InvestmentKind)} />

@@ -8,6 +8,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, TextInput } from '../components/AppText';
 import AmountInput from '../components/AmountInput';
+import { SayItButton } from '../components/SayIt';
+import { voiceTransfer } from '../voiceParse';
 import DateField from '../components/DateField';
 import { MarkedLabel } from '../components/MarkedLabel';
 import { useTheme } from '../ThemeContext';
@@ -170,6 +172,20 @@ export default function TransferScreen() {
           </Text>
         ) : (
           <>
+            <SayItButton
+              example="Move 2,000 from BPI savings to GCash"
+              onHeard={(text) => {
+                // 2026-10-31 (Cath): voice on every form. Only your own accounts are matched.
+                const v = voiceTransfer(text, accounts.map((a) => a.name));
+                if (v.amount !== undefined) setAmount(v.amount);
+                if (v.date) setDate(v.date);
+                const keyOf = (name?: string) => accounts.find((a) => a.name === name)?.key;
+                const from = keyOf(v.from);
+                const to = keyOf(v.to);
+                if (from && accounts.find((a) => a.key === from)?.group !== 'credit') setFromKey(from);
+                if (to) setToKey(to);
+              }}
+            />
             <MarkedLabel text="Amount" mark="required" style={styles.amountLabel} />
             <AmountInput style={styles.bigWrap} inputStyle={styles.bigInput} value={amount} onChangeAmount={setAmount} />
             <View style={styles.group}>

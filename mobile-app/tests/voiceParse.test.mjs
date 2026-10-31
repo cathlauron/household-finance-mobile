@@ -78,3 +78,36 @@ test('names match plurals and case', () => {
   assert.equal(matchName('paid for groceries', ['Grocery']), 'Grocery');
   assert.equal(matchName('the internet bill', ['Internet', 'Internet backup']), 'Internet');
 });
+
+// 2026-10-31 (Cath: "add voice on forms that don't have it yet"): helpers for the rest of the
+// forms (new account, investment, event items, new trip, transfer).
+import { voiceThing, voiceItems, voiceTrip, voiceTransfer } from '../src/voiceParse.ts';
+const NOW = new Date(2026, 9, 31, 12);
+
+test('a name and an amount: new account, investment, Log payday, Add money', () => {
+  assert.deepEqual(voiceThing('BPI savings 24,300', { now: NOW }), { name: 'BPI Savings', amount: 24300 });
+  assert.deepEqual(voiceThing('Pag-IBIG MP2 50,000', { now: NOW }), { name: 'Pag-IBIG MP2', amount: 50000 });
+  assert.deepEqual(voiceThing('18,000 yesterday', { now: NOW }), { amount: 18000, date: '2026-10-30' });
+  assert.deepEqual(voiceThing('about two thousand', { now: NOW }), { amount: 2000 });
+});
+
+test('several items with their costs (event items), commas in amounts kept', () => {
+  assert.deepEqual(voiceItems('Cake 1,500, gift 2,000 and balloons 500'), [
+    { name: 'Cake', amount: 1500 },
+    { name: 'Gift', amount: 2000 },
+    { name: 'Balloons', amount: 500 },
+  ]);
+  assert.deepEqual(voiceItems('cake and flowers'), [{ name: 'Cake' }, { name: 'Flowers' }]);
+});
+
+test('a trip: name and dates ("to 16" stays in the same month)', () => {
+  assert.deepEqual(voiceTrip('Baguio weekend November 14 to 16', NOW), { name: 'Baguio weekend', start: '2026-11-14', end: '2026-11-16' });
+  assert.deepEqual(voiceTrip('Cebu trip from December 28 to January 2', NOW), { name: 'Cebu trip', start: '2026-12-28', end: '2027-01-02' });
+  assert.deepEqual(voiceTrip('Tagaytay day trip', NOW), { name: 'Tagaytay day trip' });
+});
+
+test('a transfer: amount, from and to your own accounts, date', () => {
+  const names = ['BPI Savings', 'GCash', 'Cash'];
+  assert.deepEqual(voiceTransfer('Move 2,000 from BPI savings to GCash today', names, NOW), { amount: 2000, from: 'BPI Savings', to: 'GCash', date: '2026-10-31' });
+  assert.deepEqual(voiceTransfer('5k to cash', names, NOW), { amount: 5000, to: 'Cash' });
+});

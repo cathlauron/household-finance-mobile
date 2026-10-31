@@ -26,6 +26,8 @@ import SwipeableRow from '../components/SwipeableRow';
 import BottomSheet from '../components/BottomSheet';
 import Button from '../components/Button';
 import AmountInput from '../components/AmountInput';
+import { SayItButton } from '../components/SayIt';
+import { voiceThing } from '../voiceParse';
 import { todayISO } from '../dateUtils';
 import GradientFill from '../components/GradientFill';
 import Guided, { useFieldErrors } from '../components/Guided';
@@ -472,6 +474,16 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
             : `New ${activeGroup ? GROUP_LABELS[activeGroup].toLowerCase() : ''} account`
         }
       >
+        {!editingId && (
+          <SayItButton
+            example="BPI savings 24,300"
+            onHeard={(text) => {
+              const v = voiceThing(text);
+              if (v.name) setNameInput(v.name);
+              if (v.amount !== undefined) setAmountInput(v.amount);
+            }}
+          />
+        )}
         <Guided {...fieldErrors.props('name')} focusRef={nameRef} inset={false} radius={12}>
         <MarkedLabel text="Account name" mark="required" style={[styles.inputLabel, fieldErrors.field === 'name' && { color: colors.error, fontWeight: '700' }]} />
         <TextInput

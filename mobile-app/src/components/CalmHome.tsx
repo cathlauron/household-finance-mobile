@@ -9,6 +9,8 @@ import { Text } from './AppText';
 import GradientFill from './GradientFill';
 import BottomSheet from './BottomSheet';
 import AmountInput from './AmountInput';
+import { SayItButton } from './SayIt';
+import { voiceThing } from '../voiceParse';
 import AccountPicker, { accountProblem } from './AccountPicker';
 import { showLeafTick } from './LeafTick';
 import { useTheme } from '../ThemeContext';
@@ -312,6 +314,13 @@ function EstimateSheet({
         <Text style={s.sheetIntro}>
           About how much did you spend from {range} that isn't logged yet? It's added as one "Other" line, so you don't have to remember every coffee.
         </Text>
+        <SayItButton
+          example="About 2,000"
+          onHeard={(text) => {
+            const v = voiceThing(text);
+            if (v.amount !== undefined) setAmount(v.amount);
+          }}
+        />
         <AmountInput autoFocus value={amount} onChangeAmount={setAmount} placeholder="0.00" />
         <AccountPicker mark="required" model={model} direction="out" amount={amount} value={pm} onChange={setPm} label="Mostly paid from" />
         <TouchableOpacity onPress={add} disabled={saving} style={[s.primary, { backgroundColor: colors.buttonFill, opacity: saving ? 0.6 : 1 }]} accessibilityRole="button" testID="estimate-add">

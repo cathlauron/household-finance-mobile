@@ -42,7 +42,8 @@ const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 // "two thousand five hundred" -> 2500; "2.5k" -> 2500; "1,500" -> 1500. Returns the amount
 // and where it was in the text, or null.
 function findAmount(t: string): { value: number; start: number; end: number } | null {
-  const digits = /(?:₱|php|p|\$)?\s?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{1,2}))?\s?(k|thousand|million)?(?!\s?(?:st|nd|rd|th)\b)(?!\s?%)/i;
+  // (?<!…): a number glued to letters ("MP2") is part of a name, not an amount (2026-10-31).
+  const digits = /(?<![A-Za-z0-9])(?:₱|php|p|\$)?\s?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{1,2}))?\s?(k|thousand|million)?(?!\s?(?:st|nd|rd|th)\b)(?!\s?%)/i;
   const re = new RegExp(digits.source, 'gi');
   let m: RegExpExecArray | null;
   while ((m = re.exec(t))) {
@@ -224,4 +225,93 @@ export function nextDueDate(day: number, now: Date = new Date()): string {
     if (d >= today) return iso(d);
   }
   return iso(today);
+}
+
+// ---- 2026-10-31 (Cath: voice on every form that didn't have it) ----
+
+const FILLER = /\b(?:about|around|roughly|maybe|add|added|put|move|moved|in|into|money|pesos?|php|for|the|a|an|of|on|yesterday|today|tomorrow|this|last)\b/gi;
+const AMOUNT_TEXT = /(?<![A-Za-z0-9])(?:₱|php|p|\$)?\s?\d[\d,]*(?:\.\d+)?\s?(?:k|thousand|million)?/gi;
+const capFirst = (x: string) => (x ? x.charAt(0).toUpperCase() + x.slice(1) : x);
+
+function leftoverName(text: string): string {
+  return capFirst(
+    text
+      .replace(AMOUNT_TEXT, ' ')
+      .replace(new RegExp(String.raw`\b(?:${Object.keys(NUMBER_WORDS).join('|')}|hundred|thousand|million)\b`, 'gi'), ' ')
+      .replace(FILLER, ' ')
+      .replace(/[,.]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim(),
+  );
+}
+
+// A name and an amount (and a date if one was said): new account ("BPI savings 24,300"),
+// new investment, Log payday, Add money, Home's estimate. Only what was heard is returned.
+export function voiceThing(text: string, opts: { now?: Date } = {}): { name?: string; amount?: number; date?: string } {
+  const h = parseVoice(text, { now: opts.now });
+  const out: { name?: string; amount?: number; date?: string } = {};
+  const name = leftoverName(h.name ?? text); // ("two thousand" alone is an amount, not a name)
+  if (name) out.name = name;
+  if (h.amount !== undefined) out.amount = h.amount;
+  if (h.date) out.date = h.date;
+  return out;
+}
+
+// Several things with their costs in one go: "Cake 1,500, gift 2,000 and balloons 500"
+// (the comma inside 1,500 stays part of the amount).
+export function voiceItems(text: string): { name: string; amount?: number }[] {
+  return text
+    .replace(/^\s*(?:add|put|buy|get)\s+/i, '')
+    .split(/\s*,\s*(?!\d{3}(?!\d))|\s+and\s+|\s+then\s+/i)
+    .map((part) => part.trim().replace(/[.!?]+$/, ''))
+    .filter(Boolean)
+    .map((part) => {
+      const a = findAmount(part);
+      const name = capFirst((a ? part.slice(0, a.start) + part.slice(a.end) : part).replace(/\s+/g, ' ').trim());
+      return a ? { name, amount: a.value } : { name };
+    })
+    .filter((x) => x.name);
+}
+
+// A trip: "Baguio weekend November 14 to 16", "Cebu trip from December 28 to January 2".
+// Trips are ahead, so a date already past means next year.
+export function voiceTrip(text: string, now: Date = new Date()): { name?: string; start?: string; end?: string } {
+  const out: { name?: string; start?: string; end?: string } = {};
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const monthRe = MONTHS.join('|');
+  const startM = new RegExp(String.raw`\b(${monthRe})\s+(\d{1,2})(?:st|nd|rd|th)?\b`, 'i').exec(text);
+  const nameEnd = startM ? startM.index : text.length;
+  const name = text.slice(0, nameEnd).replace(/\s+(?:from|on|for)\s*$/i, '').replace(/[,\s]+$/, '').trim();
+  if (name) out.name = capFirst(name);
+  if (!startM) return out;
+  const sm = MONTHS.indexOf(startM[1].toLowerCase());
+  let start = new Date(today.getFullYear(), sm, Number(startM[2]));
+  if (start < today) start = new Date(today.getFullYear() + 1, sm, Number(startM[2]));
+  out.start = iso(start);
+  const rest = text.slice(startM.index + startM[0].length);
+  const endM = new RegExp(String.raw`^\s*(?:to|until|till|through|-)\s*(?:(${monthRe})\s+)?(\d{1,2})(?:st|nd|rd|th)?\b`, 'i').exec(rest);
+  if (endM) {
+    const em = endM[1] ? MONTHS.indexOf(endM[1].toLowerCase()) : sm;
+    let end = new Date(start.getFullYear(), em, Number(endM[2]));
+    if (end < start) end = endM[1] ? new Date(start.getFullYear() + 1, em, Number(endM[2])) : new Date(start.getFullYear(), sm + 1, Number(endM[2]));
+    out.end = iso(end);
+  }
+  return out;
+}
+
+// A transfer between your own accounts: "Move 2,000 from BPI savings to GCash today".
+export function voiceTransfer(text: string, accountNames: string[], now: Date = new Date()): { amount?: number; from?: string; to?: string; date?: string } {
+  const out: { amount?: number; from?: string; to?: string; date?: string } = {};
+  const a = findAmount(text);
+  if (a) out.amount = a.value;
+  const stop = String.raw`(?=\s+(?:to|from|today|yesterday|tomorrow|on|last)\b|[.,]|$)`;
+  const from = new RegExp(String.raw`\bfrom\s+(.+?)${stop}`, 'i').exec(text);
+  const to = new RegExp(String.raw`\bto\s+(.+?)${stop}`, 'i').exec(text);
+  const f = from ? matchName(from[1], accountNames) : undefined;
+  const t = to ? matchName(to[1], accountNames) : undefined;
+  if (f) out.from = f;
+  if (t) out.to = t;
+  const d = findDate(text, now);
+  if (d) out.date = d;
+  return out;
 }
