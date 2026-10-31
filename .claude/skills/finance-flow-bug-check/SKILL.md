@@ -254,3 +254,19 @@ When Cath says "bug hunt" (or the next hunt area is up in PROGRESS7.md):
 - Never pile up untested changes: one batch, then her phone check, then the next batch.
 - Never delete or weaken an existing check to make the tests pass. If a check is wrong,
   explain why to Cath first.
+
+## When the app CLOSES on Cath's phone (learned 2026-10-30, B-081)
+
+A crash that closes the app is native: the checks and the hidden browser can't see it.
+Don't guess (two guesses were wrong). Ask Cath for the phone's crash log straight away
+(USB debugging on, phone plugged in), with these copy-paste blocks:
+
+    $adb = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
+    & $adb devices
+    & $adb logcat -c
+    (make it crash, wait 5 seconds)
+    & $adb logcat -d -b main,system,crash -v time > C:\Projects\crash.txt
+
+Then she attaches C:\Projects\crash.txt (File Explorer › This PC › C: › Projects). Look for
+"FATAL EXCEPTION" and fix what the stack names. react-native-svg: never fade (animate
+opacity of) groups inside one drawing; fade the views around separate drawings instead.
