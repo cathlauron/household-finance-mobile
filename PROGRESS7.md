@@ -1390,3 +1390,8 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   making the code, "Send again" after 1 minute, Dark mode 2nd tap closing the app (changed, not
   yet confirmed). TEST-3 s20 = her re-test list. OPEN QUESTION to Cath: email-verified reset
   without Recovery Key (needs an encryption decision; see the session report).
+- 2026-10-30 17:42: Cath picked OPTION 3 for the email-reset question (keep data private; make
+  the Recovery Key effortless). Mockup R saved (design/3.0-mockups/recovery-easy-r.html,
+  artifact 05c17b42...): R1 Save to password manager, R2 the phone's save prompt, R3 unlock
+  options (approve from your other phone first, fill key from password manager, household),
+  R4 "Is this you signing in?" on the other phone. WAITING for her OK before building.
