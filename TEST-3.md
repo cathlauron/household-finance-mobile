@@ -317,3 +317,14 @@ In Expo Go "Say it" opens a box to type in (tap your keyboard's mic to speak int
 5. Groceries: + item → Say it → "milk, eggs and bread" → "Adds 3 items" → Add puts all 3 on the list. Meal → "Say the ingredients".
 6. Travel trip: mic in the Budget "Add an item" row ("Hotel 4,500") and the To-do row ("book the hotel, buy sunscreen and pack chargers" → Add adds all 3).
 7. Income, Savings (new pot), Goals, Events, Shared expenses, Budgets (Envelopes): Say it fills the form.
+
+## 23. Release 3.2.0 build (from v3, 2026-10-30 night). Installed app only.
+1. The app opens and works as in Expo Go (peel, voice typing box, everything from s19-22).
+2. Voice: + → Say it → the phone asks for the microphone → Allow → speak "Spent 250 on groceries yesterday" → the form fills; Save.
+3. Save to password manager (s21 item 2).
+4. Widgets: long-press your home screen → Widgets → Finance Flow: six widgets (Left to spend, Say it, Spend & say, Due soon, Month at a glance, Trip). Add a few.
+   - Numbers match Home (Left to spend, Due soon with anything overdue first).
+   - 🎙 Say it on a widget opens the app on the listening sheet (after unlocking if locked); + Add opens a new transaction.
+   - Add something in the app: the widgets update within a few seconds.
+   - Tap the eye (hide amounts): the widgets show ₱ ••••. Sign out: they say "Open the app once".
+5. Time "Check sign-in speed" (Settings › About & Help) 3 times and send me the numbers.

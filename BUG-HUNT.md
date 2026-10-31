@@ -226,3 +226,21 @@ red-green proof and a phone step as usual. Visual ones get a mockup first (marke
   overwritten the re-locked data with old-key data. FIXED as K5 step 5 (a save names its key
   number; red-green proven in __tests__/KeyChain.test.tsx "step 5"). Envelope v2 reader,
   merge-before-save, waiting changes and the save line checked: nothing else wrong found.
+
+## Full sweep 2026-10-30 night (before the 3.2.0 build): bug-check + smoothness skills
+Scope: everything since 3.2.0's main (batch 2, K3/K5, peel, voice entry, R1, widgets).
+- Data: S-W1 FIXED: the widgets' Due soon left out overdue bills that Home's Due soon shows
+  first (and the "left to pay" total missed them). Now the same as Home (Widgets.test.tsx).
+  Left to spend on the widgets uses the same calculation as Home (computeLeftToSpend).
+- Consistency: Say it now shows only when ADDING (Bills / Debts / Loans / + showed it while
+  editing too). Voice-added grocery / trip items get the added-by tag like typed ones
+  (whoStamp). Delete account and other removals still confirm first.
+- Smoothness: Say it sheet uses the shared curve and speeds (motion.ts VOICE_* added with
+  mockup V), Reduce Motion stills the pulse and bars; test:motion passes. Peel confirmed on
+  her phone. Look: Say it chip matches across forms (hidden browser, light).
+- Security: widgets keep a small display summary on the phone (not the household data);
+  with Hide amounts on it's ••••, and it's removed on sign out / switch account. Nothing in
+  encryption, sync or Firestore rules changed in this sweep. No new Firestore writes.
+- Open (not bugs, for Cath): widgets show amounts while the app is locked (that's what a
+  widget is; the eye / Hide amounts switches them to ••••). Island (live chip) not built yet:
+  needs Android 16 phone-side code, planned after this build proves the new native parts.

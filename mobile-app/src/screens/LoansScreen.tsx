@@ -749,7 +749,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
             <BigAmount mark="required" label="Loan amount" value={totalAmountInput} onChange={setTotalAmountInput} color={directionInput === 'lent' ? colors.positive : colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
           </Guided>
           {/* Voice entry (mockup V, Cath 2026-10-30). */}
-          <SayItButton onHeard={applyVoice} example="I lent Ana 1,000 today" />
+          {!editingId && <SayItButton onHeard={applyVoice} example="I lent Ana 1,000 today" />}
 
           <FormGroup>
             <Guided {...fieldErrors.props('name')} focusRef={nameRef}>

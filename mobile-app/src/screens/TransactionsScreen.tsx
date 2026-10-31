@@ -1216,7 +1216,7 @@ export default function TransactionsScreen({
           />
         </Guided>
         {/* Voice entry (mockup V, Cath 2026-10-30). */}
-        <SayItButton onHeard={applyVoice} example="Spent 250 on groceries yesterday" />
+        {!editingId && <SayItButton onHeard={applyVoice} example="Spent 250 on groceries yesterday" openNonce={route.params?.sayItNonce} />}
 
         {/* Trip items and savings have their own places, so they aren't counted twice. */}
         {directionInput === 'out' && !editingId && (

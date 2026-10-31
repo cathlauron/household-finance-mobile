@@ -741,7 +741,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
             <BigAmount mark="required" label={carriedEdit > 0 ? 'New charges' : regularInput ? 'Amount' : 'Amount due'} value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
           </Guided>
           {/* Voice entry (mockup V, Cath 2026-10-30). */}
-          <SayItButton onHeard={applyVoice} example="Electric bill 2,400 due on the 15th every month" />
+          {!editingId && <SayItButton onHeard={applyVoice} example="Electric bill 2,400 due on the 15th every month" />}
 
           <FormGroup>
             <Guided {...fieldErrors.props('name')} focusRef={nameRef}>

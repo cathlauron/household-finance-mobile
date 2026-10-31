@@ -658,7 +658,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
             <BigAmount mark="required" label="Amount owed" value={amountInput} onChange={setAmountInput} color={colors.negative} autoFocus={!editingId} focusRef={amountRef} invalid={fieldErrors.field === 'amount'} />
           </Guided>
           {/* Voice entry (mockup V, Cath 2026-10-30). */}
-          <SayItButton onHeard={applyVoice} example="Credit card 15,000, minimum 1,500 on the 20th" />
+          {!editingId && <SayItButton onHeard={applyVoice} example="Credit card 15,000, minimum 1,500 on the 20th" />}
 
           <FormGroup>
             <Guided {...fieldErrors.props('creditor')} focusRef={creditorRef}>

@@ -101,6 +101,78 @@
             "com.google.android.googlequicksearchbox"
           ]
         }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "LeftToSpend",
+              "label": "Left to spend",
+              "description": "What you can spend until payday",
+              "minWidth": "110dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "updatePeriodMillis": 1800000,
+              "previewImage": "./assets/widget-preview/left-to-spend.png"
+            },
+            {
+              "name": "SayIt",
+              "label": "Say it",
+              "description": "Add anything by speaking",
+              "minWidth": "110dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "previewImage": "./assets/widget-preview/say-it.png"
+            },
+            {
+              "name": "SpendSay",
+              "label": "Spend & say",
+              "description": "Left to spend, this week, Say it and Add",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "updatePeriodMillis": 1800000,
+              "previewImage": "./assets/widget-preview/spend-say.png"
+            },
+            {
+              "name": "DueSoon",
+              "label": "Due soon",
+              "description": "Your next bills",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "updatePeriodMillis": 1800000,
+              "previewImage": "./assets/widget-preview/due-soon.png"
+            },
+            {
+              "name": "Month",
+              "label": "Month at a glance",
+              "description": "Left to spend, budgets and bills",
+              "minWidth": "250dp",
+              "minHeight": "250dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 4,
+              "updatePeriodMillis": 1800000,
+              "previewImage": "./assets/widget-preview/month.png"
+            },
+            {
+              "name": "Trip",
+              "label": "Trip",
+              "description": "Your trip's spending while it's on",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "updatePeriodMillis": 1800000,
+              "previewImage": "./assets/widget-preview/trip.png"
+            }
+          ]
+        }
       ]
     ],
     "extra": {

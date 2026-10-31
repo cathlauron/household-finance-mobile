@@ -19,9 +19,16 @@ import { canListen, startListening, type Listening } from '../voiceListen';
 const ease = Easing.bezier(CURVE[0], CURVE[1], CURVE[2], CURVE[3]);
 
 // compact: just the mic, for quick-add rows (to-do, trip items, budgets).
-export function SayItButton({ onHeard, label = 'Say it', example, testID = 'say-it', compact }: { onHeard: (text: string) => void; label?: string; example?: string; testID?: string; compact?: boolean }) {
+// openNonce: opens the sheet by itself when it changes (a widget's 🎙 Say it, mockup W2).
+export function SayItButton({ onHeard, label = 'Say it', example, testID = 'say-it', compact, openNonce }: { onHeard: (text: string) => void; label?: string; example?: string; testID?: string; compact?: boolean; openNonce?: number }) {
   const { colors } = useTheme();
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!openNonce) return;
+    // After the form has finished rising.
+    const t = setTimeout(() => setOpen(true), SHEET_OPEN_MS + 120);
+    return () => clearTimeout(t);
+  }, [openNonce]);
   return (
     <>
       <TouchableOpacity

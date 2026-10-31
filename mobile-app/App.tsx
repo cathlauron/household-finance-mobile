@@ -61,6 +61,7 @@ import { StillTherePopup, PausedCover, AutoLockSheet } from './src/components/St
 import { stillThereState } from './src/stillThereClock';
 import HouseholdChanges from './src/components/HouseholdChanges';
 import { ScreenPeelHost } from './src/screenPeel';
+import WidgetSync, { clearWidgets } from './src/widgets/WidgetSync';
 import { onActivity } from './src/activity';
 import { closeOpenSwipeRows } from './src/components/SwipeableRow';
 import { hideAmountsNow } from './src/hideAmounts';
@@ -155,6 +156,8 @@ function AppContent() {
   const pendingDeepLinkPage = useRef<'envelopeAlert' | 'closeOut' | null>(null);
   // Version 2.2: an invite link (financeflow://join/ABC123) opens Household, which joins.
   const pendingJoinOpen = useRef(false);
+  // Mockup W2: a widget's Say it / + Add (financeflow://voice, financeflow://add).
+  const pendingQuickAdd = useRef<'voice' | 'add' | null>(null);
   const handledNotificationIds = useRef<Set<string>>(new Set());
 
   function captureNotificationResponse(response: Notifications.NotificationResponse | null) {
@@ -178,6 +181,13 @@ function AppContent() {
   }
 
   function flushPendingDeepLink() {
+    // Only once signed in and unlocked (it waits through the lock screen).
+    if (pendingQuickAdd.current && navigationRef.isReady() && screenRef.current === 'home') {
+      const kind = pendingQuickAdd.current;
+      pendingQuickAdd.current = null;
+      const now = Date.now();
+      goToMain(navigationRef, { screen: 'Transactions', params: kind === 'voice' ? { addNonce: now, sayItNonce: now } : { addNonce: now } });
+    }
     if (pendingJoinOpen.current && navigationRef.isReady() && screenRef.current === 'home') {
       pendingJoinOpen.current = false;
       navigationRef.navigate('Profile', undefined);
@@ -205,6 +215,12 @@ function AppContent() {
   // straight away when signed in, or after signing in.
   useEffect(() => {
     const handle = (url: string | null) => {
+      const quick = /^financeflow:\/\/(voice|add)\b/i.exec(url || '');
+      if (quick) {
+        pendingQuickAdd.current = quick[1].toLowerCase() as 'voice' | 'add';
+        flushPendingDeepLink();
+        return;
+      }
       const code = joinCodeFromUrl(url);
       if (!code) return;
       setPendingJoinCode(code, inviterFromUrl(url));
@@ -621,6 +637,7 @@ function AppContent() {
   }, [screen]);
 
   async function handleFullSignOut() {
+    clearWidgets();
     // Read these first: the username is cleared later in this function.
     const signedOutUsername = usernameRef.current;
     // Version 2.2: let the last change finish saving first.
@@ -677,6 +694,7 @@ function AppContent() {
   // Devices reads it correctly), then reloads the recent-accounts list
   // fresh and lands back on the switcher instead of a blank sign-in form.
   async function handleSwitchAccount() {
+    clearWidgets();
     clearIdleTimer();
     // Version 2.2: let the last change finish saving first (saving now carries on in the
     // background after a form closes).
@@ -809,6 +827,8 @@ function AppContent() {
         </NavigationContainer>
         {/* Mockup K2e: the Dark mode screen peel (Settings › Appearance), above every page. */}
         <ScreenPeelHost />
+        {/* Mockup W2: keeps the home screen widgets up to date (installed Android app only). */}
+        <WidgetSync />
         {/* H-51 (canvas F2 + F3): what another household member changed, on opening / coming back. */}
         <HouseholdChanges />
         <StillTherePopup

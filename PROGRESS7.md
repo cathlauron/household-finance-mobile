@@ -1442,3 +1442,20 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   her categories, so Category stays for her to pick. Mockup W2 (richer widgets W1-W6 + island:
   just saved / bill due today / trip) published: design/3.0-mockups/widgets-w2.html, artifact
   0554deea... WAITING for her pick + timing (this build or next).
+
+### 2026-10-30 night: WRAP-UP before the 3.2.0 build (Cath: "build widgets, full sweeps, wrap up, build")
+- Widgets (mockup W2 approved, all 6): react-native-android-widget 0.26.0, src/widgets/
+  (widgetData summary, FFWidgets drawing, taskHandler, WidgetSync, available guard,
+  snapshotStore), index.js registers the handler only when the native part exists,
+  app.json plugin (6 widgets + preview images in assets/widget-preview), deep links
+  financeflow://voice and financeflow://add (App.tsx; waits for unlock) -> + form opens Say it.
+  Summary = display numbers only, •••• with Hide amounts, removed on sign out/switch.
+  Prebuild checked here: 6 providers + receivers generated. Can't compile Android here.
+- Island (live chip): NOT built: needs Android 16 phone-side code; planned after this build.
+- Full sweep (bug-check + smoothness): BUG-HUNT "Full sweep 2026-10-30 night". Fixed B-086
+  (widget overdue), Say it only when adding. Checks: 320 logic, 268 screen, hooks, motion.
+- Still open after the build: her sign-in times -> K5 step 9 (stronger password) + remove
+  "Check sign-in speed"; republish hosting (support/delete-account pages); remaining voice
+  forms (New trip, Log payday, pot add money, new account, transfer, investments, Home quick
+  add); island; optional one-time K3 re-lock; parked: TestFlight, social sign-in, stores, iPad.
+- main fast-forwarded to v3 for the build (versionCode 7, version 3.2.0 unchanged: first 3.2.0 build).
