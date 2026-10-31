@@ -167,7 +167,7 @@ red-green proof and a phone step as usual. Visual ones get a mockup first (marke
 | H-43 | "Who added it" tag on everything people add, not just Transactions, Bills, Debts | rule (fix directly where the tag already exists) - **PROVEN 2026-10-29 (B-055)** |
 | H-44 | Trips: everything editable (e.g. budget item added with a name only, amount later), and log an item with no account (e.g. plane tickets paid before) | bug / rule - **editing PROVEN 2026-10-29 (B-056); "log with no account" exists as "Just record it" when ticking, asked Cath if more is wanted** |
 | H-45 | Paid items struck through everywhere it applies | visual: MOCKUP FIRST |
-| H-46 | Every form choice a real dropdown; category guessed and preselected | visual: MOCKUP PER SCREEN FIRST |
+| H-46 | Every form choice a real dropdown; category guessed and preselected | visual: MOCKUP PER SCREEN FIRST - **DONE: built 2026-10-29 (B-065), phone-tested TEST-3 s16** |
 | H-47 | Loans still show the wrong next payment due (came back after B-047). PROVEN 2026-10-29 (B-052): Custom loans now tracked; Cath's rule "a payment before the First payment date means the loan started then" | bug (came back) - fixed, phone check TEST-3 section 12 |
 
 ## Cath's additions, 2026-10-29 afternoon (after "device test is as described" for TEST-3 s12)
@@ -176,8 +176,8 @@ red-green proof and a phone step as usual. Visual ones get a mockup first (marke
 |---|---|---|
 | H-48 | Undo only for 15 minutes (bill/debt/loan payments, shared expense payments, transfers, Edit loan's remove x). After: add receipt, raise amount (never lower), fix date / account; short note | rule (her answers 2026-10-29) - **mockup round, built together with editing so Undo is never limited before Edit exists** |
 | H-49 | Confirm before anything that deletes or does something like it, everywhere | rule - **PROVEN 2026-10-29 (B-057)** |
-| H-50 | Edit loan's logged-payments list doesn't look like the rest of the app | visual: MOCKUP FIRST |
-| H-51 | On opening / coming back: show changes another household member made | new: MOCKUP FIRST (in-app card and banner, she picks) |
+| H-50 | Edit loan's logged-payments list doesn't look like the rest of the app | visual: MOCKUP FIRST - **DONE: D1 (B-061) + D2 (B-066), phone-tested TEST-3 s16** |
+| H-51 | On opening / coming back: show changes another household member made | new: MOCKUP FIRST (in-app card and banner, she picks) - **DONE: F2 + F3 (B-067), phone-tested TEST-3 s16** |
 
 ## Cath's picks and new asks, 2026-10-29 evening (TEST-3 s13 "as described")
 
@@ -188,7 +188,7 @@ red-green proof and a phone step as usual. Visual ones get a mockup first (marke
 
 ### Status 2026-10-29 night
 - PROVEN: H-40/H-41 Debts A2 (B-059), H-52 Left to Spend (B-060), H-48 Undo 15 min + Edit payment (B-061), H-50 D1 look (B-061), B-058 double-tap saves.
-- Next batch: H-46 dropdowns E2 on every form; H-51 household changes banner F2 then list F3; H-50 D2 (inside Edit loan: "Log a payment" opens the pay sheet, tap a payment to edit: needs a sheet over the form); H-45 strikethrough waits for Cath's B3/B4 pick.
+- (Done since: see the rows above and PROGRESS7.md 2026-10-29 17:15.) Next batch then: H-46 dropdowns E2 on every form; H-51 household changes banner F2 then list F3; H-50 D2 (inside Edit loan: "Log a payment" opens the pay sheet, tap a payment to edit: needs a sheet over the form); H-45 strikethrough waits for Cath's B3/B4 pick.
 - H-53 (found 2026-10-29 in the hidden browser, not checked yet): Home's "YOU PICKED" card says "Your first bill goes here" in a household that already has bills.
 
 ### Cath, 2026-10-29 evening (TEST-3 s14 "as described")

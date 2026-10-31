@@ -211,7 +211,7 @@ Before testing: publish the new Firebase rules (steps in Claude's message, SEC-1
    Tap an item: its own page opens.
 3. Guest mode only: Home's "You picked" hides a step once you've added it (a bill, a debt...).
 
-## 16. Batch 2026-10-29 (evening): E2, D2, F2 + F3. NOT YET TESTED.
+## 16. Batch 2026-10-29 (evening): E2, D2, F2 + F3. AS DESCRIBED (Cath, 2026-10-29 17:15).
 
 1. Dropdowns (E2): in any form (new bill, debt, loan, income, pot, shared expense, investment,
    event, the pay sheet), tap a row with choices (Category, Repeats, Paid from, Type...): a

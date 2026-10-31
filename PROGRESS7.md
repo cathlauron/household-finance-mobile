@@ -1462,3 +1462,11 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
 - 2026-10-30 21:20: VS Code "too many active changes" notice. Her folder had only 3 untracked
   items (.vscode/, mobile-app/.firebase/, rules-test/package-lock.json), now in .gitignore.
   Her folder is on main = 6b0c2f9 (latest). Everything logged and pushed.
+
+- 2026-10-31: Cath's video: voice did nothing in the 3.2.0 build -> B-087 fixed + proven (photo
+  picker / camera "microphonePermission": false removed RECORD_AUDIO from the build). Needs a NEW
+  build (TEST-3 s24). Save gate + motion/webPages checks now run on Windows. BUG-HUNT H-46/H-50/H-51
+  rows were stale ("mockup first") although built and phone-tested on 10-29: marked DONE.
+  NEXT = "Still open after the build" above: voice on the remaining forms (New trip, Log payday,
+  pot add money, new account, transfer, investments, Home quick add); sign-in times -> K5 step 9
+  + remove "Check sign-in speed"; republish hosting; island; optional K3 re-lock; H-57.
