@@ -1402,3 +1402,7 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   Go. Peel crash 2nd try (B-081): copy laid out normally, prepared copy see-through.
   Her questions answered: Wispr Flow (works today as keyboard/bubble; no in-app embed planned),
   iPhone testers (TestFlight needs Apple Developer Program $99/yr; Expo Go route uncertain).
+- 2026-10-30 18:50: Peel crash (B-081) STILL happens on the 2nd tap after both fixes. Asked Cath
+  for an adb logcat crash log (phone USB debugging) instead of guessing again. Voice entry:
+  she asked if it's free / how; answered (expo-speech-recognition + our own wording rules, free;
+  needs a build); mockup waits for her yes.
