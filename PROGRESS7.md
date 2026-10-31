@@ -1437,3 +1437,8 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   mockup W published (design/3.0-mockups/widgets-w.html, artifact 710449dc...). Needs native
   Android code (react-native-android-widget or similar) = build-only, can't be compiled here.
   WAITING: her OK on W and whether it goes in this build or the next.
+- 2026-10-30 20:42: Peel CONFIRMED working (B-083). Voice: amount stayed 0.00 -> B-085 fixed
+  (proven). Date "yesterday" was right (her phone was already Oct 31); "Groceries" isn't one of
+  her categories, so Category stays for her to pick. Mockup W2 (richer widgets W1-W6 + island:
+  just saved / bill due today / trip) published: design/3.0-mockups/widgets-w2.html, artifact
+  0554deea... WAITING for her pick + timing (this build or next).

@@ -65,6 +65,15 @@ function PlainAmountInput({
       }
     }
   }, [value, isFocused, allowDecimals]);
+  // While focused, a change made from outside (voice entry filling the form, Cath's phone
+  // 2026-10-30: the amount stayed 0.00) is shown too; what's being typed is left alone.
+  useEffect(() => {
+    if (!isFocused) return;
+    const typed = textBuffer.trim() === '' || textBuffer.trim() === '-' ? '' : parseFloat(textBuffer);
+    const want = typeof value === 'number' && !isNaN(value) ? value : '';
+    if (typed !== want && !(typeof typed === 'number' && isNaN(typed) && want === '')) setTextBuffer(want === '' ? '' : String(want));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
 
   function handleChangeText(text: string) {
     const neg = allowNegative && /^\s*-/.test(text);

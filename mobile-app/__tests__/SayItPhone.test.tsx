@@ -31,3 +31,26 @@ test('the sheet sits on top of the keyboard', async () => {
   await act(async () => { show({ endCoordinates: { height: 320 } }); });
   expect(StyleSheet.flatten(screen.getByTestId('voice-sheet').props.style).bottom).toBe(320);
 });
+
+// Cath's phone 2026-10-30: after "Say it", the description filled in but the amount stayed 0.00
+// (the amount box had the keyboard and ignored changes from outside).
+test('a focused amount box shows an amount filled in from outside', async () => {
+  const AmountInput = require('../src/components/AmountInput').default;
+  function Box() {
+    const [v, setV] = React.useState<number | ''>('');
+    return (
+      <>
+        <AmountInput testID="amt" value={v} onChangeAmount={setV} />
+        <SetButton onPress={() => setV(250)} />
+      </>
+    );
+  }
+  const { Pressable, Text } = require('react-native');
+  function SetButton({ onPress }: any) { return <Pressable testID="fill" onPress={onPress}><Text>fill</Text></Pressable>; }
+  render(<ThemeProvider><Box /></ThemeProvider>);
+  const input = screen.UNSAFE_root.findAll((n: any) => n.props?.onFocus && n.props?.onChangeText)[0];
+  await act(async () => { input.props.onFocus(); });
+  await act(async () => { fireEvent.press(screen.getByTestId('fill')); });
+  const after = screen.UNSAFE_root.findAll((n: any) => n.props?.onFocus && n.props?.onChangeText)[0];
+  expect(String(after.props.value)).toMatch(/250/);
+});

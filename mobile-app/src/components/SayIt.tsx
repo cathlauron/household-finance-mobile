@@ -28,6 +28,7 @@ export function SayItButton({ onHeard, label = 'Say it', example, testID = 'say-
         testID={testID}
         onPress={() => {
           hapticSelection();
+          Keyboard.dismiss();
           setOpen(true);
         }}
         accessibilityRole="button"
