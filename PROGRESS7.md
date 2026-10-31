@@ -1518,3 +1518,6 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   Windows again (walk tool path + Playwright browser installed). Phone list: TEST-3 s25 (+ s24
   for the build). NEXT: Cath's phone test of s25, then push v3 + EAS build (3.3.0?) for s24/s25
   build-only items.
+- 2026-10-31 (late night): Cath: "device test is as described" (TEST-3 s25). v3 pushed. Release
+  3.3.0 (versionCode 8, appVersion.ts) for the EAS build from v3: brings real listening (B-087
+  microphone fix, s24), green widgets following the mood, and everything in s25.

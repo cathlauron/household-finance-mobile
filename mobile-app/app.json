@@ -3,7 +3,7 @@
     "name": "Finance Flow",
     "slug": "mobile-app",
     "scheme": "financeflow",
-    "version": "3.2.0",
+    "version": "3.3.0",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -32,7 +32,7 @@
     },
     "android": {
       "package": "com.cathlauron.householdfinance",
-      "versionCode": 7,
+      "versionCode": 8,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#122b21"

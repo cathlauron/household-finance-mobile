@@ -335,7 +335,7 @@ In Expo Go "Say it" opens a box to type in (tap your keyboard's mic to speak int
 3. Say "Spent 250 on groceries yesterday" → Money out, ₱250, Groceries, yesterday; nothing saved until Add.
 4. Home-screen Say it widget → opens on the listening sheet and hears you.
 
-## 25. Batch 2026-10-31 night: welcome, set-up, Day & night, green widgets, voice everywhere. NOT YET TESTED.
+## 25. Batch 2026-10-31 night: welcome, set-up, Day & night, green widgets, voice everywhere. AS DESCRIBED (Cath, 2026-10-31).
 In Expo Go (cd C:\Projects\household-finance-mobile, git pull, cd mobile-app, npx expo start -c):
 1. Welcome (log out, or a new guest): the logo draws itself; the day plays by itself (morning
    green widgets, lunch Say it, 5 PM bill, evening household, night). The sun moves along the arc
