@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import Svg, { ClipPath, Defs, G, LinearGradient, Path, Rect, Stop, Text as SvgText } from 'react-native-svg';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -89,6 +89,13 @@ export default function PeelSticker({
       if (lendTo.current?.px === ownPx) lendTo.current = null;
     };
   }, [lendTo, ownPx, ownPy, ownTopOn, ownBusy]);
+  const [armed, setArmed] = useState(false);
+  const arm = useCallback(() => setArmed(true), []);
+  // 1 once the peeling layers are on screen: until then the face at rest stays (no blank frame).
+  const drawn = useSharedValue(0);
+  useEffect(() => {
+    if (armed) drawn.value = 1;
+  }, [armed, drawn]);
   const startX = useSharedValue(0);
   const startY = useSharedValue(0);
   const ids = useMemo(() => Math.random().toString(36).slice(2, 8), []);
@@ -142,8 +149,14 @@ export default function PeelSticker({
   // Which layers show (ordinary views fading, never groups inside a drawing: B-081).
   // Cath's video 2026-10-30 ("Daght", a pink corner on "☀ Light"): the face underneath and the
   // lifted corner only show while a peel is going on.
-  const topOnStyle = useAnimatedStyle(() => ({ opacity: topOn.value }));
-  const topPaperStyle = useAnimatedStyle(() => ({ opacity: 1 - topOn.value }));
+  // Cath's 4th video (2026-10-30, "cropped"): on Android the "still stuck down" clip (an
+  // animated shape used as a clip) doesn't always redraw, so after a peel the face could stay
+  // cut to an old shape. At rest the face is now drawn with no clip at all; the clipped faces
+  // only show while a peel is going on.
+  const restOnStyle = useAnimatedStyle(() => ({ opacity: busy.value && drawn.value ? 0 : topOn.value }));
+  const restPaperStyle = useAnimatedStyle(() => ({ opacity: busy.value && drawn.value ? 0 : 1 - topOn.value }));
+  const topOnStyle = useAnimatedStyle(() => ({ opacity: busy.value ? topOn.value : 0 }));
+  const topPaperStyle = useAnimatedStyle(() => ({ opacity: busy.value ? 1 - topOn.value : 0 }));
   const underOnStyle = useAnimatedStyle(() => ({ opacity: busy.value ? 1 - topOn.value : 0 }));
   const underPaperStyle = useAnimatedStyle(() => ({ opacity: busy.value ? topOn.value : 0 }));
   const flapStyle = useAnimatedStyle(() => ({ opacity: busy.value ? 1 : 0 }));
@@ -188,6 +201,7 @@ export default function PeelSticker({
     .enabled(!disabled && !paused)
     .activeOffsetX([-6, 6])
     .onBegin(() => {
+      runOnJS(arm)();
       if (busy.value) return;
       startX.value = px.value;
       startY.value = py.value;
@@ -218,6 +232,9 @@ export default function PeelSticker({
     });
 
   const tap = Gesture.Tap()
+    .onBegin(() => {
+      runOnJS(arm)();
+    })
     .withTestId(`${testID ?? 'peel'}-tap`)
     .enabled(!disabled && !paused)
     .onEnd((_e, ok) => {
@@ -260,6 +277,18 @@ export default function PeelSticker({
             ("Underflow in restore") when groups inside one drawing faded to see-through and
             back. Now nothing inside a drawing fades: each layer is its own drawing, and only
             the layers themselves (ordinary views) fade. */}
+        {/* At rest: the face as it is, whole (no clip). */}
+        <Layer style={restOnStyle} w={W}>
+          <Defs><ClipPath id={`so${ids}`}><Rect x={PAD} y={PAD} width={W} height={H} rx={R} /></ClipPath></Defs>
+          <G clipPath={`url(#so${ids})`}>{face(on, onLabel, false)}</G>
+        </Layer>
+        <Layer style={restPaperStyle} w={W}>
+          <Defs><ClipPath id={`sp${ids}`}><Rect x={PAD} y={PAD} width={W} height={H} rx={R} /></ClipPath></Defs>
+          <G clipPath={`url(#sp${ids})`}>{face(PAPER, offLabel, true)}</G>
+        </Layer>
+        {/* The peeling layers are only drawn once this sticker has been touched (a copy on the
+            screen peel, or a sticker never touched, draws just the face: lighter, smoother). */}
+        {armed && (<>
         {/* Underneath: what you get when it comes off (only while peeling). */}
         <Layer style={underOnStyle} w={W}>
           <Defs><ClipPath id={`ru${ids}`}><Rect x={PAD} y={PAD} width={W} height={H} rx={R} /></ClipPath></Defs>
@@ -291,6 +320,7 @@ export default function PeelSticker({
           <APath animatedProps={flapFillProps} />
           <APath animatedProps={flapProps} fill={`url(#g${ids})`} />
         </Layer>
+        </>)}
       </View>
   );
   if (still) return body;

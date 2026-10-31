@@ -1,3 +1,4 @@
+import { requireOptionalNativeModule } from 'expo';
 // Voice entry (mockup V, Cath 2026-10-30): listening, with the phone's own speech recognition
 // (expo-speech-recognition). Only in the installed app: Expo Go doesn't have it, and then the
 // "Say it" sheet offers a box to type in (the keyboard's own mic works there).
@@ -15,6 +16,13 @@ type Mod = {
 };
 
 function mod(): Mod | null {
+  // Cath's phone (Expo Go, 2026-10-30): loading the add-on where its native part is missing
+  // showed a red "Cannot find native module" error even inside try/catch. Ask first, quietly.
+  try {
+    if (!requireOptionalNativeModule('ExpoSpeechRecognition')) return null;
+  } catch {
+    return null;
+  }
   try {
     // Loaded only when needed: in Expo Go the native part is missing and this throws.
     const m = require('expo-speech-recognition').ExpoSpeechRecognitionModule as Mod;

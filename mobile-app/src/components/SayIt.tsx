@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Keyboard, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { TouchableOpacity } from './Tap';
@@ -60,6 +60,17 @@ export function VoiceSheet({ onHeard, onClose, example }: { onHeard: (text: stri
   const [typed, setTyped] = useState('');
   const [note, setNote] = useState('');
   const listening = useRef<Listening | null>(null);
+  // Cath's phone 2026-10-30: the keyboard covered the typing box. The sheet sits on top of
+  // the keyboard while it's open.
+  const [kb, setKb] = useState(0);
+  useEffect(() => {
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', (e) => setKb(e.endCoordinates?.height ?? 0));
+    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setKb(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
   const wordsRef = useRef('');
   const rise = useSharedValue(reduce ? 1 : 0);
   const pulse = useSharedValue(0);
@@ -117,7 +128,7 @@ export function VoiceSheet({ onHeard, onClose, example }: { onHeard: (text: stri
       <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(20,6,12,0.42)' }, dimStyle]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={() => (listenable ? finish(wordsRef.current) : close(onClose))} accessibilityLabel="Done" />
       </Animated.View>
-      <Animated.View testID="voice-sheet" style={[s.sheet, { backgroundColor: colors.navy2 }, sheetStyle]}>
+      <Animated.View testID="voice-sheet" style={[s.sheet, { backgroundColor: colors.navy2, bottom: kb }, sheetStyle]}>
         <View style={[s.grab, { backgroundColor: colors.navy4 }]} />
         {listenable ? (
           <Pressable onPress={() => finish(wordsRef.current)} accessibilityRole="button" accessibilityLabel="Stop listening" style={{ alignItems: 'center' }}>

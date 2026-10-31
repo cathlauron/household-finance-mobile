@@ -1431,3 +1431,9 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   - NEEDS a new build for real listening (native); npm install needed on her PC.
 - 2026-10-30 19:48: Peel STILL sticks after 2 taps (B-082 open); couldn't reproduce in the hidden
   browser (many taps fine). Asked Cath for a short screen recording of it sticking.
+- 2026-10-30 20:24: Peel no longer sticks (B-082 ok) but laggy + cropped -> B-083 (faces whole at
+  rest, peel layers only after a touch). Voice in Expo Go: red native-module error + keyboard over
+  the box -> B-084 fixed (proven). Cath asked for home screen widgets before the build (+ voice):
+  mockup W published (design/3.0-mockups/widgets-w.html, artifact 710449dc...). Needs native
+  Android code (react-native-android-widget or similar) = build-only, can't be compiled here.
+  WAITING: her OK on W and whether it goes in this build or the next.

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup W: Home screen widgets</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#2A1A20;--muted:#7A6670;--pink:#F28AA6;--pinkInk:#3B0F1E;--tint:#FBE3EA;--gold:#C2185B;--red:#B3262E}
+*{box-sizing:border-box}body{margin:0;background:#F4EEF0;color:var(--ink);font-family:Nunito,system-ui,sans-serif;padding:28px 16px 56px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto}.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);font-weight:800}
+h1{font-size:30px;margin:4px 0 8px}p.lead{color:var(--muted);max-width:86ch;margin:0 0 14px}
+.screen{width:360px;max-width:100%;border-radius:36px;padding:54px 18px 26px;background:linear-gradient(160deg,#5B6E8C,#B9A3C6 55%,#F2C6B8);box-shadow:0 18px 50px rgba(60,20,35,.2);display:grid;grid-template-columns:repeat(4,1fr);gap:16px 14px;margin:0 auto}
+.app{display:grid;justify-items:center;gap:4px;font-size:11px;color:#fff}.app i{display:block;width:54px;height:54px;border-radius:15px;background:rgba(255,255,255,.35)}
+.w{background:rgba(255,255,255,.92);border-radius:22px;padding:14px;box-shadow:0 6px 20px rgba(0,0,0,.12)}
+.s{grid-column:span 2;aspect-ratio:1}.m{grid-column:span 4}.l{grid-column:span 4}
+.lbl{font-size:12px;color:var(--muted);font-weight:700}.big{font-size:26px;font-weight:800;letter-spacing:-.3px}
+.neg{color:var(--red)}.bar{height:6px;border-radius:3px;background:#F1E4E8;margin:8px 0}.bar b{display:block;height:100%;border-radius:3px;background:var(--pink);width:62%}
+.row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}.row span:last-child{font-weight:800}
+.btns{display:flex;gap:8px;margin-top:10px}.btn{flex:1;text-align:center;border-radius:16px;padding:8px 6px;font-weight:800;font-size:13px}
+.say{background:var(--pink);color:var(--pinkInk)}.add{background:var(--tint);color:var(--gold)}
+.hl{outline:3px solid #F2B705;outline-offset:3px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:10px}@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.card{background:#fff;border-radius:16px;padding:14px 16px}.card h3{margin:0 0 6px}.card li{margin:4px 0}
+</style></head><body><div class="wrap">
+<div class="eyebrow">Mockup W · home screen widgets · Cath 2026-10-30</div>
+<h1>Finance Flow on your home screen</h1>
+<p class="lead">Three sizes you can add from your phone's widget list. They show your numbers at a glance and have two buttons: <b>🎙 Say it</b> opens the app straight into voice entry, <b>+ Add</b> opens a new transaction. Tapping anywhere else opens the app. Amounts respect "Hide amounts" (shown as ••••) and the app's lock still applies when it opens.</p>
+<div class="grid">
+<div class="screen">
+  <div class="w s"><div class="lbl">Left to spend</div><div class="big">₱12,480</div><div class="bar"><b></b></div><div class="lbl">12 days to payday</div></div>
+  <div class="app"><i></i>Photos</div><div class="app"><i></i>Maps</div><div class="app"><i></i>Camera</div><div class="app"><i></i>Clock</div>
+  <div class="w m"><div style="display:flex;justify-content:space-between"><div><div class="lbl">Left to spend</div><div class="big">₱12,480</div></div><div style="text-align:right"><div class="lbl">Next due</div><div style="font-weight:800">Electric · Nov 15</div><div class="lbl">₱2,400</div></div></div>
+    <div class="btns hl"><div class="btn say">🎙 Say it</div><div class="btn add">+ Add</div></div></div>
+  <div class="app"><i></i>Mail</div><div class="app"><i></i>Notes</div><div class="app"><i></i>Music</div><div class="app"><i></i>Chat</div>
+</div>
+<div class="screen">
+  <div class="w l"><div style="display:flex;justify-content:space-between;align-items:flex-end"><div><div class="lbl">Left to spend</div><div class="big">₱12,480</div></div><div class="lbl">12 days to payday</div></div>
+    <div class="bar"><b></b></div>
+    <div class="lbl" style="margin-top:6px">Due soon</div>
+    <div class="row"><span>Electric · Nov 15</span><span>₱2,400</span></div>
+    <div class="row"><span>Internet · Nov 3</span><span>₱1,699</span></div>
+    <div class="row"><span>Credit card · Nov 20</span><span class="neg">₱1,500</span></div>
+    <div class="lbl" style="margin-top:6px">Today</div>
+    <div class="row"><span>Groceries</span><span class="neg">−₱250</span></div>
+    <div class="btns hl"><div class="btn say">🎙 Say it</div><div class="btn add">+ Add</div></div></div>
+  <div class="app"><i></i>Photos</div><div class="app"><i></i>Maps</div><div class="app"><i></i>Camera</div><div class="app"><i></i>Clock</div>
+</div>
+</div>
+<div class="card" style="margin-top:22px"><h3>Good to know</h3><ul>
+<li><b>Small</b>: Left to spend + days to payday. <b>Medium</b>: plus the next bill and the two buttons. <b>Large</b>: plus bills due soon and today's spending.</li>
+<li>Widgets refresh when you save something in the app (and every so often by themselves).</li>
+<li>Voice works through the widget's <b>Say it</b> button: it opens the app on the listening sheet (a widget can't use the microphone itself).</li>
+<li>Android first (it needs new phone-side code, so it comes with a build). iPhone widgets come with the iPhone version.</li>
+<li>Privacy: the widget shows totals on your home screen. A setting lets you show •••• instead.</li>
+</ul></div>
+</div></body></html>

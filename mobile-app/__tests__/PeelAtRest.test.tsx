@@ -29,11 +29,10 @@ test('every Appearance sticker lies flat when the page opens (the Dark mode one 
   mockModel = defaultModel();
   const AppearancePage = require('../src/screens/AppearancePage').default;
   render(<ThemeProvider><AppearancePage /></ThemeProvider>);
-  const shapes = keepShapes();
-  // 7 stickers, each with its two top layers (On and Off faces) clipped the same way.
-  expect(shapes.length).toBe(14);
-  for (const d of shapes) {
-    // A flat sticker: the whole rectangle (left edge at 60, the sticker's own space).
-    expect(d).toMatch(/M60\.00 60\.00L(172|144)\.00 60\.00L(172|144)\.00 94\.00L60\.00 94\.00Z/);
-  }
+  // 2026-10-30 (Cath's video, "cropped"): at rest no sticker is drawn through the animated
+  // "still stuck down" clip at all (it could stay cut to an old shape on Android); each face
+  // is drawn whole, clipped only to its own rounded rectangle.
+  expect(keepShapes().length).toBe(0);
+  const whole = screen.UNSAFE_root.findAll((n: any) => typeof n.props?.clipPath === 'string' && /^url\(#s[op]/.test(n.props.clipPath) && typeof n.type !== 'string');
+  expect(whole.length).toBe(14);
 });
