@@ -2,6 +2,7 @@ import type { HouseholdModel } from './types';
 import { computeMonthEvents, eventDelta, totalCurrentBalance, type CalendarEvent } from './balanceProjection';
 import { isTrackedLoan, loanCoverage, loanScheduledDates } from './loanSchedule';
 import { nextEventDate, eventBudget } from './eventDates';
+import { tripItemsDue } from './tripDue';
 
 // H-52 (Cath, 2026-10-29): Left to Spend takes off EVERYTHING due before the next payday:
 // "bills, debts, loans, plans, as long as the date falls before the next pay date". Her
@@ -114,8 +115,16 @@ export function leftToSpendItems(model: HouseholdModel, today: Date, target: Dat
   };
   const toBuy = (model.groceries || []).filter((g) => !g.purchased && num(g.plannedAmount) > 0);
   push({ group: 'Groceries list', name: 'Grocery list', sub: `${toBuy.length} ${toBuy.length === 1 ? 'item' : 'items'} not bought yet`, amount: -toBuy.reduce((s, g) => s + num(g.plannedAmount), 0), ref: { kind: 'groceries' } });
+  const dueItems = tripItemsDue(model);
   for (const trip of model.travel || []) {
-    if (!trip.startDate || trip.startDate > end || (trip.endDate || trip.startDate) < todayISO) continue;
+    if (!trip.startDate || trip.startDate > end || (trip.endDate || trip.startDate) < todayISO) {
+      // 2026-11-03 (mockup P1): a later trip's items that are due before payday still come off.
+      if ((trip.endDate || trip.startDate || '9999') < todayISO) continue;
+      for (const d of dueItems.filter((x) => x.tripId === trip.id && x.dueDate <= end)) {
+        push({ group: 'Trips', name: d.title, sub: `${d.tripName} trip · due ${shortDay(d.dueDate)}`, amount: -d.amount, date: d.dueDate, ref: { kind: 'trip' } });
+      }
+      continue;
+    }
     const unpaid = (trip.checklist || []).filter((i) => !i.checked).reduce((s, i) => s + num(i.cost), 0);
     const saved = potSaved(trip.savingsGoalId);
     push({ group: 'Trips', name: trip.name || 'Trip', sub: `Trip · starts ${shortDay(trip.startDate)}${saved > 0 ? ' · less what\'s saved' : ''}`, amount: -Math.max(0, unpaid - saved), date: trip.startDate, ref: { kind: 'trip' } });

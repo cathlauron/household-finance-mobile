@@ -11,7 +11,7 @@ import { showLeafTick } from '../components/LeafTick';
 import { SwipeTabs } from '../navigation/swipeTabs';
 import SegmentedControl from '../components/SegmentedControl';
 import SlidingPages from '../components/SlidingPages';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { todayISO, dateText } from '../dateUtils';
 import { View, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
@@ -171,6 +171,14 @@ export default function TravelScreen() {
   const [errorMsg, setErrorMsg] = useState('');
   const [trackInSavings, setTrackInSavings] = useState(false);
   const [featuredId, setFeaturedId] = useState<string | null>(null);
+  // 2026-11-03 (mockup P2): To-Pay and Home's Due soon open a trip straight on its Budget.
+  const routeTripId = (useRoute() as any)?.params?.tripId as string | undefined;
+  useEffect(() => {
+    if (!routeTripId) return;
+    setFeaturedId(routeTripId);
+    setPageTab('budget');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeTripId]);
   // Version 2.1 (approved T1): Budget | To-do on the Travel page itself, under the trip.
   const [pageTab, setPageTab] = useStickyState<'budget' | 'todo'>('travel.pageTab', 'budget');
   const [pageTodoText, setPageTodoText] = useState('');
@@ -180,6 +188,10 @@ export default function TravelScreen() {
   const [pageTodoDateOpen, setPageTodoDateOpen] = useState(false);
   const [pageItemText, setPageItemText] = useState('');
   const [pageItemCost, setPageItemCost] = useState('');
+  // 2026-11-03 (mockup P1): an optional due date for a budget item, and which item's date is open in the form.
+  const [pageItemDate, setPageItemDate] = useState('');
+  const [pageItemDateOpen, setPageItemDateOpen] = useState(false);
+  const [itemDateOpen, setItemDateOpen] = useState<string | null>(null);
   // Version 2.2 (Cath): tap the dates on a trip ("No dates yet") to set them right there.
   const [datesTripId, setDatesTripId] = useState<string | null>(null);
   const [datesStart, setDatesStart] = useState('');
@@ -475,9 +487,12 @@ export default function TravelScreen() {
     hapticSelection();
     setPageItemText('');
     setPageItemCost('');
+    const due = pageItemDate;
+    setPageItemDate('');
+    setPageItemDateOpen(false);
     const titles = voiceItems && voiceItems.length > 1 && title === voiceItems.join(', ') ? voiceItems : [title];
     setVoiceItems(null);
-    const draft: TravelTrip = { ...trip, checklist: [...(trip.checklist || []), ...titles.map((tt, k) => ({ id: makeId('travelitem'), title: tt, cost: k === 0 ? cost : ('' as const), checked: false }))] };
+    const draft: TravelTrip = { ...trip, checklist: [...(trip.checklist || []), ...titles.map((tt, k) => ({ id: makeId('travelitem'), title: tt, cost: k === 0 ? cost : ('' as const), checked: false, ...(due ? { dueDate: due } : {}) }))] };
     const budget = tripFullChecklistTotal(draft);
     const { goals, savingsGoalId } = syncTripSavingsGoal(draft, budget, model.savingsGoals ?? []);
     await saveModel({ ...model, savingsGoals: goals, travel: trips.map((x) => (x.id === trip.id ? { ...draft, budget, savingsGoalId } : x)) });
@@ -527,6 +542,7 @@ export default function TravelScreen() {
     setTodos(trip.todos ?? []);
     setTodoText('');
     setTodoDateOpen(null);
+    setItemDateOpen(null);
     setTripTab(tab);
     setTrackInSavings(trip.trackInSavings ?? false);
     setItemTitleInput('');
@@ -894,7 +910,7 @@ export default function TravelScreen() {
                             <View style={{ flex: 1, marginRight: 8 }}>
                               <Text style={styles.tripName} numberOfLines={1}>{item.title || 'Item'}</Text>
                               <Text style={styles.tripSub} numberOfLines={2}>
-                                {[item.checked ? paidLine(item) : '', item.note?.trim() || '', who.others(item.addedBy) ? `added by ${who.nameOf(item.addedBy)}` : ''].filter(Boolean).join(' · ') || 'Not paid yet'}
+                                {[item.checked ? paidLine(item) : '', !item.checked && item.dueDate ? `Due ${shortDay(item.dueDate)}${typeof item.cost === 'number' && item.cost > 0 ? ' · on To-Pay' : ''}` : '', item.note?.trim() || '', who.others(item.addedBy) ? `added by ${who.nameOf(item.addedBy)}` : ''].filter(Boolean).join(' · ') || 'Not paid yet'}
                               </Text>
                             </View>
                             {item.checked && !!item.receiptPhoto && (
@@ -931,12 +947,20 @@ export default function TravelScreen() {
                           onSubmitEditing={() => addPageItem(t)}
                           testID="travel-page-item-cost"
                         />
+                        <TouchableOpacity onPress={() => { animateNextLayout(); setPageItemDateOpen((v) => !v); }} accessibilityRole="button" accessibilityLabel="Add a due date (optional)" hitSlop={8} style={{ marginLeft: 8 }} testID="travel-page-item-date">
+                          <Ionicons name="calendar-outline" size={20} color={pageItemDate ? colors.gold : colors.inkFaint} />
+                        </TouchableOpacity>
                         {!!pageItemText.trim() && (
                           <TouchableOpacity onPress={() => addPageItem(t)} accessibilityRole="button" style={[styles.addItemButton, { backgroundColor: colors.accentTint, marginTop: 0, marginBottom: 0, marginLeft: 8, paddingVertical: 6, paddingHorizontal: 14 }]} testID="travel-page-item-add">
                             <Text style={[styles.addItemButtonText, { color: colors.gold, fontSize: 14 }]}>Add</Text>
                           </TouchableOpacity>
                         )}
                       </View>
+                      {pageItemDateOpen && (
+                        <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+                          <DateField mark="optional" label="Due date" value={pageItemDate} onChange={setPageItemDate} placeholder="Pick a date" clearable testID="travel-page-item-datefield" />
+                        </View>
+                      )}
                     </View>
                     <Text style={styles.groupFooter}>Blue is planned. Tick an item once it's paid and choose the account it came from (or just mark it paid). Paid for something on this list? Tick it here instead of adding it with + on Home, so it isn't counted twice.</Text>
                   </>
@@ -1167,7 +1191,8 @@ export default function TravelScreen() {
         <GroupLabel>Checklist</GroupLabel>
         <FormGroup>
           {checklist.map((item) => (
-            <View key={item.id} style={styles.formItemRow}>
+            <React.Fragment key={item.id}>
+            <View style={styles.formItemRow}>
               <TouchableOpacity
                 style={[styles.check, item.checked && { backgroundColor: colors.buttonFill, borderColor: colors.buttonFill }]}
                 onPress={() => { hapticSelection(); handleToggleChecklistItem(item.id); }}
@@ -1211,10 +1236,19 @@ export default function TravelScreen() {
                 accessibilityLabel={`Cost of ${item.title || 'this item'}`}
                 testID={`travel-form-item-cost-${item.id}`}
               />
+              <TouchableOpacity onPress={() => { animateNextLayout(); setItemDateOpen((o) => (o === item.id ? null : item.id)); }} accessibilityRole="button" accessibilityLabel={item.dueDate ? `Due ${shortDay(item.dueDate)}, change it` : 'Add a due date (optional)'} hitSlop={8} style={{ marginLeft: 10 }} testID={`travel-form-item-date-${item.id}`}>
+                <Ionicons name="calendar-outline" size={20} color={item.dueDate ? colors.gold : colors.inkFaint} />
+              </TouchableOpacity>
               <TouchableOpacity onPress={() => askToRemove(`Remove "${item.title || 'this item'}"?`, item.checked ? 'It comes off this trip now, with its payment.' : 'It comes off this trip now.', () => handleRemoveChecklistItem(item.id))} accessibilityRole="button" accessibilityLabel={`Remove ${item.title}`} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 10 }}>
                 <Ionicons name="close-circle" size={20} color={colors.inkFaint} />
               </TouchableOpacity>
             </View>
+            {itemDateOpen === item.id && (
+              <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+                <DateField mark="optional" label="Due date" value={item.dueDate ?? ''} onChange={(d: string) => setChecklist((list) => list.map((x) => (x.id === item.id ? { ...x, dueDate: d || undefined } : x)))} placeholder="Pick a date" clearable testID={`travel-form-item-datefield-${item.id}`} />
+              </View>
+            )}
+            </React.Fragment>
           ))}
           <PickerRow label="+ Add item" value="" open={openRow === 'item'} onToggle={() => toggleRow('item')} testID="travel-add-item-row">
             <Guided {...fieldErrors.props('item')} inset={false}>

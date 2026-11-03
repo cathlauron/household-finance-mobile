@@ -103,3 +103,24 @@ test('Say it on the to-do list: each thing is its own to-do, and the date become
   expect(todos.map((t: any) => t.text)).toEqual(['Pack', 'Baggage']);
   expect(todos.every((t: any) => /^\d{4}-12-01$/.test(t.date))).toBe(true);
 }, 30000);
+
+// Cath, 2026-11-03 (mockup P1): a trip budget item can have a due date; the trip page shows it
+// and saving the trip keeps it.
+test('P1: a budget item with a due date shows it, and the trip form keeps it on Save', async () => {
+  mockModel = household();
+  const due = new Date(Date.now() + 5 * 86400000);
+  const dueISO = `${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}`;
+  mockModel.travel[0].checklist = [{ id: 'h1', title: 'Hotel balance', cost: 12000, checked: false, dueDate: dueISO }];
+  const Screen = require('../src/screens/TravelScreen').default;
+  render(<ThemeProvider><Screen /></ThemeProvider>);
+  await act(async () => {});
+  await act(async () => { fireEvent.press(screen.getAllByText('Cebu')[0]); });
+  await act(async () => { fireEvent.press(screen.getByTestId('travel-page-budget-tab')); });
+  expect(screen.getByText(/^Due .* · on To-Pay$/)).toBeTruthy();
+  await act(async () => { fireEvent.press(screen.getAllByText('Hotel balance')[0]); });
+  expect(screen.getByTestId('travel-form-item-date-h1')).toBeTruthy();
+  await act(async () => { fireEvent.press(screen.getByTestId('travel-form-item-date-h1')); });
+  expect(screen.getByTestId('travel-form-item-datefield-h1')).toBeTruthy();
+  await act(async () => { fireEvent.press(screen.getByText('Save')); });
+  expect(saved[saved.length - 1].travel[0].checklist[0].dueDate).toBe(dueISO);
+}, 30000);

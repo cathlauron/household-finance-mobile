@@ -406,6 +406,9 @@ export type TravelChecklistItem = {
   cost: number | '';
   // Optional short note shown under the item (booking details, what to bring...).
   note?: string;
+  // Cath, 2026-11-03 (mockup P1): when it has to be paid (YYYY-MM-DD). Unpaid ones with an
+  // amount show on To-Pay and count in Left to Spend when due before payday (tripDue.ts).
+  dueDate?: string;
   checked: boolean;
   // Cath, 2026-10-27 (canvas R3): a receipt photo (see householdParts).
   receiptPhoto?: string;

@@ -1,5 +1,6 @@
 import { firstTimeOpen } from '../handledOpen';
 import { SayItButton } from '../components/SayIt';
+import { tripItemsDue } from '../tripDue';
 import { parseVoice, nextDueDate as voiceDueDate } from '../voiceParse';
 import { dateText } from '../dateUtils';
 import { redUnlessZero } from '../moneyColor';
@@ -596,7 +597,13 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
   ];
   const paidThisMonth = bills.filter((b) => wasPaidThisMonth(b));
   const dueThisMonth = unpaidAll.filter((b) => overdueIds.has(b.id) || (billDue(b) as Date) <= monthEnd);
-  const stillToPay = dueThisMonth.reduce((sum, b) => sum + billAmount(b), 0);
+  // 2026-11-03 (Cath, mockup P2): trip items with a due date sit here too, "From your plans",
+  // and those due this month (or already past) count in Still to pay this month.
+  const monthEndISO = `${monthEnd.getFullYear()}-${String(monthEnd.getMonth() + 1).padStart(2, '0')}-${String(monthEnd.getDate()).padStart(2, '0')}`;
+  const plansDue = tripItemsDue(model);
+  const plansThisMonth = plansDue.filter((d) => d.dueDate <= monthEndISO).reduce((sum, d) => sum + d.amount, 0);
+  const billsToPay = dueThisMonth.reduce((sum, b) => sum + billAmount(b), 0);
+  const stillToPay = billsToPay + plansThisMonth;
   const regularDue = dueThisMonth.filter((b) => b.regular).reduce((sum, b) => sum + billAmount(b), 0);
   const subs = bills.filter((b) => b.isSubscription);
   const subsActive = subs.filter((b) => b.subscriptionStatus !== 'cancelled').length;
@@ -612,7 +619,9 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
           <Text style={styles.balanceBannerLabel}>Still to pay this month</Text>
           <CountingText style={[styles.balanceBannerAmount, { color: redUnlessZero(stillToPay, colors) }]} value={stillToPay} format={formatPeso} />
           <Text style={styles.summarySub}>
-            {regulars.length > 0
+            {plansThisMonth > 0
+              ? [`Bills ${formatPeso(billsToPay - regularDue).replace('.00', '')}`, regulars.length > 0 ? `regular payments ${formatPeso(regularDue).replace('.00', '')}` : '', `From your plans ${formatPeso(plansThisMonth).replace('.00', '')}`].filter(Boolean).join(' · ')
+              : regulars.length > 0
               ? `Bills ${formatPeso(stillToPay - regularDue).replace('.00', '')} · regular payments ${formatPeso(regularDue).replace('.00', '')}`
               : `${paidThisMonth.length} of ${paidThisMonth.length + dueThisMonth.length} ${paidThisMonth.length + dueThisMonth.length === 1 ? 'bill' : 'bills'} paid`}
           </Text>
@@ -675,6 +684,34 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
             </View>
           </View>
         ))}
+
+        {plansDue.length > 0 && (
+          <View style={styles.section} testID="bills-from-plans">
+            <Text style={styles.sectionHeader}>From your plans</Text>
+            <View style={styles.group}>
+              <GradientFill match={styles.group} />
+              {plansDue.map((d, rowIndex) => {
+                const due = new Date(d.dueDate + 'T00:00:00');
+                const days = daysUntil(due);
+                const late = days < 0;
+                return (
+                  <PayRow
+                    key={d.itemId}
+                    testID={`bills-plan-${d.itemId}`}
+                    icon="airplane-outline"
+                    title={d.title}
+                    sub={`${d.tripName} trip · ${late ? 'Was due' : 'Due'} ${fmtDue(due)}`}
+                    amount={formatPeso(d.amount)}
+                    amountColor={late ? colors.negative : colors.planned}
+                    badge={late ? { text: 'Overdue', tone: 'overdue' } : days <= 7 ? { text: days <= 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days`, tone: 'soon' } : undefined}
+                    divider={rowIndex > 0}
+                    onPress={() => navigation.navigate('Travel', { tripId: d.tripId })}
+                  />
+                );
+              })}
+            </View>
+          </View>
+        )}
 
         {paidThisMonth.length > 0 && (
           <View style={styles.section}>

@@ -35,16 +35,19 @@ import { requestOpenDebt } from '../openDebtRequest';
 import { requestOpenLoan } from '../openLoanRequest';
 import { requestToPayTab } from '../openToPayTabRequest';
 import GradientFill from '../components/GradientFill';
+import { tripItemsDue } from '../tripDue';
+import { todayISO } from '../dateUtils';
 
 type DueItem = {
   date: Date;
   label: string;
   amount: number;
-  type: 'bill' | 'debt' | 'loan';
+  type: 'bill' | 'debt' | 'loan' | 'trip';
   id?: string;
+  tripId?: string; // trip items due (Cath, 2026-11-03, mockup P1): opens the trip
 };
 
-export function getUpcomingDue(model: HouseholdModel, daysAhead: number): DueItem[] {
+export function getUpcomingDue(model: HouseholdModel, daysAhead: number): (DueItem & { type: 'bill' | 'debt' | 'loan' })[] {
   const today = stripTime(new Date());
   const cutoff = new Date(today);
   cutoff.setDate(cutoff.getDate() + daysAhead);
@@ -60,7 +63,7 @@ export function getUpcomingDue(model: HouseholdModel, daysAhead: number): DueIte
     { y: nextMonthYear, m: nextMonthIndex },
   ];
 
-  const results: DueItem[] = [];
+  const results: (DueItem & { type: 'bill' | 'debt' | 'loan' })[] = [];
   monthsToCheck.forEach(({ y, m }) => {
     const events = computeMonthEvents(model, y, m);
     Object.entries(events).forEach(([dayStr, evs]) => {
@@ -84,6 +87,7 @@ const DUE_ICON: Record<DueItem['type'], keyof typeof Ionicons.glyphMap> = {
   bill: 'flash-outline',
   debt: 'people-outline',
   loan: 'business-outline',
+  trip: 'airplane-outline',
 };
 
 function pctOf(spent: number, budget: number): number {
@@ -142,6 +146,10 @@ export default function DashboardScreen({
 
 
   function openDueItem(item: DueItem) {
+    if (item.type === 'trip') {
+      navigation.navigate('Travel', { tripId: item.tripId });
+      return;
+    }
     // Redesign: open the full Bill / Debt / Loan page.
     if (item.id) {
       navigation.navigate('PayDetail', { kind: item.type, id: item.id, backTitle: 'Home' });
@@ -189,7 +197,18 @@ export default function DashboardScreen({
     id: o.id,
     overdue: true,
   }));
-  const dueSoon: (DueItem & { overdue?: boolean })[] = [...overdueDue, ...getUpcomingDue(model, 14)];
+  // 2026-11-03 (mockup P1): trip items with a due date sit with the bills (overdue ones first).
+  const todayStr = todayISO();
+  const n14 = new Date(Date.now() + 14 * 86400000);
+  const in14 = `${n14.getFullYear()}-${String(n14.getMonth() + 1).padStart(2, '0')}-${String(n14.getDate()).padStart(2, '0')}`;
+  const tripDue = tripItemsDue(model)
+    .filter((d) => d.dueDate <= in14)
+    .map((d) => ({ date: new Date(d.dueDate + 'T00:00:00'), label: d.title, amount: d.amount, type: 'trip' as const, id: d.itemId, tripId: d.tripId, overdue: d.dueDate < todayStr }));
+  const dueSoon: (DueItem & { overdue?: boolean })[] = [
+    ...overdueDue,
+    ...tripDue.filter((d) => d.overdue),
+    ...[...getUpcomingDue(model, 14), ...tripDue.filter((d) => !d.overdue)].sort((a, b) => a.date.getTime() - b.date.getTime()),
+  ];
 
 
   return (
