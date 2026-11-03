@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>P1 Trip budget with dates</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#2E6B47}a:hover{color:#1B3F30}
+.ff{font-family:ui-rounded,"SF Pro Rounded",Nunito,-apple-system,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.btn{border:0;background:transparent;font:inherit;cursor:pointer;color:inherit;text-align:left}
+.rise{animation:rise 240ms cubic-bezier(.32,.72,0,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){.rise{animation:none}}
+</style>
+</helmet>
+<div class="ff" style="width: 390px; height: 844px; background: #F2F2F7; color: #111111; box-sizing: border-box; padding: 54px 16px 24px; position: relative; overflow: hidden">
+  <div style="display: flex; justify-content: space-between; align-items: center; height: 44px">
+    <span style="color: #2E6B47; font-size: 17px">‹ Travel</span><span style="color: #2E6B47; font-size: 17px">Edit</span>
+  </div>
+  <h1 style="margin: 2px 4px 0; font-size: 32px; font-weight: 700">BKK</h1>
+  <div style="margin: 4px 4px 14px; font-size: 15px; color: #6C6C70">Nov 13 – 20 · 8 days</div>
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 3px; border-radius: 12px; background: #E5E5EA">
+    <span style="text-align: center; padding: 8px; border-radius: 9px; background: #FFFFFF; font-weight: 700; font-size: 15px; box-shadow: 0 2px 6px rgba(0,0,0,0.1)">Budget</span>
+    <span style="text-align: center; padding: 8px; font-weight: 600; font-size: 15px; color: #6C6C70">To-do (6)</span>
+  </div>
+  <div style="margin: 16px 0 12px; border-radius: 20px; padding: 16px; background: #FFFFFF; display: flex; justify-content: space-between; align-items: baseline">
+    <div><div style="font-size: 13px; color: #6C6C70">Budget</div><div style="font-size: 28px; font-weight: 700; color: #1D63B8">₱42,300.00</div></div>
+    <div style="text-align: right"><div style="font-size: 13px; color: #6C6C70">Due before payday</div><div style="font-size: 17px; font-weight: 700; color: #1D63B8">₱18,500.00</div></div>
+  </div>
+  <div style="margin: 0 16px 8px; font-size: 13px; text-transform: uppercase; color: #6C6C70">Checklist</div>
+  <div style="border-radius: 16px; background: #FFFFFF; overflow: hidden">
+    <sc-for list="{{items}}" as="it" hint-placeholder-count="4">
+      <div style="{{it.wrap}}">
+        <button class="btn" onClick="{{it.tap}}" aria-expanded="{{it.openAttr}}" style="width: 100%; display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 16px">
+          <span style="width: 22px; height: 22px; border-radius: 11px; border: 2px solid #C6C6C8; flex-shrink: 0"></span>
+          <span style="flex: 1">
+            <span style="display: block; font-size: 17px">{{it.name}}</span>
+            <span style="{{it.dueStyle}}">{{it.dueText}}</span>
+          </span>
+          <span style="font-size: 17px; font-weight: 600; color: #1D63B8">{{it.amount}}</span>
+        </button>
+        <sc-if value="{{it.open}}" hint-placeholder-val="{{ false }}">
+          <div class="rise" style="padding: 0 16px 14px 50px; display: flex; flex-direction: column; gap: 8px">
+            <label style="display: flex; justify-content: space-between; align-items: center; font-size: 15px; color: #6C6C70">Due date
+              <input type="date" value="{{it.dateVal}}" onChange="{{it.setDate}}" style="font: inherit; font-size: 15px; color: #111111; border: 0; background: #EEEEF0; border-radius: 10px; padding: 8px 10px">
+            </label>
+            <div style="font-size: 13px; color: #6C6C70">{{it.hint}}</div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-for>
+    <div style="display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 16px; border-top: 1px solid #C6C6C8">
+      <span style="color: #2E6B47; font-size: 22px">+</span>
+      <span style="flex: 1; font-size: 17px; color: #858589">Add an item</span>
+      <span style="font-size: 15px; color: #858589">₱0.00</span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2E6B47" stroke-width="1.8" stroke-linecap="round" aria-label="Add a due date" role="img"><rect x="3.5" y="5" width="17" height="15" rx="2.5"></rect><path d="M3.5 10h17M8 3v4M16 3v4"></path></svg>
+    </div>
+  </div>
+  <p style="margin: 10px 16px 0; font-size: 13px; color: #6C6C70; line-height: 18px">Items with a due date that aren't paid yet also show on To-Pay, and count in Left to spend if they're due before payday.</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+var ITEMS = [
+  { id: 'a', name: 'Hotel balance', amt: 12000, date: '2026-11-09' },
+  { id: 'b', name: 'Travel insurance', amt: 1500, date: '2026-11-12' },
+  { id: 'c', name: 'Plane tickets', amt: 18800, date: '' },
+  { id: 'd', name: 'Pocket money', amt: 10000, date: '' }
+];
+var MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function peso(n) { return '₱' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+class Component extends DCLogic {
+  constructor(p) { super(p); var d = {}; ITEMS.forEach(function (i) { d[i.id] = i.date; }); this.state = { open: 'a', dates: d }; }
+  renderVals() {
+    var self = this, s = this.state;
+    return {
+      items: ITEMS.map(function (it, i) {
+        var date = s.dates[it.id], open = s.open === it.id;
+        var dt = date ? new Date(date + 'T00:00:00') : null;
+        return {
+          name: it.name, amount: peso(it.amt), open: open, openAttr: open ? 'true' : 'false', dateVal: date,
+          dueText: dt ? 'Due ' + MON[dt.getMonth()] + ' ' + dt.getDate() + ' · on To-Pay' : 'No due date',
+          dueStyle: 'display:block;font-size:13px;color:' + (dt ? '#B83200' : '#6C6C70'),
+          hint: date ? 'Shows on To-Pay until you tick it paid.' : 'Add a date to see it on To-Pay.',
+          wrap: i ? 'border-top:1px solid #C6C6C8' : '',
+          tap: function () { self.setState({ open: open ? null : it.id }); },
+          setDate: function (e) { var d = Object.assign({}, s.dates); d[it.id] = e.target.value; self.setState({ dates: d }); }
+        };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

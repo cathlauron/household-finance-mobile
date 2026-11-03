@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>W1 Widgets in Settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.ff{font-family:ui-rounded,"SF Pro Rounded",Nunito,-apple-system,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.btn{border:0;font:inherit;cursor:pointer}
+.up{animation:up 280ms cubic-bezier(.32,.72,0,1) both}
+@keyframes up{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){.up{animation:none}}
+</style>
+</helmet>
+<div class="ff" style="width: 390px; height: 844px; background: #F2F2F7; color: #111111; box-sizing: border-box; padding: 54px 16px 24px; position: relative; overflow: hidden">
+  <span style="display: block; color: #2E6B47; font-size: 17px; height: 44px; line-height: 44px">‹ Settings</span>
+  <h1 style="margin: 0 4px 6px; font-size: 32px; font-weight: 700">Widgets</h1>
+  <p style="margin: 0 4px 16px; font-size: 15px; color: #6C6C70">Tap Add and your phone puts it on your home screen.</p>
+  <div style="border-radius: 16px; background: #FFFFFF; overflow: hidden">
+    <sc-for list="{{widgets}}" as="w" hint-placeholder-count="6">
+      <div style="{{w.row}}">
+        <span style="{{w.thumb}}"><span style="font-size: 9px; font-weight: 800; color: {{w.thumbInk}}">{{w.short}}</span></span>
+        <span style="flex: 1"><span style="display: block; font-size: 17px">{{w.name}}</span><span style="display: block; font-size: 13px; color: #6C6C70">{{w.sub}}</span></span>
+        <button class="btn" onClick="{{w.add}}" aria-label="{{w.aria}}" style="{{w.btn}}">{{w.btnText}}</button>
+      </div>
+    </sc-for>
+  </div>
+  <p style="margin: 10px 16px 0; font-size: 13px; color: #6C6C70; line-height: 18px">Some phones ask you to hold and drag it into place. You can also add them the usual way: hold an empty spot on your home screen › Widgets › Finance Flow.</p>
+  <sc-if value="{{dialog}}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: flex-end">
+      <div class="up" role="dialog" aria-label="Add to home screen" style="width: 100%; background: #FFFFFF; border-radius: 28px 28px 0 0; padding: 22px 20px 30px; box-sizing: border-box">
+        <div style="font-size: 13px; color: #6C6C70; text-align: center">Your phone asks</div>
+        <div style="font-size: 20px; font-weight: 700; text-align: center; margin-top: 4px">Add to home screen?</div>
+        <div style="margin: 18px auto; width: 250px; height: 110px; border-radius: 22px; background: linear-gradient(225deg, #2C5E48, #1B3F30 55%, #122B21); color: #FFFFFF; padding: 12px 14px; box-sizing: border-box">
+          <div style="font-size: 11px; font-weight: 800">LEFT TO SPEND</div><div style="font-size: 24px; font-weight: 800">₱9,860.00</div><div style="font-size: 11px; font-weight: 700">9 days to payday</div>
+        </div>
+        <div style="display: flex; gap: 12px">
+          <button class="btn" onClick="{{cancel}}" style="flex: 1; min-height: 48px; border-radius: 14px; background: #EEEEF0; color: #111111; font-size: 17px; font-weight: 600">Cancel</button>
+          <button class="btn" onClick="{{confirm}}" style="flex: 1; min-height: 48px; border-radius: 14px; background: #2E6B47; color: #FFFFFF; font-size: 17px; font-weight: 600">Add</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+var W = [
+  ['Left to spend', 'Small · your number and days to payday', 'LTS', true],
+  ['Say it', 'Small · one tap to speak', 'MIC', false],
+  ['Spend & say', 'Medium · number, week line, Say it, Add', 'S&S', true],
+  ['Due soon', 'Medium · your next bills', 'DUE', false],
+  ['Month at a glance', 'Large · budgets and bills', 'MON', false],
+  ['Trip', 'Medium · while a trip is on', 'TRIP', true]
+];
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { dialog: null, added: {} }; }
+  renderVals() {
+    var self = this, s = this.state;
+    return {
+      widgets: W.map(function (w, i) {
+        var added = !!s.added[i], dark = w[3];
+        return {
+          name: w[0], sub: w[1], short: w[2], aria: 'Add ' + w[0] + ' to home screen',
+          thumbInk: dark ? '#FFFFFF' : '#2E6B47',
+          thumb: 'width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;' + (i === 5 ? 'background:linear-gradient(225deg,#5C8DE8,#1D3C86)' : dark ? 'background:linear-gradient(225deg,#2C5E48,#122B21)' : 'background:#F1F7F3;box-shadow:inset 0 0 0 1px #E6F0EA'),
+          row: 'display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 16px' + (i ? ';border-top:1px solid #C6C6C8' : ''),
+          btnText: added ? 'Added' : 'Add',
+          btn: 'min-height:36px;padding:0 16px;border-radius:999px;font-size:15px;font-weight:700;' + (added ? 'background:transparent;color:#1E7B3E' : 'background:#E6F0EA;color:#2E6B47'),
+          add: function () { if (!added) self.setState({ dialog: i }); }
+        };
+      }),
+      dialog: s.dialog !== null,
+      cancel: function () { self.setState({ dialog: null }); },
+      confirm: function () { var a = Object.assign({}, s.added); a[s.dialog] = true; self.setState({ dialog: null, added: a }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

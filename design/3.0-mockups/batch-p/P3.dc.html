@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>P3 To-Pay with a Plans part</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.ff{font-family:ui-rounded,"SF Pro Rounded",Nunito,-apple-system,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.btn{border:0;background:transparent;font:inherit;cursor:pointer;color:inherit}
+</style>
+</helmet>
+<div class="ff" style="width: 390px; height: 844px; background: #F2F2F7; color: #111111; box-sizing: border-box; padding: 54px 16px 24px; overflow: hidden">
+  <h1 style="margin: 8px 4px 12px; font-size: 32px; font-weight: 700">To-Pay</h1>
+  <div role="tablist" aria-label="To-Pay" style="position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 3px; border-radius: 12px; background: #E5E5EA">
+    <span style="{{hi}}"></span>
+    <sc-for list="{{tabs}}" as="t" hint-placeholder-count="4">
+      <button class="btn" role="tab" aria-selected="{{t.on}}" onClick="{{t.tap}}" style="{{t.style}}">{{t.label}}</button>
+    </sc-for>
+  </div>
+  <sc-if value="{{plans}}" hint-placeholder-val="{{ true }}">
+    <div>
+      <div style="margin: 16px 0; border-radius: 20px; padding: 16px; background: #FFFFFF">
+        <div style="font-size: 13px; color: #6C6C70">Plans due this month</div>
+        <div style="font-size: 28px; font-weight: 700; color: #1D63B8">₱13,500.00</div>
+        <div style="font-size: 13px; color: #6C6C70; margin-top: 2px">From 1 trip · 2 items</div>
+      </div>
+      <div style="margin: 0 16px 8px; font-size: 13px; text-transform: uppercase; color: #6C6C70">BKK trip · Nov 13 – 20</div>
+      <div style="border-radius: 16px; background: #FFFFFF; overflow: hidden">
+        <div style="display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 6px 16px"><span style="flex: 1"><span style="display: block; font-size: 17px">Hotel balance</span><span style="display: block; font-size: 13px; color: #B83200">Due Nov 9</span></span><span style="font-size: 17px; font-weight: 600; color: #1D63B8">₱12,000.00</span></div>
+        <div style="display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 6px 16px; border-top: 1px solid #C6C6C8"><span style="flex: 1"><span style="display: block; font-size: 17px">Travel insurance</span><span style="display: block; font-size: 13px; color: #6C6C70">Due Nov 12</span></span><span style="font-size: 17px; font-weight: 600; color: #1D63B8">₱1,500.00</span></div>
+      </div>
+      <div style="margin: 22px 16px 8px; font-size: 13px; text-transform: uppercase; color: #6C6C70">No due date</div>
+      <div style="border-radius: 16px; background: #FFFFFF; overflow: hidden">
+        <div style="display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 6px 16px"><span style="flex: 1"><span style="display: block; font-size: 17px">Plane tickets</span><span style="display: block; font-size: 13px; color: #6C6C70">BKK trip</span></span><span style="font-size: 17px; font-weight: 600; color: #1D63B8">₱18,800.00</span></div>
+      </div>
+      <p style="margin: 10px 16px 0; font-size: 13px; color: #6C6C70; line-height: 18px">Trips, events and other plans with amounts still to pay. Tap one to pay it.</p>
+    </div>
+  </sc-if>
+  <sc-if value="{{other}}" hint-placeholder-val="{{ false }}">
+    <div style="margin-top: 60px; text-align: center; color: #6C6C70; font-size: 15px">{{otherText}}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+var TABS = ['Bills', 'Debts', 'Loans', 'Plans'];
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { tab: 3 }; }
+  renderVals() {
+    var self = this, s = this.state;
+    return {
+      hi: 'position:absolute;top:3px;left:3px;height:36px;width:calc((100% - 6px) / 4);border-radius:9px;background:#FFFFFF;box-shadow:0 2px 6px rgba(0,0,0,0.1);transition:transform 240ms cubic-bezier(.32,.72,0,1);transform:translateX(' + s.tab * 100 + '%)',
+      tabs: TABS.map(function (l, i) { return { label: l, on: i === s.tab ? 'true' : 'false', tap: function () { self.setState({ tab: i }); }, style: 'position:relative;min-height:36px;font-size:15px;font-weight:' + (i === s.tab ? 700 : 600) + ';color:' + (i === s.tab ? '#111111' : '#6C6C70') }; }),
+      plans: s.tab === 3, other: s.tab !== 3, otherText: TABS[s.tab] + ' look as they do today.'
+    };
+  }
+}
+</script>
+</body>
+</html>

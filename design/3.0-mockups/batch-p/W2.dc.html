@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>W2 Widget tip on Home</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.ff{font-family:ui-rounded,"SF Pro Rounded",Nunito,-apple-system,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.btn{border:0;font:inherit;cursor:pointer}
+.pop{animation:pop 220ms cubic-bezier(.32,.72,0,1) both}
+@keyframes pop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){.pop{animation:none}}
+</style>
+</helmet>
+<div class="ff" style="width: 390px; height: 844px; background: #F2F2F7; color: #111111; box-sizing: border-box; padding: 54px 16px 24px; position: relative; overflow: hidden">
+  <div style="display: flex; align-items: center; gap: 10px; height: 52px">
+    <span style="width: 40px; height: 40px; border-radius: 20px; background: #1B3F30; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 700">C</span>
+    <span><span style="display: block; font-size: 20px; font-weight: 700">Hi, Cath</span><span style="display: block; font-size: 13px; color: #6C6C70">Good afternoon</span></span>
+  </div>
+  <button class="btn" onClick="{{hold}}" aria-label="Left to spend. Hold to add it to your home screen" style="width: 100%; margin-top: 12px; text-align: left; border-radius: 24px; padding: 20px; color: #FFFFFF; background: linear-gradient(135deg, #2C5E48, #1B3F30 55%, #122B21); box-shadow: 0 8px 24px rgba(27,63,48,0.18)">
+    <span style="display: block; font-size: 15px; color: #BFD3C8">Left to spend</span>
+    <span style="display: block; font-size: 40px; line-height: 46px; font-weight: 700">₱9,860.00</span>
+    <span style="display: block; font-size: 15px; color: #BFD3C8">Looking good · 9 days to payday</span>
+  </button>
+  <sc-if value="{{menu}}" hint-placeholder-val="{{ false }}">
+    <div class="pop" role="menu" style="position: absolute; left: 32px; top: 250px; width: 250px; border-radius: 16px; background: #FFFFFF; box-shadow: 0 4px 16px rgba(0,0,0,0.14); overflow: hidden">
+      <button class="btn" role="menuitem" onClick="{{closeMenu}}" style="width: 100%; display: flex; gap: 12px; align-items: center; min-height: 52px; padding: 0 16px; background: transparent; text-align: left; font-size: 17px; color: #111111"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2E6B47" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="2"></rect><rect x="13" y="3" width="8" height="8" rx="2"></rect><rect x="3" y="13" width="8" height="8" rx="2"></rect><path d="M17 13v8M13 17h8"></path></svg>Add to home screen</button>
+      <button class="btn" role="menuitem" onClick="{{closeMenu}}" style="width: 100%; display: flex; gap: 12px; align-items: center; min-height: 52px; padding: 0 16px; background: transparent; text-align: left; font-size: 17px; color: #111111; border-top: 1px solid #C6C6C8">More widgets…</button>
+    </div>
+  </sc-if>
+  <sc-if value="{{tip}}" hint-placeholder-val="{{ true }}">
+    <div style="margin-top: 16px; border-radius: 16px; background: #FFFFFF; padding: 14px 16px; display: flex; gap: 12px; align-items: center">
+      <span style="width: 40px; height: 40px; border-radius: 10px; background: #E6F0EA; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2E6B47" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="2"></rect><rect x="13" y="3" width="8" height="8" rx="2"></rect><rect x="3" y="13" width="8" height="8" rx="2"></rect><path d="M17 13v8M13 17h8"></path></svg></span>
+      <span style="flex: 1"><span style="display: block; font-size: 17px; font-weight: 600">See this without opening the app</span><span style="display: block; font-size: 13px; color: #6C6C70">Put Left to spend on your home screen</span></span>
+      <span style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end">
+        <button class="btn" onClick="{{addTip}}" style="min-height: 36px; padding: 0 14px; border-radius: 999px; background: #2E6B47; color: #FFFFFF; font-size: 15px; font-weight: 700">Add</button>
+        <button class="btn" onClick="{{dismiss}}" style="background: transparent; color: #6C6C70; font-size: 13px; min-height: 28px">Not now</button>
+      </span>
+    </div>
+  </sc-if>
+  <div style="margin: 22px 16px 8px; font-size: 13px; text-transform: uppercase; color: #6C6C70">Due soon</div>
+  <div style="border-radius: 16px; background: #FFFFFF; overflow: hidden">
+    <div style="display: flex; justify-content: space-between; align-items: center; min-height: 56px; padding: 0 16px"><span><span style="display: block; font-size: 17px">Electricity</span><span style="display: block; font-size: 13px; color: #B83200">Due tomorrow</span></span><span style="font-size: 17px; font-weight: 600; color: #D70015">₱2,400.00</span></div>
+  </div>
+  <p style="margin: 14px 16px 0; font-size: 13px; color: #6C6C70; line-height: 18px">Hold the green card to see the menu. The tip shows once; Settings › Widgets has all six.</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { tip: true, menu: false }; }
+  renderVals() {
+    var self = this, s = this.state;
+    return {
+      tip: s.tip, menu: s.menu,
+      hold: function () { self.setState({ menu: !s.menu }); },
+      closeMenu: function () { self.setState({ menu: false }); },
+      addTip: function () { self.setState({ tip: false }); },
+      dismiss: function () { self.setState({ tip: false }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

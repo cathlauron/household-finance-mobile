@@ -1,0 +1,25 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-11-03T13:00:00Z" },
+  "title": "Trip dates, widgets and password P",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 390, "h": 844, "title": "P1 · Trip budget: items with a due date", "is_interactive": true, "radius": 44 },
+    "P2.dc.html": { "x": 470, "y": 0, "w": 390, "h": 844, "title": "P2 · To-Pay A: trip items in Bills, under \"From your plans\"", "radius": 44 },
+    "P3.dc.html": { "x": 940, "y": 0, "w": 390, "h": 844, "title": "P3 · To-Pay B: a fourth part, Plans", "is_interactive": true, "radius": 44 },
+    "W1.dc.html": { "x": 0, "y": 1230, "w": 390, "h": 844, "title": "W1 · Settings › Widgets: add any widget from the app", "is_interactive": true, "radius": 44 },
+    "W2.dc.html": { "x": 470, "y": 1230, "w": 390, "h": 844, "title": "W2 · Home: a one-time tip + hold the card to add it", "is_interactive": true, "radius": 44 },
+    "PW1.dc.html": { "x": 0, "y": 2460, "w": 390, "h": 844, "title": "PW1 · Password: strength bar + word", "is_interactive": true, "radius": 44 },
+    "PW2.dc.html": { "x": 470, "y": 2460, "w": 390, "h": 844, "title": "PW2 · Password: ticks for each tip + strength", "is_interactive": true, "radius": 44 }
+  },
+  "order": ["Main.dc.html", "P2.dc.html", "P3.dc.html", "W1.dc.html", "W2.dc.html", "PW1.dc.html", "PW2.dc.html"],
+  "notes": {
+    "t1": { "x": 0, "y": -260, "text": "Trip amounts due: a date, and showing on To-Pay", "kind": "title1", "maxW": 1330 },
+    "t2": { "x": 0, "y": 970, "text": "Add a widget from inside the app", "kind": "title1", "maxW": 1330 },
+    "t3": { "x": 0, "y": 2200, "text": "How strong is my password?", "kind": "title1", "maxW": 1330 }
+  },
+  "designSystems": [
+    { "title": "Finance Flow", "namespace": "finance-flow", "artifact": "https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ", "version": "1792004719-e46a", "copiedAt": "2026-11-03T13:00:00Z" }
+  ]
+}

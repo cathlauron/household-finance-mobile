@@ -1527,3 +1527,8 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   and egg", "&"), B-092 voice date becomes the to-do's date, B-093 to-dos editable with a date.
   NEW (mockups first): trip budget items with a date + amounts due shown on To-Pay; add widgets
   from the app (library has requestPinWidget, no new native code); password strength meter.
+- 2026-11-03 (later): Mockups P (canvas 8Tobo3v6GD4QhR3wiNk4nA; copy in design/3.0-mockups/batch-p):
+  P1 trip budget items with a due date; P2 To-Pay A (trip items in Bills under "From your
+  plans") vs P3 To-Pay B (a fourth part "Plans"); W1 Settings › Widgets (Add → phone's own "Add
+  to home screen?") and W2 Home one-time tip + hold the card; PW1 strength bar + word vs PW2
+  ticks per tip + ring. WAITING for picks. Phone list: TEST-3 s26.

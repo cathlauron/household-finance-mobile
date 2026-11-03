@@ -329,7 +329,7 @@ In Expo Go "Say it" opens a box to type in (tap your keyboard's mic to speak int
    - Tap the eye (hide amounts): the widgets show ₱ ••••. Sign out: they say "Open the app once".
 5. Time "Check sign-in speed" (Settings › About & Help) 3 times and send me the numbers.
 
-## 24. Voice in the installed app (B-087), 2026-10-31. Needs a NEW build (from v3). NOT YET TESTED.
+## 24. Voice in the installed app (B-087), 2026-10-31. AS DESCRIBED (Cath, 2026-11-03, build 3.3.0).
 1. Install the new build over the old one.
 2. + → Say it → the phone asks to use the microphone → Allow.
 3. Say "Spent 250 on groceries yesterday" → Money out, ₱250, Groceries, yesterday; nothing saved until Add.
@@ -356,3 +356,18 @@ In Expo Go (cd C:\Projects\household-finance-mobile, git pull, cd mobile-app, np
    GCash"), new investment, Home's "Estimate the rest", and an event's items ("Cake 1,500, gift
    2,000 and balloons 500"). (Expo Go: the typing box; real listening in the build.)
 Needs the NEW build: widgets green (orange when running low, red when over); real listening (s24).
+
+## 26. Fixes from Cath's video and list, 2026-11-03. NOT YET TESTED.
+In Expo Go (git pull, then npx expo start -c in mobile-app):
+1. A trip › To-do › tap "Add to the list": the box stays above the keyboard and its toolbar /
+   suggestions (no scrolling needed). Same for adding grocery items, budget items, event items
+   and any form near the bottom.
+2. Tap a to-do's words on the trip page: the trip form opens on To-do. Change the words, tap the
+   calendar next to it and pick a date, Save: the trip page shows the new words and date.
+3. To-do Say it (type it in Expo Go): "pack and baggage by Friday" → the box shows "Pack,
+   Baggage", the date row opens on this coming Friday; Add → two to-dos, both dated Friday.
+4. Groceries + item › Say it: "chicken and egg" → "Adds 2 items to the list" → two items.
+   Also "chicken & egg".
+5. Settings: "Check sign-in speed" is gone.
+Mockups to pick (canvas P): trip due dates + To-Pay (P2 or P3), adding widgets from the app
+(W1 and/or W2), password strength (PW1 or PW2).

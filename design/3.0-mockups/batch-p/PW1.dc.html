@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PW1 Password strength bar</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.ff{font-family:ui-rounded,"SF Pro Rounded",Nunito,-apple-system,system-ui,sans-serif}
+.in{font:inherit;font-size:17px;border:0;background:transparent;color:#111111;flex:1;min-height:44px;outline:none}
+.box:focus-within{box-shadow:0 0 0 2px #2E6B47}
+</style>
+</helmet>
+<div class="ff" style="width: 390px; height: 844px; background: #F2F2F7; color: #111111; box-sizing: border-box; padding: 70px 24px 24px; overflow: hidden">
+  <h1 style="margin: 0; font-size: 28px; font-weight: 700">Create your account</h1>
+  <p style="margin: 6px 0 22px; font-size: 15px; color: #6C6C70">Your password also locks your money data.</p>
+  <label for="em" style="font-size: 13px; color: #6C6C70; margin-left: 4px">Email address</label>
+  <div class="box" style="margin: 6px 0 16px; border-radius: 12px; background: #FFFFFF; padding: 0 14px; display: flex"><input id="em" class="in" value="cath@example.com" autocomplete="email"></div>
+  <label for="pw" style="font-size: 13px; color: #6C6C70; margin-left: 4px">Password</label>
+  <div class="box" style="margin: 6px 0 10px; border-radius: 12px; background: #FFFFFF; padding: 0 14px; display: flex"><input id="pw" class="in" type="text" value="{{pw}}" onChange="{{onPw}}" placeholder="Type a password to try it" autocomplete="new-password"></div>
+  <div aria-hidden="true" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0 2px">
+    <sc-for list="{{bars}}" as="b" hint-placeholder-count="4"><span style="{{b.style}}"></span></sc-for>
+  </div>
+  <div role="status" style="display: flex; justify-content: space-between; margin: 8px 4px 0; font-size: 15px">
+    <span style="{{wordStyle}}">{{word}}</span><span style="color: #6C6C70">{{tip}}</span>
+  </div>
+  <button style="width: 100%; margin-top: 30px; min-height: 53px; border: 0; border-radius: 14px; background: #2E6B47; color: #FFFFFF; font: inherit; font-size: 17px; font-weight: 600; cursor: pointer">Create account</button>
+  <p style="margin: 14px 4px 0; font-size: 13px; color: #6C6C70; line-height: 18px">Long beats clever: three or four everyday words together are strong and easy to remember.</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+var COMMON = ['password', '123456', 'qwerty', 'iloveyou', 'admin', 'welcome', 'letmein', 'abc123'];
+function score(p) {
+  if (!p) return -1;
+  if (p.length < 8) return 0;
+  var low = p.toLowerCase();
+  if (COMMON.some(function (c) { return low.indexOf(c) >= 0; })) return 0;
+  var s = 1;
+  if (p.length >= 12) s++;
+  if (/[a-z]/.test(p) && /[A-Z]/.test(p)) s++;
+  if (/\d/.test(p) && /[^A-Za-z0-9]/.test(p)) s++;
+  if (p.length >= 16) s++;
+  return Math.min(4, s);
+}
+var WORDS = ['Too short', 'Weak', 'Okay', 'Good', 'Strong'];
+var COLS = ['#D70015', '#D70015', '#B83200', '#4E8A66', '#2E6B47'];
+var TIPS = ['At least 8 characters', 'Make it longer', 'Add a number and a symbol', 'Nearly there', 'Great'];
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { pw: 'Mango' }; }
+  renderVals() {
+    var self = this, sc = score(this.state.pw), lvl = sc < 0 ? 0 : sc;
+    return {
+      pw: this.state.pw,
+      onPw: function (e) { self.setState({ pw: e.target.value }); },
+      bars: [1, 2, 3, 4].map(function (i) { return { style: 'height:6px;border-radius:3px;transition:background 220ms ease-out;background:' + (sc >= 0 && (i <= lvl || (lvl === 0 && i === 1)) ? COLS[lvl] : '#E5E5EA') }; }),
+      word: sc < 0 ? '' : WORDS[lvl], wordStyle: 'font-weight:700;color:' + (sc < 0 ? '#6C6C70' : COLS[lvl]),
+      tip: sc < 0 ? '' : TIPS[lvl]
+    };
+  }
+}
+</script>
+</body>
+</html>
