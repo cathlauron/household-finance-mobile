@@ -1532,3 +1532,10 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   plans") vs P3 To-Pay B (a fourth part "Plans"); W1 Settings › Widgets (Add → phone's own "Add
   to home screen?") and W2 Home one-time tip + hold the card; PW1 strength bar + word vs PW2
   ticks per tip + ring. WAITING for picks. Phone list: TEST-3 s26.
+- 2026-11-03 (evening): Cath picked P1, P2, W1 (password strength mockup still to pick). BUILT on v3
+  with checks (red-green): trip items' due date (tripDue.ts, TravelScreen), To-Pay Bills "From your
+  plans" + Still to pay this month, Home Due soon, Left to Spend (items due before payday count
+  even for a later trip), Settings › Widgets (pinWidget.ts: requestPinWidget + getWidgetInfo; row
+  only in the installed Android app). Her question "amounts not under bills/debts/loans/plans":
+  answered: Bills with Repeats › Once. Follow-ups H-63 (calendar/bell/widgets), H-64 (green widget
+  previews). Phone list TEST-3 s27.

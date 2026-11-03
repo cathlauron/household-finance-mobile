@@ -371,3 +371,15 @@ In Expo Go (git pull, then npx expo start -c in mobile-app):
 5. Settings: "Check sign-in speed" is gone.
 Mockups to pick (canvas P): trip due dates + To-Pay (P2 or P3), adding widgets from the app
 (W1 and/or W2), password strength (PW1 or PW2).
+
+## 27. P1 + P2 + W1, 2026-11-03. NOT YET TESTED.
+In Expo Go:
+1. A trip › Budget: the add row has a calendar. Add "Hotel balance", ₱12,000, a due date this
+   month → the row says "Due … · on To-Pay". In Edit trip, each item has a calendar to change it.
+2. To-Pay › Bills: "From your plans" lists it (blue; red if past due), and Still to pay this
+   month says "From your plans ₱12,000" in its line. Tap it: the trip opens on Budget.
+3. Home's Due soon lists it when it's within 14 days (with a plane icon); tap opens the trip.
+4. Left to Spend's "where it comes from": it's under Trips if due before payday, even if the
+   trip starts after payday. Tick it paid: it leaves To-Pay and Due soon.
+Needs the installed app (build or update): Settings › Widgets: tap Add on one → your phone asks
+"Add to home screen?" → Add. Back in the app it says "On your home screen".

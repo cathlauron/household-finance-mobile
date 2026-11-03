@@ -16,6 +16,7 @@ import ReportDetailScreen, { MoreReportsScreen } from '../screens/ReportDetailSc
 import SettingsScreen from '../screens/SettingsScreen';
 import PremiumScreen from '../screens/PremiumScreen';
 import HelpFaqScreen from '../screens/HelpFaqScreen';
+import WidgetsScreen from '../screens/WidgetsScreen';
 import DeleteAccountScreen from '../screens/DeleteAccountScreen';
 import TransactionDetailScreen from '../screens/TransactionDetailScreen';
 import SearchScreen from '../screens/SearchScreen';
@@ -58,6 +59,7 @@ export type RootStackParamList = {
   SettingsPage: { subPage: string };
   Premium: undefined;
   HelpFaq: undefined;
+  Widgets: undefined;
   DeleteAccount: undefined;
   TransactionDetail: { id: string };
   Search: undefined;
@@ -311,6 +313,7 @@ export default function RootStack({ username, onLock, onSignOut, onSwitchAccount
         {renderDeleteAccount}
       </Stack.Screen>
       <Stack.Screen name="HelpFaq" component={HelpFaqScreen} options={{ title: 'Help & FAQ', headerBackTitle: 'About & Help' }} />
+      <Stack.Screen name="Widgets" component={WidgetsScreen} options={{ title: 'Widgets', headerBackTitle: 'Settings' }} />
       <Stack.Screen name="LeftToSpend" component={LeftToSpendScreen} options={{ title: 'Left to spend', headerBackTitle: 'Home' }} />
       <Stack.Screen name="Subscriptions" component={SubscriptionsScreen} options={{ title: 'Subscriptions', headerBackTitle: 'To-Pay' }} />
       <Stack.Screen name="PayDetail" component={PayDetailScreen} options={{ title: '', headerBackTitle: 'To-Pay' }} />

@@ -50,7 +50,9 @@ test('Expo Go / iPhone: the widgets part is never loaded', () => {
   const fs = require('fs');
   const entry = fs.readFileSync('index.js', 'utf8');
   expect(entry).not.toMatch(/^import .*react-native-android-widget/m);
-  for (const f of ['App.tsx', 'src/widgets/WidgetSync.tsx']) expect(fs.readFileSync(f, 'utf8')).not.toMatch(/^import .*from 'react-native-android-widget'/m);
+  for (const f of ['App.tsx', 'src/widgets/WidgetSync.tsx', 'src/screens/WidgetsScreen.tsx', 'src/widgets/pinWidget.ts']) expect(fs.readFileSync(f, 'utf8')).not.toMatch(/^import .*from 'react-native-android-widget'/m);
+  // (2026-11-03) nor through the drawings file, which imports the library itself.
+  for (const f of ['src/screens/WidgetsScreen.tsx', 'src/widgets/pinWidget.ts', 'src/screens/SettingsScreen.tsx']) expect(fs.readFileSync(f, 'utf8')).not.toMatch(/^import (?!type ).*from '\.\.\/widgets\/FFWidgets'/m);
 });
 
 test("a widget's Say it opens the + form with the listening sheet", () => {

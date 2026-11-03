@@ -1,6 +1,7 @@
 import { hapticSelection } from '../haptics';
 import { animateNextLayout } from '../animateLayout';
 import { APP_VERSION } from '../appVersion';
+import { canPinWidgets } from '../widgets/pinWidget';
 import { useHelpSeen, markHelpSeen } from '../helpSeen';
 import EmailCheckNote, { EmailRow } from '../components/EmailCheckNote';
 import SaveKeyButton from '../components/SaveKeyButton';
@@ -1352,6 +1353,8 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
           <SettingsRow testID="settings-row-categories" icon="pricetags-outline" title="Categories & Rules" onPress={() => openPage('cats')} />
         </SettingsGroup>
         <SettingsGroup label="App">
+          {/* Cath, 2026-11-03 (mockup W1): add widgets from the app (installed Android app only). */}
+          {canPinWidgets() && <SettingsRow testID="settings-row-widgets" icon="apps-outline" title="Widgets" onPress={() => navigation.push('Widgets')} />}
           <SettingsRow testID="settings-row-data" icon="cloud-outline" title="Backup & Data" onPress={() => openPage('backup')} />
           <SettingsRow testID="settings-row-help" icon="information-circle-outline" title="About & Help" onPress={() => openPage('helpabout')} />
         </SettingsGroup>

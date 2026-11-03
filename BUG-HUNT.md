@@ -269,3 +269,16 @@ Areas: Day & night (theme, Home menu, Appearance), welcome O3a, set-up S1-S4, wi
   same today. Keep it (same as Home), or make hidden widgets always green?
 - Can't reach in the hidden browser: Settings (account only) — Appearance covered by
   PeelSwitches "Day & night sticker" instead.
+
+## Sweep 2026-11-03 (P1 trip due dates, P2 From your plans, W1 Widgets page, voice/keyboard fixes)
+- Data: trip items due now agree on To-Pay (Bills › From your plans + Still to pay this month),
+  Home's Due soon and Left to Spend (shared tripDue.ts; a trip starting before payday still
+  counts whole, no double count: tripDue.test.mjs).
+- H-63 (to do next, same rule "amounts match on every screen"): trip items due are not yet on
+  the Calendar, the bell's Due soon, or the Due soon / Month widgets.
+- H-64 (look): the widgets' preview pictures in the phone's widget list are still the old
+  crimson ones (assets/widget-preview); they should be redrawn green. Needs a new build.
+- Smoothness: new date rows open with animateNextLayout like the to-do date; the Widgets page
+  uses the shared SettingsGroup rows; nothing new animates on its own.
+- Safety: nothing new writes to Firestore except the trip save (same path as before, with
+  withTimeout); the widget library is still never loaded in Expo Go (Widgets check extended).
