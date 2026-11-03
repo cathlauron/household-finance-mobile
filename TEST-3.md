@@ -383,3 +383,13 @@ In Expo Go:
    trip starts after payday. Tick it paid: it leaves To-Pay and Due soon.
 Needs the installed app (build or update): Settings › Widgets: tap Add on one → your phone asks
 "Add to home screen?" → Add. Back in the app it says "On your home screen".
+
+## 28. PW1 + H-63 + H-64, 2026-11-03. NOT YET TESTED.
+In Expo Go:
+1. Create account (or save a guest), and Settings › Account & Security › Change password: type a
+   new password. A 4-part bar and a word appear: "abc" Too short, "mangos" Weak, "mangotree"
+   Okay, "MangoTree26" Good, "Mango-Tree-2026" Strong. 6 characters is still enough to save.
+2. A trip item with a due date: it's on the Calendar on that day (blue, "BKK trip · due"; tap opens
+   the trip), and in the bell under "Due in the next 14 days" when it's within 14 days.
+Needs the installed app (new build): the Due soon and Month widgets list it; in your phone's
+widget list (hold the home screen › Widgets › Finance Flow) the previews are green.

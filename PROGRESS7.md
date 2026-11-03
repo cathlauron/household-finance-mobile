@@ -1539,3 +1539,8 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   only in the installed Android app). Her question "amounts not under bills/debts/loans/plans":
   answered: Bills with Repeats › Once. Follow-ups H-63 (calendar/bell/widgets), H-64 (green widget
   previews). Phone list TEST-3 s27.
+- 2026-11-03 (night): Cath picked PW1 and said yes to H-63 + H-64. BUILT (checks red-green):
+  password strength bar under new passwords (Create account, Change password; 6-char rule
+  unchanged); trip items due on the Calendar, bell and Due soon / Month widgets; widget preview
+  pictures retaken green (tools/widget-previews.cjs). Phone lists TEST-3 s26-s28. Widgets page,
+  widget lists and green previews need a NEW build (3.4.0?).

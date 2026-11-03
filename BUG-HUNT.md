@@ -274,9 +274,9 @@ Areas: Day & night (theme, Home menu, Appearance), welcome O3a, set-up S1-S4, wi
 - Data: trip items due now agree on To-Pay (Bills › From your plans + Still to pay this month),
   Home's Due soon and Left to Spend (shared tripDue.ts; a trip starting before payday still
   counts whole, no double count: tripDue.test.mjs).
-- H-63 (to do next, same rule "amounts match on every screen"): trip items due are not yet on
+- H-63 DONE 2026-11-03 (Calendar, bell, Due soon / Month widgets; checks tripDue, BellTrips, Widgets): trip items due are not yet on
   the Calendar, the bell's Due soon, or the Due soon / Month widgets.
-- H-64 (look): the widgets' preview pictures in the phone's widget list are still the old
+- H-64 DONE 2026-11-03 (retaken green with tools/widget-previews.cjs; shows after a new build): the widgets' preview pictures in the phone's widget list are still the old
   crimson ones (assets/widget-preview); they should be redrawn green. Needs a new build.
 - Smoothness: new date rows open with animateNextLayout like the to-do date; the Widgets page
   uses the shared SettingsGroup rows; nothing new animates on its own.
