@@ -1521,3 +1521,9 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
 - 2026-10-31 (late night): Cath: "device test is as described" (TEST-3 s25). v3 pushed. Release
   3.3.0 (versionCode 8, appVersion.ts) for the EAS build from v3: brings real listening (B-087
   microphone fix, s24), green widgets following the mood, and everything in s25.
+- 2026-11-03: Cath: device test of 3.3.0 completed. H-62: hidden widgets keep the mood colour.
+  Sign-in speed fine: lock strength stays; "Check sign-in speed" removed. Her video (trip to-do,
+  SwiftKey) + list: FIXED B-090 keyboard toolbar covered the box, B-091 voice lists ("chicken
+  and egg", "&"), B-092 voice date becomes the to-do's date, B-093 to-dos editable with a date.
+  NEW (mockups first): trip budget items with a date + amounts due shown on To-Pay; add widgets
+  from the app (library has requestPinWidget, no new native code); password strength meter.

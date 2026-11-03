@@ -163,6 +163,14 @@ until she picks.
   and the category is guessed and preselected where possible (she only changes it if it's
   wrong). Look waits on mockup: one mockup per screen that changes.
 
+- 2026-11-03: **What you type is never behind the keyboard.** Any box being typed in stays
+  above the keyboard and its toolbar / suggestion strip, everywhere (pages, forms, sheets).
+- 2026-11-03: **Say it understands lists and dates.** Several things said in one go are
+  separate items ("chicken and egg", "&", "plus", commas), and a date said with them becomes
+  their date (the coming one), never words in the item.
+- 2026-11-03: Hidden amounts: widgets still show the mood colour (Cath, H-62). Lock strength
+  stays as it is; "Check sign-in speed" removed.
+
 ## Same kind of thing, same behaviour
 
 Many of Cath's bugs were one sibling getting a fix the others didn't. When you check or fix

@@ -264,7 +264,7 @@ Areas: Day & night (theme, Home menu, Appearance), welcome O3a, set-up S1-S4, wi
   saves first); the welcome's night preview never saves; leaving the welcome fades to the real
   look; set-up's "You're all set" blocks taps until Home; transfers by voice never put a credit
   card in "From"; event items by voice only drop blank rows; nothing new writes to Firestore.
-- H-62 (question for Cath, low): with "Hide amounts" on, the widgets show ₱ •••• but still take
+- H-62 ANSWERED 2026-11-03 (keep the mood colour when hidden, like Home): with "Hide amounts" on, the widgets show ₱ •••• but still take
   the mood colour, so a red widget tells someone looking that you're over. Home's card does the
   same today. Keep it (same as Home), or make hidden widgets always green?
 - Can't reach in the hidden browser: Settings (account only) — Appearance covered by

@@ -13,3 +13,10 @@ test('times the three strengths and explains what it affects', () => {
   expect(text).toMatch(/600,000: 1\.23 s/);
   expect(text).toMatch(/fingerprint and PIN don't change/);
 });
+
+// Cath, 2026-11-03: "i am all good with the sign in speed" and keep the lock as it is: the
+// test button is gone from Settings.
+test('Settings no longer shows Check sign-in speed', () => {
+  const src = require('fs').readFileSync('src/screens/SettingsScreen.tsx', 'utf8');
+  expect(src).not.toMatch(/title="Check sign-in speed"/);
+});
