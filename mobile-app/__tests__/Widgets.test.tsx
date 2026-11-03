@@ -105,3 +105,12 @@ test('widgets are green by default and follow the mood like Home', () => {
   expect(makeWidgetSnapshot(off, { hidden: false, now: new Date(2026, 9, 30, 12) }).mood).toBe('good');
   spy.mockRestore();
 });
+
+// H-63 (Cath, 2026-11-03): trip items with a due date show on the Due soon / Month widgets too.
+test('a trip item due soon is on the widgets\' Due soon list and in what\'s left to pay', () => {
+  const m: any = model();
+  m.travel = [{ id: 'bkk', name: 'BKK', startDate: '2026-12-13', endDate: '2026-12-20', checklist: [{ id: 'h', title: 'Hotel balance', cost: 12000, checked: false, dueDate: '2026-11-09' }] }];
+  const s = makeWidgetSnapshot(m, { hidden: false, now: new Date(2026, 10, 3, 12) });
+  expect(s.due.map((d: any) => d.name)).toContain('Hotel balance');
+  expect(s.dueLeft).toMatch(/12,000/);
+});

@@ -125,6 +125,10 @@ export default function HomeScreen({ username }: Props) {
       (navigation as any).navigate(r.screen, r.params);
       return;
     }
+    if (item.group === 'due' && item.due.type === 'trip') {
+      (navigation as any).navigate('Travel', { tripId: item.due.tripId });
+      return;
+    }
     // Redesign: open the full Bill / Debt / Loan page.
     const target = item.group === 'overdue' ? { kind: item.overdue.kind, id: item.overdue.id } : item.due.id ? { kind: item.due.type, id: item.due.id } : null;
     if (target) {

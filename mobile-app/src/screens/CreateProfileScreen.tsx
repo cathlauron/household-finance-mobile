@@ -25,6 +25,7 @@ import { createFirebaseAccount } from '../authFirebase';
 import { saveProfileCloudBackup } from '../cloudBackup';
 import { generateRecoveryCode, saveRecoveryKey } from '../recovery';
 import PasswordField from '../components/PasswordField';
+import PasswordStrengthBar from '../components/PasswordStrengthBar';
 import { hapticLight } from '../haptics';
 import { radii, spacing } from '../tokens';
 
@@ -307,6 +308,8 @@ export default function CreateProfileScreen({ onProfileCreated, onGoToSignIn, gu
             placeholder="At least 6 characters"
           />
         </View>
+        {/* Cath, 2026-11-03 (mockup PW1): how strong it is, as you type. */}
+        <PasswordStrengthBar password={password1} testID="password-strength" />
 
         <MarkedLabel text="Confirm password" mark="required" style={styles.label} />
         <View style={styles.fieldWrap}>

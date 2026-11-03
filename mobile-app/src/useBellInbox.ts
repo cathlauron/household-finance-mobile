@@ -5,10 +5,12 @@ import { getOverdueItems, OverdueItem } from './overdue';
 import { usePendingRecovery } from './usePendingRecovery';
 import { loadBellRead, markBellRead, markAllBellRead, pruneBellRead } from './bellReadState';
 import { getUpcomingDue } from './screens/DashboardScreen';
+import { tripItemsDue } from './tripDue';
 
 export type BellDue = {
-  type: 'bill' | 'debt' | 'loan';
+  type: 'bill' | 'debt' | 'loan' | 'trip';
   id?: string;
+  tripId?: string; // trip items due (H-63, 2026-11-03): tapping opens the trip
   amount: number;
   date: Date;
 };
@@ -39,6 +41,12 @@ export function useBellInbox(username: string, model: any) {
   const today = useToday();
   const overdue = useMemo(() => (model ? getOverdueItems(model) : []), [model, today]);
   const dueSoon = useMemo(() => (model ? getUpcomingDue(model, 14) : []), [model, today]);
+  // H-63 (Cath, 2026-11-03): trip items with a due date in the next 14 days (or past due).
+  const tripsDue = useMemo(() => {
+    if (!model) return [];
+    const in14 = localISO(new Date(Date.now() + 14 * 86400000));
+    return tripItemsDue(model).filter((d) => d.dueDate <= in14);
+  }, [model, today]);
 
   const items: BellItem[] = useMemo(() => {
     const list: BellItem[] = [];
@@ -68,8 +76,18 @@ export function useBellInbox(username: string, model: any) {
         due: { type: d.type, id: d.id, amount: d.amount, date: d.date },
       });
     });
+    tripsDue.forEach(d => {
+      const date = new Date(d.dueDate + 'T00:00:00');
+      list.push({
+        group: 'due',
+        key: `due:trip:${d.itemId}:${d.dueDate}`,
+        title: d.title,
+        subtitle: `${d.tripName} trip · ${d.dueDate < localISO(new Date()) ? 'Was due' : 'Due'} ${dateText(date)}`,
+        due: { type: 'trip', id: d.itemId, tripId: d.tripId, amount: d.amount, date },
+      });
+    });
     return list;
-  }, [request, requestId, overdue, dueSoon]);
+  }, [request, requestId, overdue, dueSoon, tripsDue]);
 
   // Drop read marks for overdue/due items that no longer exist. Recovery marks are
   // left alone, because the recovery request loads later than the other lists.

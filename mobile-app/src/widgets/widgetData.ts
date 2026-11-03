@@ -7,6 +7,7 @@ import { computeLeftToSpend, formatPeso, getLeftToSpendStatus } from '../balance
 import { computeEnvelopes } from '../envelopes';
 import { getUpcomingDue } from '../screens/DashboardScreen';
 import { getOverdueItems } from '../overdue';
+import { tripItemsDue } from '../tripDue';
 
 export type WidgetSnapshot = {
   at: number;
@@ -52,6 +53,12 @@ export function makeWidgetSnapshot(model: HouseholdModel, opts: { hidden: boolea
   try {
     overdue = getOverdueItems(model).map((o: any) => ({ label: o.name, amount: o.amountOwed }));
   } catch {}
+  // H-63 (Cath, 2026-11-03): trip items with a due date, like Home's Due soon (past due ones first).
+  const in31 = iso(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 31));
+  const trips = tripItemsDue(model).filter((d) => d.dueDate <= in31);
+  const todayISO = iso(today);
+  overdue = [...overdue, ...trips.filter((d) => d.dueDate < todayISO).map((d) => ({ label: d.title, amount: d.amount }))];
+  dueAll = [...dueAll, ...trips.filter((d) => d.dueDate >= todayISO).map((d) => ({ date: new Date(d.dueDate + 'T00:00:00'), label: d.title, amount: d.amount }))].sort((a, b) => a.date.getTime() - b.date.getTime());
   const due = [
     ...overdue.map((o) => ({ name: o.label, day: 'Overdue', amount: m(o.amount) })),
     ...dueAll.map((d) => ({ name: d.label, day: `${MON[d.date.getMonth()]} ${d.date.getDate()}`, amount: m(d.amount) })),

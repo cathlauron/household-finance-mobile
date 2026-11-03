@@ -43,3 +43,14 @@ test('Left to Spend: a trip starting before payday still counts whole (no double
   const trips = items.filter((i) => i.group === 'Trips');
   assert.deepEqual(trips.map((t) => [t.name, t.amount]), [['BKK', -(12000 + 1500 + 18800)]]);
 });
+
+// H-63: the Calendar shows each trip item due on its day, planned (blue), and opens its trip.
+import { withTripItems } from '../src/tripDue.ts';
+test('Calendar: a trip item due is on its day, without changing the other days', () => {
+  const base = { 9: [{ type: 'bill', label: 'Electricity', amount: 2400, id: 'e' }] };
+  const out = withTripItems(base, household(), 2026, 10);
+  assert.deepEqual(out[9].map((e) => e.label), ['Electricity', 'Hotel balance']);
+  assert.deepEqual(out[12].map((e) => [e.label, e.tripId, e.tripName]), [['Travel insurance', 'bkk', 'BKK']]);
+  assert.equal(base[9].length, 1, 'the shared list is not changed');
+  assert.equal(withTripItems(base, household(), 2026, 11), base, 'a month with none: unchanged');
+});

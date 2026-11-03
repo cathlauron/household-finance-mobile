@@ -10,6 +10,7 @@ import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../DataContext';
 import { computeRunningBalances, formatPeso, computeMonthEvents, CalendarEvent } from '../balanceProjection';
+import { withTripItems } from '../tripDue';
 import {
   CalendarViewMode,
   CalendarNavMode,
@@ -68,6 +69,7 @@ function eventColor(ev: CalendarEvent, colors: any): string {
 
 // The small grey second line under each item in the day panel.
 function eventKind(ev: CalendarEvent): string {
+  if (ev.tripId) return `${ev.tripName || 'Trip'} trip · due`;
   switch (ev.type) {
     case 'bill':
       return ev.regular ? 'Regular payment' : 'Bill';
@@ -92,6 +94,7 @@ function eventAmount(ev: CalendarEvent, colors: any): { text: string; color: str
   const abs = formatPeso(Math.abs(ev.amount));
   const isSaving = ev.type === 'saving' || (ev.type === 'manual' && ev.direction === 'saving');
   if (isSaving) return { text: abs, color: colors.saving };
+  if (ev.tripId) return { text: '−' + abs, color: colors.planned }; // planned until it's paid
   const isIn = ev.type === 'income' || (ev.type === 'manual' && ev.direction === 'in');
   if (isIn) return { text: '+' + abs, color: colors.positive };
   // 2.2 (approved P2): bills, debts and loans that are only scheduled are calm ink; red
@@ -142,6 +145,8 @@ function monthEventsFor(model: any, year: number, month: number): Record<number,
   let ev = byMonth.get(key);
   if (!ev) {
     ev = computeMonthEvents(model, year, month);
+    // H-63 (Cath, 2026-11-03): trip items with a due date show on their day too (planned, blue).
+    ev = withTripItems(ev, model, year, month);
     byMonth.set(key, ev);
   }
   return ev;
@@ -703,8 +708,9 @@ export default function CalendarScreen() {
             ) : (
               evs.map((ev, i) => {
                 const amt = eventAmount(ev, colors);
-                const open =
-                  ev.id && (ev.type === 'bill' || ev.type === 'debt' || ev.type === 'loan')
+                const open = ev.tripId
+                  ? () => navigation.navigate('Travel', { tripId: ev.tripId })
+                  : ev.id && (ev.type === 'bill' || ev.type === 'debt' || ev.type === 'loan')
                     ? () => navigation.navigate('PayDetail', { kind: ev.type, id: ev.id, backTitle: 'Calendar' })
                     : undefined;
                 return (

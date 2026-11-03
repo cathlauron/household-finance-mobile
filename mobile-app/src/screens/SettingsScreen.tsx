@@ -73,6 +73,7 @@ import {
   type DeviceSession,
 } from '../sessions';
 import PasswordField from '../components/PasswordField';
+import PasswordStrengthBar from '../components/PasswordStrengthBar';
 import { makeId } from '../utils';
 import * as Clipboard from 'expo-clipboard';
 import { DOW_LABELS } from '../income';
@@ -2050,6 +2051,10 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
               <PasswordRow testID="new-password-input" label="New" value={newPass1Input} onChangeText={setNewPass1Input} placeholder="New password" />
               <PasswordRow testID="confirm-new-password-input" label="Confirm" value={newPass2Input} onChangeText={setNewPass2Input} placeholder="Type it again" />
             </FormGroup>
+            {/* Cath, 2026-11-03 (mockup PW1): how strong the new password is. */}
+            <View style={{ marginHorizontal: 16, marginTop: -8, marginBottom: 8 }}>
+              <PasswordStrengthBar password={newPass1Input} testID="new-password-strength" />
+            </View>
             </View>
             <Text style={[styles.sheetNote, passChangeMsg ? { color: colors.error } : null]}>
               {passChangeMsg || (passChangeBusy ? '' : 'At least 6 characters.')}
