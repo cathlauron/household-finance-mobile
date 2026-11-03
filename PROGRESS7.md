@@ -1545,3 +1545,4 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   pictures retaken green (tools/widget-previews.cjs). Phone lists TEST-3 s26-s28. Widgets page,
   widget lists and green previews need a NEW build (3.4.0?).
 - 2026-11-03 (night): Cath: "device test is as described" (TEST-3 s26-s28 in Expo Go). Next: push v3 + build 3.4.0 for the widget parts.
+- 2026-11-03: release 3.4.0 (versionCode 9) from v3: Widgets page, trip items on widgets, green previews, everything in s26-s28.
