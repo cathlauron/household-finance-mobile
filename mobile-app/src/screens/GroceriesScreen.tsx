@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { SayItButton } from '../components/SayIt';
-import { parseVoice, splitItems } from '../voiceParse';
+import { parseVoice, voiceList } from '../voiceParse';
 import { animateNextLayout } from '../animateLayout';
 import { redUnlessZero, toneUnlessZero } from '../moneyColor';
 import { showLeafTick } from '../components/LeafTick';
@@ -123,7 +123,8 @@ export default function GroceriesScreen() {
   // meal's ingredients. Nothing is saved until Add / Save.
   function applyVoice(text: string) {
     const h = parseVoice(text);
-    const list = h.items && h.items.length ? h.items : splitItems(text);
+    // 2026-11-03 (Cath: "chicken and egg" was one item): each thing said is its own item.
+    const list = voiceList(text).items;
     if (sheet?.kind === 'meal') {
       const names = list.filter(Boolean);
       if (names.length) setIngredients((rows) => [...rows.filter((r) => r.name.trim()), ...names.map((n) => ({ id: makeId('ing'), name: n, price: '' as const }))]);

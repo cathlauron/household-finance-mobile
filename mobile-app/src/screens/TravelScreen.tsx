@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
 import { SayItButton } from '../components/SayIt';
-import { parseVoice, splitItems, voiceTrip } from '../voiceParse';
+import { parseVoice, splitItems, voiceTrip, voiceList } from '../voiceParse';
 import { animateNextLayout } from '../animateLayout';
 import { redUnlessZero, toneUnlessZero } from '../moneyColor';
 import ErrorNote from '../components/ErrorNote';
@@ -163,6 +163,7 @@ export default function TravelScreen() {
   // Version 2.1 (T1): Budget | To-do inside the trip.
   const [tripTab, setTripTab] = useState<'budget' | 'todo'>('budget');
   const [todos, setTodos] = useState<TravelTodo[]>([]);
+  const [todoDateOpen, setTodoDateOpen] = useState<string | null>(null); // the to-do whose date is open in the form
   const [todoText, setTodoText] = useState('');
   const [itemTitleInput, setItemTitleInput] = useState('');
   const [itemCostInput, setItemCostInput] = useState<number | ''>('');
@@ -322,16 +323,21 @@ export default function TravelScreen() {
   // Voice entry (mockup V, Cath 2026-10-30): to-dos and budget items said in one go are all
   // added when Add is tapped (nothing is saved before that).
   function applyVoiceTodo(text: string) {
-    const h = parseVoice(text);
-    const list = h.items && h.items.length ? h.items : splitItems(text);
+    // 2026-11-03 (Cath): each thing said is its own to-do, and a date said with them is their
+    // date (taken out of the words, the date row opened so you see it's picked).
+    const v = voiceList(text);
+    const list = v.items.length ? v.items : [text];
     setVoiceTodos(list.length > 1 ? list : null);
-    setPageTodoText(list.length > 1 ? list.join(', ') : list[0] ?? text);
-    if (h.date) setPageTodoDate(h.date);
+    setPageTodoText(list.length > 1 ? list.join(', ') : list[0]);
+    if (v.date) {
+      setPageTodoDate(v.date);
+      setPageTodoDateOpen(true);
+    }
   }
   function applyVoiceItem(text: string) {
     const h = parseVoice(text);
     if (h.amount === undefined) {
-      const list = h.items && h.items.length ? h.items : splitItems(text);
+      const list = voiceList(text).items;
       setVoiceItems(list.length > 1 ? list : null);
       setPageItemText(list.length > 1 ? list.join(', ') : list[0] ?? text);
       return;
@@ -501,6 +507,7 @@ export default function TravelScreen() {
     setChecklist([]);
     setTodos([]);
     setTodoText('');
+    setTodoDateOpen(null);
     setTripTab('budget');
     setTrackInSavings(false);
     setItemTitleInput('');
@@ -510,7 +517,8 @@ export default function TravelScreen() {
     setModalOpen(true);
   }
 
-  function openEditModal(trip: TravelTrip) {
+  // tab (2026-11-03): tapping a to-do on the trip page opens the form on To-do.
+  function openEditModal(trip: TravelTrip, tab: 'budget' | 'todo' = 'budget') {
     setEditingId(trip.id);
     setNameInput(trip.name);
     setStartDateInput(trip.startDate);
@@ -518,7 +526,8 @@ export default function TravelScreen() {
     setChecklist(trip.checklist ?? []);
     setTodos(trip.todos ?? []);
     setTodoText('');
-    setTripTab('budget');
+    setTodoDateOpen(null);
+    setTripTab(tab);
     setTrackInSavings(trip.trackInSavings ?? false);
     setItemTitleInput('');
     setItemCostInput('');
@@ -948,10 +957,11 @@ export default function TravelScreen() {
                         >
                           {td.done && <Ionicons name="checkmark" size={15} color={colors.onButton} />}
                         </TouchableOpacity>
-                        <View style={{ flex: 1, marginRight: 8 }}>
+                        {/* 2026-11-03 (Cath: "to-do list should be editable"): tap it to edit (words and date). */}
+                        <TouchableOpacity style={{ flex: 1, marginRight: 8 }} onPress={() => openEditModal(t, 'todo')} accessibilityRole="button" accessibilityHint="Edit this to-do" testID={`travel-page-todo-edit-${td.id}`}>
                           <Text style={[styles.tripName, td.done && { color: colors.inkDim, textDecorationLine: 'line-through' }]}>{td.text}</Text>
                           {(td.done || !!td.date || who.others(td.addedBy)) && <Text style={styles.tripSub}>{[td.done ? 'Done' : td.date ? shortDay(td.date as string) : '', who.others(td.addedBy) ? `added by ${who.nameOf(td.addedBy)}` : ''].filter(Boolean).join(' · ')}</Text>}
-                        </View>
+                        </TouchableOpacity>
                         <TouchableOpacity
                           onPress={() => askToRemove(`Remove "${td.text}"?`, 'It comes off this trip\'s to-do list.', () => {
                             const latest = (getModel() ?? model)?.travel?.find((x) => x.id === t.id) ?? t;
@@ -983,7 +993,7 @@ export default function TravelScreen() {
                         <Ionicons name="calendar-outline" size={20} color={pageTodoDate ? colors.gold : colors.inkFaint} />
                       </TouchableOpacity>
                       {!!pageTodoText.trim() && (
-                        <TouchableOpacity onPress={() => addPageTodo(t)} accessibilityRole="button" style={[styles.addItemButton, { backgroundColor: colors.accentTint, marginTop: 0, paddingVertical: 6, paddingHorizontal: 12 }]}>
+                        <TouchableOpacity onPress={() => addPageTodo(t)} accessibilityRole="button" testID="travel-page-todo-add" style={[styles.addItemButton, { backgroundColor: colors.accentTint, marginTop: 0, paddingVertical: 6, paddingHorizontal: 12 }]}>
                           <Text style={[styles.addItemButtonText, { color: colors.gold }]}>Add</Text>
                         </TouchableOpacity>
                       )}
@@ -1098,7 +1108,8 @@ export default function TravelScreen() {
           <>
             <FormGroup>
               {todos.map((t) => (
-                <View key={t.id} style={styles.formItemRow}>
+                <React.Fragment key={t.id}>
+                <View style={styles.formItemRow}>
                   <TouchableOpacity
                     style={[styles.check, t.done && { backgroundColor: colors.buttonFill, borderColor: colors.buttonFill }]}
                     onPress={() => { hapticSelection(); setTodos((list) => list.map((x) => (x.id === t.id ? { ...x, done: !x.done } : x))); }}
@@ -1114,11 +1125,21 @@ export default function TravelScreen() {
                     value={t.text}
                     onChangeText={(text) => setTodos((list) => list.map((x) => (x.id === t.id ? { ...x, text } : x)))}
                     maxLength={120}
+                    testID={`travel-form-todo-${t.id}`}
                   />
+                  <TouchableOpacity onPress={() => { animateNextLayout(); setTodoDateOpen((o) => (o === t.id ? null : t.id)); }} accessibilityRole="button" accessibilityLabel={t.date ? `Date ${shortDay(t.date)}, change it` : 'Add a date (optional)'} hitSlop={8} style={{ marginLeft: 10 }} testID={`travel-form-todo-date-${t.id}`}>
+                    <Ionicons name="calendar-outline" size={20} color={t.date ? colors.gold : colors.inkFaint} />
+                  </TouchableOpacity>
                   <TouchableOpacity onPress={() => askToRemove(`Remove "${t.text}"?`, 'It comes off the to-do list when you tap Save.', () => setTodos((list) => list.filter((x) => x.id !== t.id)))} accessibilityRole="button" accessibilityLabel={`Remove ${t.text}`} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 10 }}>
                     <Ionicons name="close-circle" size={20} color={colors.inkFaint} />
                   </TouchableOpacity>
                 </View>
+                {todoDateOpen === t.id && (
+                  <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+                    <DateField mark="optional" label="Date" value={t.date ?? ''} onChange={(d: string) => setTodos((list) => list.map((x) => (x.id === t.id ? { ...x, date: d || undefined } : x)))} placeholder="Pick a date" clearable testID={`travel-form-todo-datefield-${t.id}`} />
+                  </View>
+                )}
+                </React.Fragment>
               ))}
               <View style={styles.formItemRow}>
                 <TextInput

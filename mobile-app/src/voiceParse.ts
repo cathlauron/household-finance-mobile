@@ -140,7 +140,7 @@ export function splitItems(text: string): string[] {
     .replace(/\s+(?:to|on|in)\s+(?:the|my)\s+(?:grocery|groceries|shopping|to-?do)\s+list\s*$/i, '')
     .replace(/\s+(?:to|on|in)\s+(?:the|my)\s+list\s*$/i, '');
   return body
-    .split(/\s*,\s*|\s+and\s+|\s+then\s+/i)
+    .split(/\s*,\s*|\s+and\s+|\s*&\s*|\s+plus\s+|\s+then\s+/i)
     .map((x) => x.trim().replace(/[.!?]+$/, ''))
     .filter(Boolean)
     .map((x) => x.charAt(0).toUpperCase() + x.slice(1));
@@ -262,7 +262,7 @@ export function voiceThing(text: string, opts: { now?: Date } = {}): { name?: st
 export function voiceItems(text: string): { name: string; amount?: number }[] {
   return text
     .replace(/^\s*(?:add|put|buy|get)\s+/i, '')
-    .split(/\s*,\s*(?!\d{3}(?!\d))|\s+and\s+|\s+then\s+/i)
+    .split(/\s*,\s*(?!\d{3}(?!\d))|\s+and\s+|\s*&\s*|\s+plus\s+|\s+then\s+/i)
     .map((part) => part.trim().replace(/[.!?]+$/, ''))
     .filter(Boolean)
     .map((part) => {
@@ -314,4 +314,50 @@ export function voiceTransfer(text: string, accountNames: string[], now: Date = 
   const d = findDate(text, now);
   if (d) out.date = d;
   return out;
+}
+
+// ---- 2026-11-03 (Cath: "chicken and egg" was one item; a date said with a to-do was typed
+// into it instead of becoming its date) ----
+
+// A date said with a to-do or a list, taken OUT of the words. To-dos are ahead, so a weekday is
+// the coming one ("by Friday"), "next Tuesday" the one after, and a date already gone this
+// year is next year's.
+function takeFutureDate(text: string, now: Date): { date?: string; rest: string } {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const lead = String.raw`(?:(?:due\s+)?(?:on|by|before|for|until)\s+)?`;
+  const cut = (m: RegExpExecArray) => (text.slice(0, m.index) + ' ' + text.slice(m.index + m[0].length)).replace(/\s+([,.])/g, '$1').replace(/\s+/g, ' ').trim();
+  const add = (n: number) => iso(new Date(today.getFullYear(), today.getMonth(), today.getDate() + n));
+  let m: RegExpExecArray | null;
+  if ((m = new RegExp(String.raw`\b${lead}(?:the\s+)?day after tomorrow\b`, 'i').exec(text))) return { date: add(2), rest: cut(m) };
+  if ((m = new RegExp(String.raw`\b${lead}tomorrow\b`, 'i').exec(text))) return { date: add(1), rest: cut(m) };
+  if ((m = new RegExp(String.raw`\b${lead}(?:today|tonight|this (?:morning|afternoon|evening))\b`, 'i').exec(text))) return { date: add(0), rest: cut(m) };
+  const monthRe = MONTHS.join('|');
+  const md = new RegExp(String.raw`\b${lead}(?:the\s+)?(?:(${monthRe})\s+(\d{1,2})(?:st|nd|rd|th)?|(\d{1,2})(?:st|nd|rd|th)?\s+of\s+(${monthRe}))\b`, 'i').exec(text);
+  if (md) {
+    const mon = MONTHS.indexOf((md[1] ?? md[4]).toLowerCase());
+    const day = Number(md[2] ?? md[3]);
+    let d = new Date(today.getFullYear(), mon, day);
+    if (d < today) d = new Date(today.getFullYear() + 1, mon, day);
+    return { date: iso(d), rest: cut(md) };
+  }
+  const wd = new RegExp(String.raw`\b${lead}(this\s+|next\s+)?(${WEEKDAYS.join('|')})\b`, 'i').exec(text);
+  if (wd) {
+    let ahead = (WEEKDAYS.indexOf(wd[2].toLowerCase()) - today.getDay() + 7) % 7;
+    if (/next/i.test(wd[1] ?? '')) ahead += ahead === 0 ? 7 : 7;
+    return { date: add(ahead), rest: cut(wd) };
+  }
+  const nth = new RegExp(String.raw`\b(?:due\s+)?(?:on|by|before|until)\s+the\s+(\d{1,2})(?:st|nd|rd|th)?\b`, 'i').exec(text);
+  if (nth && Number(nth[1]) >= 1 && Number(nth[1]) <= 31) return { date: nextDueDate(Number(nth[1]), now), rest: cut(nth) };
+  return { rest: text };
+}
+
+// Several to-dos or list items said in one go ("chicken and egg", "pack, baggage and TDAC by
+// Friday"): each its own item, and a date said with them is their date.
+export function voiceList(text: string, now: Date = new Date()): { items: string[]; date?: string } {
+  const { date, rest } = takeFutureDate(text, now);
+  const items = splitItems(rest)
+    .map((x) => x.replace(/\s+(?:on|by|before|due|for|until)$/i, '').trim())
+    .filter(Boolean)
+    .map((x) => x.charAt(0).toUpperCase() + x.slice(1));
+  return date ? { items, date } : { items };
 }

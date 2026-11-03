@@ -25,6 +25,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 //   while the keyboard is open does the same.
 
 const MARGIN = 24; // gap kept between the field and the keyboard
+// Cath's video 2026-11-03 (SwiftKey): Android's reported keyboard height leaves out keyboard
+// toolbars and suggestion strips, so a field 24 points above the reported top sat behind them.
+// On Android the field is kept this far above the reported top instead.
+const ANDROID_GAP = 96;
+const gap = () => (Platform.OS === 'android' ? ANDROID_GAP : MARGIN);
 
 // Version 2.1: lets a field inside the scroll area bring itself into view (used by
 // Guided, which jumps to a form field that still needs filling in).
@@ -79,7 +84,7 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, Props>(function Ke
     const input: any = (TextInput as any).State?.currentlyFocusedInput?.();
     if (top == null || !input || typeof input.measureInWindow !== 'function' || !inner.current) return;
     input.measureInWindow((_x: number, y: number, _w: number, h: number) => {
-      const limit = top - MARGIN;
+      const limit = top - gap();
       if (y + h > limit) {
         inner.current?.scrollTo({ y: Math.max(0, offsetY.current + (y + h - limit)), animated: true });
       }
@@ -120,7 +125,7 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, Props>(function Ke
     if (!node || !sv || typeof node.measureInWindow !== 'function' || typeof sv.measureInWindow !== 'function') return;
     sv.measureInWindow((_sx: number, sy: number, _sw: number, sh: number) => {
       node.measureInWindow((_x: number, y: number, _w: number, h: number) => {
-        const bottom = Math.min(sy + sh, keyboardTop.current ?? Number.MAX_SAFE_INTEGER) - MARGIN;
+        const bottom = keyboardTop.current != null ? Math.min(sy + sh - MARGIN, keyboardTop.current - gap()) : sy + sh - MARGIN;
         const top = sy + MARGIN;
         if (y >= top && y + h <= bottom) return;
         const target = offsetY.current + (y - sy) - Math.max(40, (Math.min(sh, bottom - sy) - h) / 3);

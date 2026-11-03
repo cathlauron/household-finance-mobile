@@ -111,3 +111,26 @@ test('a transfer: amount, from and to your own accounts, date', () => {
   assert.deepEqual(voiceTransfer('Move 2,000 from BPI savings to GCash today', names, NOW), { amount: 2000, from: 'BPI Savings', to: 'GCash', date: '2026-10-31' });
   assert.deepEqual(voiceTransfer('5k to cash', names, NOW), { amount: 5000, to: 'Cash' });
 });
+
+// Cath, 2026-11-03: "chicken and egg" came out as one grocery item, and a date said with a
+// to-do was typed into the to-do instead of becoming its date. A list said in one go is split
+// (also on "&" and "plus"), and a date said with it is taken out of the words and set as the
+// date (the coming day: to-dos are ahead).
+import { voiceList } from '../src/voiceParse.ts';
+const TUE = new Date(2026, 10, 3, 12); // Tue Nov 3 2026
+
+test('a list said in one go is several items, also with "&" and "plus"', () => {
+  assert.deepEqual(voiceList('chicken and egg', TUE), { items: ['Chicken', 'Egg'] });
+  assert.deepEqual(voiceList('chicken & egg', TUE), { items: ['Chicken', 'Egg'] });
+  assert.deepEqual(voiceList('rice plus soy sauce', TUE), { items: ['Rice', 'Soy sauce'] });
+  assert.deepEqual(voiceList('book the hotel, buy sunscreen and pack chargers', TUE), { items: ['Book the hotel', 'Buy sunscreen', 'Pack chargers'] });
+});
+
+test('a date said with it becomes the date, not words in the item', () => {
+  assert.deepEqual(voiceList('buy chicken and eggs tomorrow', TUE), { items: ['Chicken', 'Eggs'], date: '2026-11-04' });
+  assert.deepEqual(voiceList('Pack on November 12', TUE), { items: ['Pack'], date: '2026-11-12' });
+  assert.deepEqual(voiceList('print payslip by Friday', TUE), { items: ['Print payslip'], date: '2026-11-06' });
+  assert.deepEqual(voiceList('Medcert due on the 12th', TUE), { items: ['Medcert'], date: '2026-11-12' });
+  assert.deepEqual(voiceList('baggage and TDAC next Tuesday', TUE), { items: ['Baggage', 'TDAC'], date: '2026-11-10' });
+  assert.deepEqual(voiceList('print statement of account on October 30', TUE), { items: ['Print statement of account'], date: '2027-10-30' });
+});

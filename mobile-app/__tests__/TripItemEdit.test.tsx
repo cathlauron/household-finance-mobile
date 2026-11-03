@@ -65,3 +65,41 @@ test('H-45 (canvas B14): a paid trip item gets the paid line; an unpaid one does
   expect(screen.getByTestId('travel-item-paid-p1')).toBeTruthy();
   expect(screen.queryByTestId('travel-item-paid-u1')).toBeNull();
 }, 30000);
+
+// Cath, 2026-11-03: "To-do list should be editable": tapping a to-do on the trip page opens it
+// in the trip form, where its words and its date can be changed.
+test('a to-do on the trip page opens for editing, words and date', async () => {
+  mockModel = household();
+  mockModel.travel[0].todos = [{ id: 'td1', text: 'Pack', done: false }];
+  const Screen = require('../src/screens/TravelScreen').default;
+  render(<ThemeProvider><Screen /></ThemeProvider>);
+  await act(async () => {});
+  await act(async () => { fireEvent.press(screen.getAllByText('Cebu')[0]); });
+  await act(async () => { fireEvent.press(screen.getByTestId('travel-page-todo-tab')); });
+  await act(async () => { fireEvent.press(screen.getByTestId('travel-page-todo-edit-td1')); });
+  await act(async () => { fireEvent.changeText(screen.getByTestId('travel-form-todo-td1'), 'Pack jackets'); });
+  await act(async () => { fireEvent.press(screen.getByTestId('travel-form-todo-date-td1')); });
+  expect(screen.getByTestId('travel-form-todo-datefield-td1')).toBeTruthy();
+  await act(async () => { fireEvent.press(screen.getByText('Save')); });
+  const td = saved[saved.length - 1].travel[0].todos[0];
+  expect(td).toMatchObject({ id: 'td1', text: 'Pack jackets' });
+}, 30000);
+
+// Cath, 2026-11-03: saying several to-dos with a date made one to-do with the date typed in it.
+jest.mock('../src/voiceListen', () => ({ canListen: () => false, startListening: async () => null }));
+test('Say it on the to-do list: each thing is its own to-do, and the date becomes their date', async () => {
+  mockModel = household();
+  const Screen = require('../src/screens/TravelScreen').default;
+  render(<ThemeProvider><Screen /></ThemeProvider>);
+  await act(async () => {});
+  await act(async () => { fireEvent.press(screen.getAllByText('Cebu')[0]); });
+  await act(async () => { fireEvent.press(screen.getByTestId('travel-page-todo-tab')); });
+  await act(async () => { fireEvent.press(screen.getByTestId('travel-todo-say-it')); });
+  fireEvent.changeText(screen.getByTestId('voice-type'), 'pack and baggage on December 1');
+  await act(async () => { fireEvent.press(screen.getByTestId('voice-use')); await new Promise((r) => setTimeout(r, 300)); });
+  expect(screen.getByTestId('travel-page-todo-input').props.value).toBe('Pack, Baggage');
+  await act(async () => { fireEvent.press(screen.getByTestId('travel-page-todo-add')); });
+  const todos = saved[saved.length - 1].travel[0].todos;
+  expect(todos.map((t: any) => t.text)).toEqual(['Pack', 'Baggage']);
+  expect(todos.every((t: any) => /^\d{4}-12-01$/.test(t.date))).toBe(true);
+}, 30000);
