@@ -357,7 +357,7 @@ In Expo Go (cd C:\Projects\household-finance-mobile, git pull, cd mobile-app, np
    2,000 and balloons 500"). (Expo Go: the typing box; real listening in the build.)
 Needs the NEW build: widgets green (orange when running low, red when over); real listening (s24).
 
-## 26. Fixes from Cath's video and list, 2026-11-03. NOT YET TESTED.
+## 26. Fixes from Cath's video and list, 2026-11-03. AS DESCRIBED (Cath, 2026-11-03).
 In Expo Go (git pull, then npx expo start -c in mobile-app):
 1. A trip › To-do › tap "Add to the list": the box stays above the keyboard and its toolbar /
    suggestions (no scrolling needed). Same for adding grocery items, budget items, event items
@@ -372,7 +372,7 @@ In Expo Go (git pull, then npx expo start -c in mobile-app):
 Mockups to pick (canvas P): trip due dates + To-Pay (P2 or P3), adding widgets from the app
 (W1 and/or W2), password strength (PW1 or PW2).
 
-## 27. P1 + P2 + W1, 2026-11-03. NOT YET TESTED.
+## 27. P1 + P2 + W1, 2026-11-03. AS DESCRIBED (Cath, 2026-11-03).
 In Expo Go:
 1. A trip › Budget: the add row has a calendar. Add "Hotel balance", ₱12,000, a due date this
    month → the row says "Due … · on To-Pay". In Edit trip, each item has a calendar to change it.
@@ -384,7 +384,7 @@ In Expo Go:
 Needs the installed app (build or update): Settings › Widgets: tap Add on one → your phone asks
 "Add to home screen?" → Add. Back in the app it says "On your home screen".
 
-## 28. PW1 + H-63 + H-64, 2026-11-03. NOT YET TESTED.
+## 28. PW1 + H-63 + H-64, 2026-11-03. AS DESCRIBED (Cath, 2026-11-03).
 In Expo Go:
 1. Create account (or save a guest), and Settings › Account & Security › Change password: type a
    new password. A 4-part bar and a word appear: "abc" Too short, "mangos" Weak, "mangotree"
