@@ -17,13 +17,12 @@ import { pinWidget, widgetsOnHomeScreen } from '../widgets/pinWidget';
 // phone shows its own "Add to home screen?" box). Coming back to the app, widgets that are really
 // on the home screen say so.
 
-const WIDGET_NAMES: readonly WidgetName[] = ['LeftToSpend', 'SayIt', 'SpendSay', 'DueSoon', 'Month', 'Trip'];
+const WIDGET_NAMES: readonly WidgetName[] = ['LeftToSpend', 'SpendSay', 'DueSoon', 'Month', 'Trip'];
 const HERO = { from: '#2C5E48', to: '#122B21' }; // the widgets' green (FFWidgets widgetColours('good'))
 
 const INFO: Record<WidgetName, { title: string; sub: string; short: string; look: 'hero' | 'paper' | 'trip' }> = {
   LeftToSpend: { title: 'Left to spend', sub: 'Small · your number and days to payday', short: 'LTS', look: 'hero' },
-  SayIt: { title: 'Say it', sub: 'Small · one tap to speak', short: 'MIC', look: 'paper' },
-  SpendSay: { title: 'Spend & say', sub: 'Medium · number, week line, Say it, Add', short: 'S&S', look: 'hero' },
+  SpendSay: { title: 'Spend & add', sub: 'Medium · number, week line and + Add', short: 'S&A', look: 'hero' },
   DueSoon: { title: 'Due soon', sub: 'Medium · your next bills', short: 'DUE', look: 'paper' },
   Month: { title: 'Month at a glance', sub: 'Large · budgets and bills', short: 'MON', look: 'paper' },
   Trip: { title: 'Trip', sub: 'Medium · while a trip is on', short: 'TRIP', look: 'trip' },

@@ -1,5 +1,5 @@
 // H-64 (2026-11-03): retake the six widget preview pictures (the phone's widget list) from mockup
-// W2 in the app's green. Run inside mobile-app:
+// W2 in the app's green, with + Add only (voice entry removed 2026-11-04). Run inside mobile-app:
 //   node tools/widget-previews.cjs ../design/3.0-mockups/widgets-w2.html assets/widget-preview
 const { chromium } = require('playwright');
 const path = require('path');
@@ -16,6 +16,11 @@ const { pathToFileURL } = require('url');
     .track{background:#E3EDE6!important}
     .mic::before,.mic::after{animation:none!important;opacity:0!important}
     .w{box-shadow:none!important}
+    .b.say{display:none!important}
+    .b.add{background:#FFFFFF!important;color:#2E6B47!important}
+    .paper .b.add{background:#2E6B47!important;color:#FFFFFF!important}
+    .crimson[style*="5C8DE8"] .b.add{color:#2F5FC4!important}
+    .crimson[style*="5C8DE8"] .track{background:rgba(255,255,255,.25)!important}
     html,body,.bg,.bg.light{background:transparent!important}
     .mic svg,.mic svg *{stroke:#FFFFFF!important}
     .track i[style*="F28AA6"],.track i[style*="pink"]{background:#2E6B47!important}

@@ -1,6 +1,4 @@
 import React, { useLayoutEffect, useMemo, useState } from 'react';
-import { SayItButton } from '../components/SayIt';
-import { parseVoice } from '../voiceParse';
 import { alertNotSaved } from '../messages';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import AppSwitch from '../components/AppSwitch';
@@ -214,13 +212,6 @@ function EnvelopeSheet({
     .map((c) => c.name)
     .filter((n) => !!n && !taken.has(n.trim().toLowerCase()));
 
-  function applyVoice(text: string) {
-    const h = parseVoice(text, { categories: suggestions });
-    if (h.amount !== undefined) setAmount(h.amount);
-    const name = h.category ?? h.name ?? text.replace(/(?:₱|php|p|\$)?\s?\d[\d,]*(?:\.\d+)?\s?(?:k|thousand)?/gi, ' ').replace(/\b(?:a month|every month|monthly|per month|budget|for)\b/gi, ' ').replace(/\s+/g, ' ').trim();
-    if (name) setCategory(name.charAt(0).toUpperCase() + name.slice(1));
-    setError('');
-  }
   function confirm() {
     if (!sheet) return;
     const amt = typeof amount === 'number' ? amount : 0;
@@ -338,7 +329,6 @@ function EnvelopeSheet({
         )}
         <AmountInput autoFocus={sheet?.kind === 'assign'} style={styles.amountInput} value={amount} onChangeAmount={(v) => { setAmount(v); setError(''); }} placeholder="0" />
         {/* Voice entry (mockup V, Cath 2026-10-30): "Groceries 8,000 a month". */}
-        {sheet?.kind === 'add' && <SayItButton onHeard={applyVoice} example="Groceries 8,000 a month" />}
         {!!error && <Text style={[styles.error, { color: colors.negative }]}>{error}</Text>}
         {sheet?.kind === 'edit' && (
           <TouchableOpacity style={styles.removeBtn} onPress={confirmRemove} accessibilityRole="button">

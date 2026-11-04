@@ -171,6 +171,10 @@ until she picks.
 - 2026-11-03: Hidden amounts: widgets still show the mood colour (Cath, H-62). Lock strength
   stays as it is; "Check sign-in speed" removed.
 
+- 2026-11-04: **Voice entry removed completely** (Cath): no Say it anywhere, no speech add-on, no
+  microphone permission; the Say it widget is gone (the others keep + Add). The 2026-11-03 Say it
+  rule above no longer applies. tests/noVoice.test.mjs keeps it out.
+
 ## Same kind of thing, same behaviour
 
 Many of Cath's bugs were one sibling getting a fix the others didn't. When you check or fix

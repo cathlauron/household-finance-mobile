@@ -5,10 +5,11 @@ import type { WidgetSnapshot } from './widgetData';
 
 // Home screen widgets (mockup W2, approved by Cath 2026-10-30), drawn with the widget
 // library's own pieces (not app screens). Colours are the app's: the crimson Left-to-spend
-// card (green by default, following the mood since 2026-10-31), soft paper cards. Tapping 🎙 Say it opens the app on voice entry,
-// + Add on a new transaction, anywhere else opens the app.
+// card (green by default, following the mood since 2026-10-31), soft paper cards. + Add opens
+// a new transaction, anywhere else opens the app.
 
-export const WIDGET_NAMES = ['LeftToSpend', 'SayIt', 'SpendSay', 'DueSoon', 'Month', 'Trip'] as const;
+// Voice entry was removed (Cath, 2026-11-04): no Say it widget; the others keep + Add.
+export const WIDGET_NAMES = ['LeftToSpend', 'SpendSay', 'DueSoon', 'Month', 'Trip'] as const;
 export type WidgetName = (typeof WIDGET_NAMES)[number];
 
 // 2026-10-31 (Cath): green by default, like the Left to Spend card, and following the mood like
@@ -30,7 +31,6 @@ export function widgetColours(mood?: Mood | null) {
 }
 const BLUE = { from: '#5C8DE8', to: '#1D3C86', orientation: 'TR_BL' } as const;
 
-export const VOICE_URI = 'financeflow://voice';
 export const ADD_URI = 'financeflow://add';
 
 const T = (text: string, size: number, color: string, weight: any = '700', extra: object = {}) => (
@@ -55,24 +55,16 @@ function bar(pct: number, color: string, w = 150): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="8" viewBox="0 0 ${w} 8"><rect width="${w}" height="8" rx="4" fill="#F1E4E8"/><rect width="${fill.toFixed(1)}" height="8" rx="4" fill="${color}"/></svg>`;
 }
 
+// + Add, full width (it shared the row with Say it until voice was removed, 2026-11-04).
 function Buttons({ onCrimson, s, heroInk }: { onCrimson: boolean; s?: WidgetSnapshot | null; heroInk?: Hex }) {
   const { C } = widgetColours(s?.mood);
   return (
-    <FlexWidget style={{ flexDirection: 'row', width: 'match_parent', marginTop: 10, flexGap: 8 }}>
-      <FlexWidget
-        clickAction="OPEN_URI"
-        clickActionData={{ uri: VOICE_URI }}
-        style={{ flex: 1, height: 36, borderRadius: 14, backgroundColor: onCrimson ? C.white : C.pink, justifyContent: 'center', alignItems: 'center' }}
-      >
-        {T('🎙 Say it', 13, onCrimson ? heroInk ?? C.rose : C.pinkInk, '900')}
-      </FlexWidget>
-      <FlexWidget
-        clickAction="OPEN_URI"
-        clickActionData={{ uri: ADD_URI }}
-        style={{ flex: 1, height: 36, borderRadius: 14, backgroundColor: onCrimson ? 'rgba(255, 255, 255, 0.22)' : C.tint, justifyContent: 'center', alignItems: 'center' }}
-      >
-        {T('+ Add', 13, onCrimson ? C.white : C.rose, '900')}
-      </FlexWidget>
+    <FlexWidget
+      clickAction="OPEN_URI"
+      clickActionData={{ uri: ADD_URI }}
+      style={{ width: 'match_parent', height: 36, marginTop: 10, borderRadius: 14, backgroundColor: onCrimson ? C.white : C.pink, justifyContent: 'center', alignItems: 'center' }}
+    >
+      {T('+ Add', 13, onCrimson ? heroInk ?? C.rose : C.pinkInk, '900')}
     </FlexWidget>
   );
 }
@@ -91,18 +83,6 @@ export function LeftToSpendWidget({ s }: { s: WidgetSnapshot }) {
         <SvgWidget svg={ring(s.periodPct, 52)} style={{ width: 52, height: 52 }} />
         {T(payday(s), 11, C.white, '700', { textAlign: 'right' })}
       </FlexWidget>
-    </FlexWidget>
-  );
-}
-
-export function SayItWidget({ s }: { s?: WidgetSnapshot | null } = {}) {
-  const { C, PAPER } = widgetColours(s?.mood);
-  const mic = `<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="0 0 72 72"><circle cx="36" cy="36" r="36" fill="${C.pink}" fill-opacity="0.3"/><circle cx="36" cy="36" r="28" fill="${C.pink}"/><g transform="translate(24 22)" fill="none" stroke="${C.pinkInk}" stroke-width="2.4" stroke-linecap="round"><rect x="8" y="1" width="8" height="15" rx="4"/><path d="M3 12a9 9 0 0 0 18 0M12 21v4"/></g></svg>`;
-  return (
-    <FlexWidget clickAction="OPEN_URI" clickActionData={{ uri: VOICE_URI }} style={{ height: 'match_parent', width: 'match_parent', borderRadius: 24, padding: 12, backgroundGradient: PAPER, justifyContent: 'center', alignItems: 'center' }}>
-      <SvgWidget svg={mic} style={{ width: 72, height: 72 }} />
-      {T('Say it', 13, C.rose, '900', { marginTop: 6 })}
-      {T('"Spent 250 on…"', 11, C.muted, '700')}
     </FlexWidget>
   );
 }
@@ -223,7 +203,6 @@ export function EmptyWidget() {
 }
 
 export function widgetFor(name: string, s: WidgetSnapshot | null): React.JSX.Element {
-  if (name === 'SayIt') return <SayItWidget s={s} />;
   if (!s) return <EmptyWidget />;
   switch (name) {
     case 'LeftToSpend':

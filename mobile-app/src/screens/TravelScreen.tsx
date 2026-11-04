@@ -1,6 +1,4 @@
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
-import { SayItButton } from '../components/SayIt';
-import { parseVoice, splitItems, voiceTrip, voiceList } from '../voiceParse';
 import { animateNextLayout } from '../animateLayout';
 import { redUnlessZero, toneUnlessZero } from '../moneyColor';
 import ErrorNote from '../components/ErrorNote';
@@ -182,8 +180,6 @@ export default function TravelScreen() {
   // Version 2.1 (approved T1): Budget | To-do on the Travel page itself, under the trip.
   const [pageTab, setPageTab] = useStickyState<'budget' | 'todo'>('travel.pageTab', 'budget');
   const [pageTodoText, setPageTodoText] = useState('');
-  const [voiceTodos, setVoiceTodos] = useState<string[] | null>(null);
-  const [voiceItems, setVoiceItems] = useState<string[] | null>(null);
   const [pageTodoDate, setPageTodoDate] = useState('');
   const [pageTodoDateOpen, setPageTodoDateOpen] = useState(false);
   const [pageItemText, setPageItemText] = useState('');
@@ -334,45 +330,11 @@ export default function TravelScreen() {
   }
   // Voice entry (mockup V, Cath 2026-10-30): to-dos and budget items said in one go are all
   // added when Add is tapped (nothing is saved before that).
-  function applyVoiceTodo(text: string) {
-    // 2026-11-03 (Cath): each thing said is its own to-do, and a date said with them is their
-    // date (taken out of the words, the date row opened so you see it's picked).
-    const v = voiceList(text);
-    const list = v.items.length ? v.items : [text];
-    setVoiceTodos(list.length > 1 ? list : null);
-    setPageTodoText(list.length > 1 ? list.join(', ') : list[0]);
-    if (v.date) {
-      setPageTodoDate(v.date);
-      setPageTodoDateOpen(true);
-    }
-  }
-  function applyVoiceItem(text: string) {
-    const h = parseVoice(text);
-    if (h.amount === undefined) {
-      const list = voiceList(text).items;
-      setVoiceItems(list.length > 1 ? list : null);
-      setPageItemText(list.length > 1 ? list.join(', ') : list[0] ?? text);
-      return;
-    }
-    setVoiceItems(null);
-    setPageItemCost(String(h.amount));
-    const name = (h.name ?? text.replace(/(?:₱|php|p|\$)?\s?\d[\d,]*(?:\.\d+)?/gi, '').replace(/\s+/g, ' ').trim()).replace(/^(?:add|for|the)\s+/i, '');
-    if (name) setPageItemText(name.charAt(0).toUpperCase() + name.slice(1));
-  }
 
   async function addPageTodo(trip: TravelTrip) {
     const text = pageTodoText.trim();
     if (!text) return;
     hapticSelection();
-    if (voiceTodos && voiceTodos.length > 1 && text === voiceTodos.join(', ')) {
-      const many = voiceTodos;
-      setVoiceTodos(null);
-      setPageTodoText('');
-      setPageTodoDate('');
-      setPageTodoDateOpen(false);
-      await saveTripTodos(trip, [...(trip.todos || []), ...many.map((t) => ({ id: makeId('todo'), text: t, done: false, ...(pageTodoDate ? { date: pageTodoDate } : {}) }))]);
-      return;
-    }
     setPageTodoText('');
     setPageTodoDate('');
     setPageTodoDateOpen(false);
@@ -490,8 +452,7 @@ export default function TravelScreen() {
     const due = pageItemDate;
     setPageItemDate('');
     setPageItemDateOpen(false);
-    const titles = voiceItems && voiceItems.length > 1 && title === voiceItems.join(', ') ? voiceItems : [title];
-    setVoiceItems(null);
+    const titles = [title];
     const draft: TravelTrip = { ...trip, checklist: [...(trip.checklist || []), ...titles.map((tt, k) => ({ id: makeId('travelitem'), title: tt, cost: k === 0 ? cost : ('' as const), checked: false, ...(due ? { dueDate: due } : {}) }))] };
     const budget = tripFullChecklistTotal(draft);
     const { goals, savingsGoalId } = syncTripSavingsGoal(draft, budget, model.savingsGoals ?? []);
@@ -928,14 +889,13 @@ export default function TravelScreen() {
                         <TextInput
                           style={[styles.tripName, { flex: 1, minWidth: 0, paddingVertical: 4 }]}
                           value={pageItemText}
-                          onChangeText={(v) => { setVoiceItems(null); setPageItemText(v); }}
+                          onChangeText={setPageItemText}
                           placeholder="Add an item"
                           placeholderTextColor={colors.inkFaint}
                           returnKeyType="next"
                           maxLength={80}
                           testID="travel-page-item-input"
                         />
-                        <SayItButton compact onHeard={applyVoiceItem} example="Hotel 4,500" testID="travel-item-say-it" />
                         <TextInput
                           style={[styles.tripName, styles.costInput, !!pageItemText.trim() && { width: 76 }]}
                           value={pageItemCost}
@@ -1004,7 +964,7 @@ export default function TravelScreen() {
                       <TextInput
                         style={[styles.tripName, { flex: 1, paddingVertical: 4 }]}
                         value={pageTodoText}
-                        onChangeText={(v) => { setVoiceTodos(null); setPageTodoText(v); }}
+                        onChangeText={setPageTodoText}
                         placeholder="Add to the list"
                         placeholderTextColor={colors.inkFaint}
                         returnKeyType="done"
@@ -1012,7 +972,6 @@ export default function TravelScreen() {
                         maxLength={120}
                         testID="travel-page-todo-input"
                       />
-                      <SayItButton compact onHeard={applyVoiceTodo} example="Book the hotel, buy sunscreen and pack chargers" testID="travel-todo-say-it" />
                       <TouchableOpacity onPress={() => { animateNextLayout(); setPageTodoDateOpen((v) => !v); }} accessibilityRole="button" accessibilityLabel="Add a date (optional)" hitSlop={8} style={{ marginHorizontal: 8 }}>
                         <Ionicons name="calendar-outline" size={20} color={pageTodoDate ? colors.gold : colors.inkFaint} />
                       </TouchableOpacity>
@@ -1089,17 +1048,6 @@ export default function TravelScreen() {
         header={<SheetBar title={editingId ? 'Edit trip' : 'New trip'} onCancel={closeModal} onDone={handleSaveTrip} doneLabel={editingId ? 'Save' : 'Add'} />}
       >
         {/* The budget isn't typed: it's everything on the checklist added up (blue = planned). */}
-        {!editingId && (
-          <SayItButton
-            example="Baguio weekend, November 14 to 16"
-            onHeard={(text) => {
-              const v = voiceTrip(text);
-              if (v.name) setNameInput(v.name);
-              if (v.start) setStartDateInput(v.start);
-              if (v.end) setEndDateInput(v.end);
-            }}
-          />
-        )}
         {tripTab === 'budget' && <BigTotal label="Budget" value={formatPeso(formBudget)} sub="Adds up from your checklist" color={colors.planned} />}
 
         <FormGroup>

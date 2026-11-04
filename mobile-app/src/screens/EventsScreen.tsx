@@ -1,6 +1,4 @@
 import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
-import { SayItButton } from '../components/SayIt';
-import { parseVoice, nextDueDate as voiceDueDate, voiceItems } from '../voiceParse';
 import { redUnlessZero, toneUnlessZero } from '../moneyColor';
 import ErrorNote from '../components/ErrorNote';
 import { notSaved, notDeleted, alertNotDeleted } from '../messages';
@@ -318,21 +316,6 @@ export default function EventsScreen() {
     setItemsInput(ev.items ? ev.items.map((i) => ({ ...i })) : []);
     setErrorMsg('');
     setModalOpen(true);
-  }
-
-  // Voice entry: "Mama's birthday on March 12, budget 3,000" fills the form; Add saves it.
-  function applyVoice(text: string) {
-    const h = parseVoice(text);
-    if (h.amount !== undefined) setBudgetInput(h.amount);
-    const name = h.name ?? text.replace(/(?:₱|php|p|\$)?\s?\d[\d,]*(?:\.\d+)?\s?(?:k|thousand)?/gi, ' ').replace(/\b(?:yesterday|today|tomorrow|on|by|for|every month|monthly|target|of|a|an|the|save|saving|goal|pot|budget)\b/gi, ' ').replace(/\s+/g, ' ').trim();
-    if (name) setNameInput(name.charAt(0).toUpperCase() + name.slice(1));
-    if (h.date) {
-      const d = new Date(h.date + 'T00:00:00');
-      setOnetimeDateInput(h.date);
-      setMonthInput(String(d.getMonth() + 1));
-      setDayInput(String(d.getDate()));
-    }
-    if (/birthday/i.test(text)) setTypeInput('birthday');
   }
 
   function closeModal() {
@@ -677,7 +660,6 @@ export default function EventsScreen() {
           <BigTotal label="What it will cost" value={formatPeso(itemsTotal)} sub="Adds up from the items below" color={colors.planned} />
         )}
         {/* Voice entry (mockup V, Cath 2026-10-30). */}
-        {!editingId && <SayItButton onHeard={applyVoice} example="Mama's birthday on March 12, budget 3,000" />}
 
         <FormGroup>
           <Guided {...fieldErrors.props('name')} focusRef={nameRef}>
@@ -736,15 +718,6 @@ export default function EventsScreen() {
           >
             <Text style={{ fontSize: 17, fontWeight: '700', color: colors.gold }}>+ Add an item</Text>
           </TouchableOpacity>
-          <SayItButton
-            compact
-            testID="event-items-say-it"
-            example="Cake 1,500, gift 2,000 and balloons 500"
-            onHeard={(text) => {
-              const heard = voiceItems(text);
-              if (heard.length) setItemsInput((rows) => [...rows.filter((r) => r.name.trim() || r.cost !== ''), ...heard.map((h) => ({ id: makeId('evitem'), name: h.name, cost: h.amount ?? ('' as const) }))]);
-            }}
-          />
         </FormGroup>
         <Footnote>List the cake, gift and so on, and the cost adds itself up. Or just type one amount at the top.</Footnote>
 

@@ -85,25 +85,6 @@ test('a to-do on the trip page opens for editing, words and date', async () => {
   expect(td).toMatchObject({ id: 'td1', text: 'Pack jackets' });
 }, 30000);
 
-// Cath, 2026-11-03: saying several to-dos with a date made one to-do with the date typed in it.
-jest.mock('../src/voiceListen', () => ({ canListen: () => false, startListening: async () => null }));
-test('Say it on the to-do list: each thing is its own to-do, and the date becomes their date', async () => {
-  mockModel = household();
-  const Screen = require('../src/screens/TravelScreen').default;
-  render(<ThemeProvider><Screen /></ThemeProvider>);
-  await act(async () => {});
-  await act(async () => { fireEvent.press(screen.getAllByText('Cebu')[0]); });
-  await act(async () => { fireEvent.press(screen.getByTestId('travel-page-todo-tab')); });
-  await act(async () => { fireEvent.press(screen.getByTestId('travel-todo-say-it')); });
-  fireEvent.changeText(screen.getByTestId('voice-type'), 'pack and baggage on December 1');
-  await act(async () => { fireEvent.press(screen.getByTestId('voice-use')); await new Promise((r) => setTimeout(r, 300)); });
-  expect(screen.getByTestId('travel-page-todo-input').props.value).toBe('Pack, Baggage');
-  await act(async () => { fireEvent.press(screen.getByTestId('travel-page-todo-add')); });
-  const todos = saved[saved.length - 1].travel[0].todos;
-  expect(todos.map((t: any) => t.text)).toEqual(['Pack', 'Baggage']);
-  expect(todos.every((t: any) => /^\d{4}-12-01$/.test(t.date))).toBe(true);
-}, 30000);
-
 // Cath, 2026-11-03 (mockup P1): a trip budget item can have a due date; the trip page shows it
 // and saving the trip keeps it.
 test('P1: a budget item with a due date shows it, and the trip form keeps it on Save', async () => {

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
 import DrawingLogo from '../components/DrawingLogo';
@@ -11,11 +11,11 @@ import SunArc, { SunLook } from '../components/SunArc';
 import { useTheme } from '../ThemeContext';
 import { setLookPreview } from '../lookPreview';
 import type { SkyPhase } from '../sky';
-import { CURVE, PAGE_OPEN_MS, VOICE_PULSE_MS, VOICE_WAVE_MS, WELCOME_HOLD_MS, WELCOME_MOMENT_MS } from '../motion';
+import { CURVE, PAGE_OPEN_MS, WELCOME_HOLD_MS, WELCOME_MOMENT_MS } from '../motion';
 import { useReduceMotion } from '../reduceMotion';
 
 // Version 3.3 welcome (Cath, mockup O3a, approved 2026-10-31): a day with Finance Flow.
-// It plays by itself through five moments (morning widgets, Say it at lunch, a bill nudge,
+// It plays by itself through five moments (morning widgets, a quick add at lunch, a bill nudge,
 // the household's changes, a calm night), with the sky and the sun on its arc following
 // the time, and the screen turning dark at night (shown only, nothing is saved).
 // Tapping a time holds it there; it carries on after a while untouched. With Reduce Motion
@@ -28,7 +28,7 @@ type Props = {
 
 const MOMENTS: { time: string; label: string; h: number; sky: SkyPhase; sun: SunLook; title: string }[] = [
   { time: '7:30 AM', label: 'Morning', h: 7.5, sky: 'morning', sun: 'sunrise', title: 'One glance from your home screen' },
-  { time: '12:40 PM', label: 'Midday', h: 12.67, sky: 'afternoon', sun: 'midday', title: 'Say it at the till. Done.' },
+  { time: '12:40 PM', label: 'Midday', h: 12.67, sky: 'afternoon', sun: 'midday', title: 'Log it in seconds' },
   { time: '5:00 PM', label: 'Afternoon', h: 17, sky: 'afternoon', sun: 'afternoon', title: 'A nudge before a bill is due' },
   { time: '7:45 PM', label: 'Evening', h: 19.75, sky: 'evening', sun: 'sunset', title: 'See what your home added' },
   { time: '10:00 PM', label: 'Night', h: 22, sky: 'night', sun: 'moon', title: 'Sleep knowing where you stand' },
@@ -77,7 +77,7 @@ export default function WelcomeScreen({ onStart, onSignIn }: Props) {
 
       <View style={{ flex: 1, justifyContent: 'center', overflow: 'hidden', paddingVertical: 8 }}>
         {k === 0 && <Widgets />}
-        {k === 1 && <SayItMoment />}
+        {k === 1 && <QuickAddMoment />}
         {k === 2 && <BillMoment onTouch={() => (touched.current = Date.now())} />}
         {k === 3 && <HouseholdMoment />}
         {k === 4 && <NightMoment />}
@@ -136,20 +136,10 @@ function Rise({ delay = 0, style, children }: { delay?: number; style?: object; 
   );
 }
 
-function Mic({ size, color, bg }: { size: number; color: string; bg?: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      {bg ? <Circle cx={12} cy={12} r={12} fill={bg} /> : null}
-      <Rect x={9} y={3} width={6} height={11} rx={3} stroke={color} strokeWidth={2.2} />
-      <Path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" stroke={color} strokeWidth={2.2} strokeLinecap="round" />
-    </Svg>
-  );
-}
-
-// Morning: the home screen widgets, green like the Left to Spend card.
+// Morning: the home screen widgets, green like the Left to Spend card. (Voice entry was removed
+// 2026-11-04: the widgets show + Add, and Due soon instead of the Say it widget.)
 function Widgets() {
   const { colors } = useTheme();
-  const pulse = useLoop(VOICE_PULSE_MS);
   return (
     <View style={{ gap: 10 }}>
       <Rise delay={100}>
@@ -164,14 +154,8 @@ function Widgets() {
               <Path d="M2 30 L16 24 L30 28 L44 14 L58 20 L72 9 L94 16" stroke="#FFFFFF" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" fill="none" />
             </Svg>
           </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <View style={[w.btn, { backgroundColor: '#FFFFFF' }]}>
-              <Mic size={14} color="#2E6B47" />
-              <Text style={[w.btnText, { color: '#2E6B47' }]}>Say it</Text>
-            </View>
-            <View style={[w.btn, { backgroundColor: 'rgba(255,255,255,0.22)' }]}>
-              <Text style={[w.btnText, { color: '#FFFFFF' }]}>+ Add</Text>
-            </View>
+          <View style={[w.btn, { backgroundColor: '#FFFFFF' }]}>
+            <Text style={[w.btnText, { color: '#2E6B47' }]}>+ Add</Text>
           </View>
         </LinearGradient>
       </Rise>
@@ -192,38 +176,27 @@ function Widgets() {
           </LinearGradient>
         </Rise>
         <Rise delay={420} style={{ flex: 1 }}>
-          <View style={[w.square, { backgroundColor: colors.navy3, alignItems: 'center', justifyContent: 'center' }]}>
-            <Animated.View style={{ borderRadius: 24, transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }) }] }}>
-              <Mic size={46} color="#FFFFFF" bg="#2E6B47" />
-            </Animated.View>
-            <Text style={[w.btnText, { color: colors.gold, marginTop: 6 }]}>Say it</Text>
-            <Text style={{ fontSize: 11, fontWeight: '700', color: colors.inkDim }}>“Spent 250 on…”</Text>
+          <View style={[w.square, { backgroundColor: colors.navy3 }]}>
+            <Text style={[w.label, { color: colors.gold }]}>DUE SOON</Text>
+            <View style={{ gap: 6 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink }}>Electric</Text>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: colors.ink }}>₱2,400</Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink }}>Internet</Text>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: colors.ink }}>₱1,699</Text>
+              </View>
+            </View>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: colors.inkDim }}>Electric due tomorrow</Text>
           </View>
         </Rise>
       </View>
       <Rise delay={560}>
-        <Text style={{ textAlign: 'center', fontSize: 13, color: colors.inkDim }}>Plus Due soon, Month at a glance and Trip</Text>
+        <Text style={{ textAlign: 'center', fontSize: 13, color: colors.inkDim }}>Plus Month at a glance and Trip</Text>
       </Rise>
     </View>
   );
-}
-
-// A 0 → 1 → 0 loop for soft pulses; still with Reduce Motion.
-function useLoop(ms: number) {
-  const v = useRef(new Animated.Value(0)).current;
-  const reduce = useReduceMotion();
-  useEffect(() => {
-    if (reduce) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(v, { toValue: 1, duration: ms / 2, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(v, { toValue: 0, duration: ms / 2, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [v, ms, reduce]);
-  return v;
 }
 
 function Row({ title, sub, amount, first, tint }: { title: string; sub: string; amount: string; first?: boolean; tint?: boolean }) {
@@ -239,30 +212,24 @@ function Row({ title, sub, amount, first, tint }: { title: string; sub: string; 
   );
 }
 
-function Bars() {
-  const { colors } = useTheme();
-  const v = useLoop(VOICE_WAVE_MS);
-  return (
-    <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center', height: 24, alignSelf: 'flex-end', paddingRight: 12 }}>
-      {[0.5, 1, 0.7, 0.9].map((h, i) => (
-        <Animated.View key={i} style={{ width: 4, height: 22, borderRadius: 2, backgroundColor: colors.gold, transform: [{ scaleY: v.interpolate({ inputRange: [0, 1], outputRange: [0.3 * h, h] }) }] }} />
-      ))}
-    </View>
-  );
-}
-
-function SayItMoment() {
+// Midday (Cath, 2026-11-04, replacing Say it): a quick typed add. The amount, a name, the
+// category already guessed, Add, and the row is there.
+function QuickAddMoment() {
   const { colors } = useTheme();
   return (
     <View style={{ gap: 10 }}>
-      <Rise style={{ alignSelf: 'flex-end' }}>
-        <View style={[r.bubble, { backgroundColor: colors.buttonFill }]}>
-          <Mic size={20} color={colors.onButton} />
-          <Text style={{ fontSize: 20, fontWeight: '600', color: colors.onButton }}>“Lunch, 180”</Text>
+      <Rise>
+        <View style={[r.card, { backgroundColor: colors.navy3, gap: 10 }]}>
+          <Text style={{ fontSize: 30, fontWeight: '700', color: colors.negative, textAlign: 'center' }}>−₱180.00</Text>
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={[r.chip, { color: colors.ink, backgroundColor: colors.navy1 }]}>Lunch</Text>
+            <Text style={[r.chip, { color: colors.gold, backgroundColor: colors.accentTint }]}>Food · guessed</Text>
+            <Text style={[r.chip, { color: colors.ink, backgroundColor: colors.navy1 }]}>GCash</Text>
+          </View>
+          <View style={[s0.primary, { minHeight: 44, backgroundColor: colors.buttonFill }]}>
+            <Text style={{ fontSize: 17, fontWeight: '600', color: colors.onButton }}>Add</Text>
+          </View>
         </View>
-      </Rise>
-      <Rise delay={200}>
-        <Bars />
       </Rise>
       <Rise delay={500}>
         <View style={[r.group, { backgroundColor: colors.navy3 }]}>
@@ -386,7 +353,7 @@ const r = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingHorizontal: 16, paddingVertical: 6 },
   group: { borderRadius: 16, overflow: 'hidden' },
   card: { borderRadius: 18, paddingHorizontal: 16, paddingVertical: 14, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
-  bubble: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 12, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomLeftRadius: 20, borderBottomRightRadius: 6 },
+  chip: { fontSize: 15, fontWeight: '600', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, overflow: 'hidden' },
   avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#4B2E5C', alignItems: 'center', justifyContent: 'center' },
   hero: { borderRadius: 24, padding: 20 },
 });

@@ -156,8 +156,9 @@ function AppContent() {
   const pendingDeepLinkPage = useRef<'envelopeAlert' | 'closeOut' | null>(null);
   // Version 2.2: an invite link (financeflow://join/ABC123) opens Household, which joins.
   const pendingJoinOpen = useRef(false);
-  // Mockup W2: a widget's Say it / + Add (financeflow://voice, financeflow://add).
-  const pendingQuickAdd = useRef<'voice' | 'add' | null>(null);
+  // Mockup W2: a widget's + Add (financeflow://add). Voice entry was removed (Cath, 2026-11-04);
+  // a link from an old voice widget still on a home screen opens + Add too.
+  const pendingQuickAdd = useRef(false);
   const handledNotificationIds = useRef<Set<string>>(new Set());
 
   function captureNotificationResponse(response: Notifications.NotificationResponse | null) {
@@ -183,10 +184,8 @@ function AppContent() {
   function flushPendingDeepLink() {
     // Only once signed in and unlocked (it waits through the lock screen).
     if (pendingQuickAdd.current && navigationRef.isReady() && screenRef.current === 'home') {
-      const kind = pendingQuickAdd.current;
-      pendingQuickAdd.current = null;
-      const now = Date.now();
-      goToMain(navigationRef, { screen: 'Transactions', params: kind === 'voice' ? { addNonce: now, sayItNonce: now } : { addNonce: now } });
+      pendingQuickAdd.current = false;
+      goToMain(navigationRef, { screen: 'Transactions', params: { addNonce: Date.now() } });
     }
     if (pendingJoinOpen.current && navigationRef.isReady() && screenRef.current === 'home') {
       pendingJoinOpen.current = false;
@@ -217,7 +216,7 @@ function AppContent() {
     const handle = (url: string | null) => {
       const quick = /^financeflow:\/\/(voice|add)\b/i.exec(url || '');
       if (quick) {
-        pendingQuickAdd.current = quick[1].toLowerCase() as 'voice' | 'add';
+        pendingQuickAdd.current = true;
         flushPendingDeepLink();
         return;
       }

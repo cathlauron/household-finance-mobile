@@ -1546,3 +1546,12 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   widget lists and green previews need a NEW build (3.4.0?).
 - 2026-11-03 (night): Cath: "device test is as described" (TEST-3 s26-s28 in Expo Go). Next: push v3 + build 3.4.0 for the widget parts.
 - 2026-11-03: release 3.4.0 (versionCode 9) from v3: Widgets page, trip items on widgets, green previews, everything in s26-s28.
+- 2026-11-04: Cath: "remove the voice entry from our app completely and do another build". Her
+  answers: remove the Say it widget (others keep + Add, full width), the welcome's midday is a
+  quick typed add ("Log it in seconds"), and take out the speech add-on and the microphone.
+  DONE on v3: Say it gone from 17 forms/screens, SayIt/voiceListen/voiceParse deleted,
+  expo-speech-recognition uninstalled, mic permission off again (photo picker / camera false),
+  Say it widget + voice link removed (an old voice link opens + Add), widget previews retaken.
+  Checks: tests/noVoice.test.mjs (red before), voicePermission.test.mjs now checks NO microphone
+  (rule reversed by Cath; B-087 history kept in it); voice-only checks removed with their code;
+  B-085's amount-box check kept (AmountOutsideFill). Release 3.5.0 (versionCode 10). TEST-3 s29.

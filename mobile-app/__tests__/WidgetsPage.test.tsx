@@ -17,8 +17,8 @@ test('W1: Add asks the phone for that widget; a widget already on the home scree
   await act(async () => {});
   expect(screen.getByText('Month at a glance')).toBeTruthy();
   expect(screen.getByText('On your home screen')).toBeTruthy(); // Left to spend
-  await act(async () => { fireEvent.press(screen.getByTestId('widget-add-SayIt')); });
-  expect(mockPin).toHaveBeenCalledWith({ widgetName: 'SayIt' });
+  await act(async () => { fireEvent.press(screen.getByTestId('widget-add-SpendSay')); });
+  expect(mockPin).toHaveBeenCalledWith({ widgetName: 'SpendSay' });
 });
 
 test('W1: the Settings row only shows where widgets can be added (the installed Android app)', () => {

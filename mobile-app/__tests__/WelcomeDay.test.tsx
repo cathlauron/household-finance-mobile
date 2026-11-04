@@ -21,15 +21,15 @@ beforeEach(async () => {
 });
 afterEach(() => jest.useRealTimers());
 
-test('the day plays by itself: morning widgets, then Say it at lunch', async () => {
+test('the day plays by itself: morning widgets, then a quick add at lunch', async () => {
   render(<ThemeProvider><WelcomeScreen onStart={() => {}} onSignIn={() => {}} /></ThemeProvider>);
   await act(async () => {});
   expect(screen.getByText('One glance from your home screen')).toBeTruthy();
-  expect(screen.getByText('Plus Due soon, Month at a glance and Trip')).toBeTruthy();
+  expect(screen.getByText('Plus Month at a glance and Trip')).toBeTruthy();
   await act(async () => {
     jest.advanceTimersByTime(4300);
   });
-  expect(screen.getByText('Say it at the till. Done.')).toBeTruthy();
+  expect(screen.getByText('Log it in seconds')).toBeTruthy();
 });
 
 test('tapping Night shows it dark (not saved); leaving the welcome puts the real look back', async () => {

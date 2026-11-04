@@ -55,12 +55,10 @@ test('Expo Go / iPhone: the widgets part is never loaded', () => {
   for (const f of ['src/screens/WidgetsScreen.tsx', 'src/widgets/pinWidget.ts', 'src/screens/SettingsScreen.tsx']) expect(fs.readFileSync(f, 'utf8')).not.toMatch(/^import (?!type ).*from '\.\.\/widgets\/FFWidgets'/m);
 });
 
-test("a widget's Say it opens the + form with the listening sheet", () => {
-  const fs = require('fs');
-  const app = fs.readFileSync('App.tsx', 'utf8');
-  expect(app).toMatch(/financeflow:\\\/\\\/\(voice\|add\)/);
-  expect(app).toMatch(/sayItNonce: now/);
-  expect(fs.readFileSync('src/screens/TransactionsScreen.tsx', 'utf8')).toMatch(/openNonce=\{route\.params\?\.sayItNonce\}/);
+// (2026-11-04: voice entry removed) a widget's + Add opens a new transaction.
+test("a widget's + Add opens the + form", () => {
+  const app = require('fs').readFileSync('App.tsx', 'utf8');
+  expect(app).toMatch(/params: \{ addNonce: Date\.now\(\) \}/);
 });
 
 test('sweep: overdue bills come first on the widget, like Home\'s Due soon', () => {
@@ -72,13 +70,12 @@ test('sweep: overdue bills come first on the widget, like Home\'s Due soon', () 
   spy.mockRestore();
 });
 
-test('the build has every phone-side part the app asks for (widgets, listening)', () => {
+test('the build has every phone-side part the app asks for (widgets; voice removed 2026-11-04)', () => {
   const pkg = JSON.parse(require('fs').readFileSync('package.json', 'utf8'));
   expect(pkg.dependencies['react-native-android-widget']).toBeTruthy();
-  expect(pkg.dependencies['expo-speech-recognition']).toBeTruthy();
   const app = JSON.parse(require('fs').readFileSync('app.json', 'utf8'));
   const names = app.expo.plugins.map((p: any) => (typeof p === 'string' ? p : p[0]));
-  expect(names).toEqual(expect.arrayContaining(['react-native-android-widget', 'expo-speech-recognition']));
+  expect(names).toEqual(expect.arrayContaining(['react-native-android-widget']));
 });
 
 // Cath, 2026-10-31: "this is supposed to be green as default". The widgets take the Left to
@@ -92,7 +89,7 @@ test('widgets are green by default and follow the mood like Home', () => {
   expect(widgetColours(green.mood).CRIMSON.from).toBe('#2C5E48');
   const leaf = (el: any) => el.type(el.props);
   expect(leaf(widgetFor('LeftToSpend', green)).props.style.backgroundGradient.from).toBe('#2C5E48');
-  expect(leaf(widgetFor('SayIt', null)).props.style.backgroundGradient.to).toBe('#F1F7F3');
+  expect(leaf(widgetFor('DueSoon', green)).props.style.backgroundGradient.to).toBe('#F1F7F3');
 
   spy.mockReturnValue({ color: '', label: 'Over budget', mood: 'over' });
   const over = makeWidgetSnapshot(model(), { hidden: false, now: new Date(2026, 9, 30, 12) });

@@ -393,3 +393,13 @@ In Expo Go:
    the trip), and in the bell under "Due in the next 14 days" when it's within 14 days.
 Needs the installed app (new build): the Due soon and Month widgets list it; in your phone's
 widget list (hold the home screen › Widgets › Finance Flow) the previews are green.
+
+## 29. Voice entry removed, release 3.5.0 (2026-11-04). Installed app. NOT YET TESTED.
+1. Install 3.5.0 over 3.4.0. No form has a Say it button (+ transaction, Bills, Debts, Loans,
+   Income, Savings, Goals, Events, Travel, Groceries, Budgets, Shared, Transfer, Accounts, ...).
+2. The app never asks for the microphone. (Android Settings › Apps › Finance Flow › Permissions:
+   no Microphone.)
+3. Widgets: the phone's widget list has 5 (no Say it); "Spend & add" and Month show only + Add,
+   which opens a new transaction. An old Say it widget still on your home screen: remove it.
+4. Welcome (log out or a new guest): midday shows "Log it in seconds" (a typed add), no Say it.
+5. Settings › Widgets lists 5.
