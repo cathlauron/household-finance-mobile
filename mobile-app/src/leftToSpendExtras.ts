@@ -51,8 +51,21 @@ export type LeftToSpendItem = {
   ref?: { kind: 'bill' | 'debt' | 'loan'; id: string } | { kind: 'trip' | 'event' | 'groceries' | 'transactions' | 'savings' | 'income' };
 };
 
-const short = (isoDate: string) => new Date(isoDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-const shortDay = (isoDate: string) => new Date(isoDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+// Speed (2026-11-06): dates turn into text once each (the same few repeat after every change).
+function kept(make: (d: Date) => string) {
+  const texts = new Map<string, string>();
+  return (isoDate: string) => {
+    let t = texts.get(isoDate);
+    if (t === undefined) {
+      t = make(new Date(isoDate + 'T00:00:00'));
+      if (texts.size >= 2000) texts.clear();
+      texts.set(isoDate, t);
+    }
+    return t;
+  };
+}
+const short = kept((d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+const shortDay = kept((d) => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }));
 
 export function leftToSpendItems(model: HouseholdModel, today: Date, target: Date): LeftToSpendItem[] {
   const todayISO = iso(today);

@@ -18,6 +18,7 @@ import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { useFormOnly, type PlanFormProps } from '../planForm';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import type { YearlyGoal, HouseholdModel } from '../types';
 import SwipeableRow from '../components/SwipeableRow';
@@ -75,7 +76,7 @@ function shortDate(iso: string): string {
   return isNaN(d.getTime()) ? iso : dateText(d);
 }
 
-export default function GoalsScreen() {
+export default function GoalsScreen({ formOnly, addDate, addNonce, onFormClosed, onAdded }: PlanFormProps = {}) {
   const { colors } = useTheme();
   const who = useWho();
   const { model, saveModel, getModel } = useData();
@@ -101,6 +102,7 @@ export default function GoalsScreen() {
 
   // Redesign: Add in the top bar adds a goal.
   useLayoutEffect(() => {
+    if (formOnly) return;
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity onPress={openAddModal} accessibilityRole="button" accessibilityLabel="Add a goal" testID="goals-add" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -114,6 +116,12 @@ export default function GoalsScreen() {
   useEffect(() => {
     clearFieldError();
   }, [titleInput, targetDateInput, modalOpen, clearFieldError]);
+
+  // Cath, 2026-11-06: from the Calendar, due on the picked day.
+  useFormOnly({ formOnly, addNonce, onFormClosed }, modalOpen, () => {
+    openAddModal();
+    if (addDate) setTargetDateInput(addDate);
+  });
 
   if (!model) {
     return (
@@ -239,6 +247,7 @@ export default function GoalsScreen() {
     try {
       await saveModel(updated);
       showLeafTick(editingId ? 'Saved' : 'Added');
+      if (!editingId) onAdded?.();
       closeModal();
     } catch (e) {
       setErrorMsg(notSaved('this goal'));
@@ -308,7 +317,7 @@ export default function GoalsScreen() {
 
   return (
     <View style={styles.container}>
-      <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
+      {!formOnly && <PullToRefreshScrollView contentContainerStyle={styles.scrollContent}>
         <View style={[styles.summaryCard, styles.ringCard]}>
           <GradientFill match={styles.summaryCard} />
           <Svg width={64} height={64} viewBox="0 0 64 64" accessibilityLabel={`${doneCount} of ${goals.length} goals done`}>
@@ -406,7 +415,7 @@ export default function GoalsScreen() {
           </>
         )}
         {goals.length > 0 && <Text style={styles.groupFooter}>A goal can track an amount or just be ticked off. Tap a goal to edit it.</Text>}
-      </PullToRefreshScrollView>
+      </PullToRefreshScrollView>}
 
       <BottomSheet
         visible={modalOpen}

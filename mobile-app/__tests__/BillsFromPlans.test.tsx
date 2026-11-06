@@ -45,5 +45,5 @@ test('P2: trip items due show under From your plans, and count in Still to pay t
   expect(screen.getByText(/From your plans ₱12,000/)).toBeTruthy();
   const { fireEvent } = require('@testing-library/react-native');
   fireEvent.press(screen.getByTestId('bills-plan-h'));
-  expect(mockNavigate).toHaveBeenCalledWith('Travel', { tripId: 'bkk' });
+  expect(mockNavigate).toHaveBeenCalledWith('Travel', { tripId: 'bkk', backTitle: 'To-Pay' });
 }, 30000);

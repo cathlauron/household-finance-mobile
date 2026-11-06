@@ -30,6 +30,8 @@ test('the first item shows in its list before the sheet rises', async () => {
   await act(async () => {
     api.saveModel({ ...api.getModel(), bills: [{ id: 'b1', name: 'Meralco', recurringType: 'monthly', dueDate: { day: '15' }, cycles: [] }] });
   });
+  // (2026-11-06) The list redraws one frame later, so a form closes first; still before the sheet.
+  await act(async () => { await new Promise((r) => requestAnimationFrame(r as any)); });
   expect((api.model.bills || []).map((b: any) => b.name)).toEqual(['Meralco']);
   expect(api.guestRequest).toBeNull();
   await act(async () => { await new Promise((r) => setTimeout(r, 800)); });

@@ -139,6 +139,11 @@ How to check (besides reading the code):
   not play by itself (tap the times).
 - 2026-11-06: trip drop-downs open with the shared row motion (animateNextLayout); a greyed day
   moves the month with the same scroll as Today, instant with Reduce Motion.
+- 2026-11-06: REPLACES 10-23 "calendar + goes straight to the right screen": she stays on the
+  Calendar. The day's marks pop (ROW_MS, after SHEET_CLOSE_MS); list rows use ArrivalGlow.
+
+- 2026-11-06: From your Plan and each Plan form take the sheet's place with the same handoff as the
+  Calendar's forms. A new ribbon pops with ROW_MS after SHEET_CLOSE_MS, like the day's marks.
 
 ## Part of the full sweep (Cath, 2026-10-29)
 

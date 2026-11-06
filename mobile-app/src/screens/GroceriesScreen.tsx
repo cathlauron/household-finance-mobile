@@ -9,7 +9,10 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Text, TextInput } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
-import { SheetBar, BigAmount, BigTotal, FormGroup, InputRow, AmountRow, GroupLabel } from '../components/SimpleForm';
+import { SheetBar, BigAmount, BigTotal, FormGroup, InputRow, AmountRow, GroupLabel, PickerRow, useOpenRow } from '../components/SimpleForm';
+import DateField from '../components/DateField';
+import { useFormOnly, type PlanFormProps } from '../planForm';
+import { dateText } from '../dateUtils';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
@@ -52,7 +55,7 @@ const STARTERS: { name: string; ingredients: string[] }[] = [
   { name: 'Sinigang na baboy', ingredients: ['Pork ribs', 'Tamarind mix', 'Kangkong', 'Radish', 'Tomatoes'] },
 ];
 
-export default function GroceriesScreen() {
+export default function GroceriesScreen({ formOnly, addDate, addNonce, onFormClosed, onAdded }: PlanFormProps = {}) {
   const { colors } = useTheme();
   const who = useWho();
   const { model, saveModel, getModel } = useData();
@@ -69,6 +72,9 @@ export default function GroceriesScreen() {
   // Voice entry: several items said at once ("milk, eggs and bread") are all added on Add.
   const [plannedIn, setPlannedIn] = useState<number | ''>('');
   const [actualIn, setActualIn] = useState<number | ''>('');
+  // Cath, 2026-11-06: optional, shows the item on the Calendar.
+  const [buyByIn, setBuyByIn] = useState('');
+  const [openRow, toggleRow] = useOpenRow(sheet !== null);
   const [ingredients, setIngredients] = useState<IngredientRow[]>([]);
   // Calculator inputs
   const [calcName, setCalcName] = useState('');
@@ -76,6 +82,7 @@ export default function GroceriesScreen() {
   const [calcQty, setCalcQty] = useState<number | ''>(1);
 
   useLayoutEffect(() => {
+    if (formOnly) return;
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity
@@ -89,6 +96,12 @@ export default function GroceriesScreen() {
         </TouchableOpacity>
       ),
     });
+  });
+
+  // Cath, 2026-11-06: from the Calendar, to buy by the picked day.
+  useFormOnly({ formOnly, addNonce, onFormClosed }, sheet !== null, () => {
+    openItem();
+    if (addDate) setBuyByIn(addDate);
   });
 
   if (!model) {
@@ -112,6 +125,7 @@ export default function GroceriesScreen() {
     setNameIn(g?.item ?? '');
     setPlannedIn(g && typeof g.plannedAmount === 'number' ? g.plannedAmount : '');
     setActualIn(g && typeof g.actualAmount === 'number' ? g.actualAmount : '');
+    setBuyByIn(g?.buyBy ?? '');
     setSheet({ kind: 'item', id: g?.id });
   }
 
@@ -135,8 +149,8 @@ export default function GroceriesScreen() {
     }
     if (sheet.kind === 'item') {
       const list = sheet.id
-        ? items.map((g) => (g.id === sheet.id ? { ...g, item: name, plannedAmount: plannedIn, actualAmount: actualIn } : g))
-        : [...items, { id: makeId('grocery'), item: name, plannedAmount: plannedIn, actualAmount: '' as const, purchased: false }];
+        ? items.map((g) => (g.id === sheet.id ? { ...g, item: name, plannedAmount: plannedIn, actualAmount: actualIn, buyBy: buyByIn || undefined } : g))
+        : [...items, { id: makeId('grocery'), item: name, plannedAmount: plannedIn, actualAmount: '' as const, purchased: false, ...(buyByIn ? { buyBy: buyByIn } : {}) }];
       await saveModel({ ...model, groceries: list });
     } else {
       const ing = ingredients.filter((i) => i.name.trim()).map((i) => ({ id: i.id, name: i.name.trim(), price: i.price }));
@@ -146,6 +160,7 @@ export default function GroceriesScreen() {
       await saveModel({ ...model, mealIdeas: list });
     }
     showLeafTick(sheet.id ? 'Saved' : 'Added');
+    if (!sheet.id) onAdded?.();
     setSheet(null);
   }
 
@@ -261,7 +276,7 @@ export default function GroceriesScreen() {
     // 2.2 (Cath): swipe sideways between List, Calculator and Meal ideas, like Savings.
     // Smoothness 2026-10-23 (Cath picked "follows your finger"): the pages slide with your finger.
     <View style={styles.container}>
-      <SlidingPages<Tab>
+      {!formOnly && <SlidingPages<Tab>
         testID="groceries-pages"
         accessibilityLabel="Groceries view"
         options={[
@@ -322,6 +337,7 @@ export default function GroceriesScreen() {
                               : num(g.plannedAmount) > 0
                                 ? 'Planned'
                                 : 'No price yet'}
+                            {g.buyBy ? ` · Buy by ${dateText(new Date(g.buyBy + 'T00:00:00'))}` : ''}
                             {who.by(g.addedBy)}
                           </Text>
                         </View>
@@ -469,7 +485,7 @@ export default function GroceriesScreen() {
             </PullToRefreshScrollView>
           )
         }
-      />
+      />}
 
       <BottomSheet
         visible={sheet !== null}
@@ -489,6 +505,9 @@ export default function GroceriesScreen() {
             <BigAmount mark="optional" label="Planned price" value={plannedIn} onChange={setPlannedIn} color={colors.planned} />
             <FormGroup>
               <InputRow mark="required" label="Item" value={nameIn} onChangeText={setNameIn} placeholder="e.g. Rice, 5 kg" autoFocus={!sheet.id} testID="groceries-name-input" />
+              <PickerRow mark="optional" label="Buy by" value={buyByIn ? dateText(new Date(buyByIn + 'T00:00:00')) : 'Choose'} open={openRow === 'buyby'} onToggle={() => toggleRow('buyby')} testID="grocery-buyby-row">
+                <DateField value={buyByIn} onChange={setBuyByIn} placeholder="Pick a date" clearable testID="grocery-buyby" />
+              </PickerRow>
               {!!sheet.id && <AmountRow mark="optional" label="What you paid" value={actualIn} onChange={setActualIn} placeholder="If different" />}
             </FormGroup>
           </>

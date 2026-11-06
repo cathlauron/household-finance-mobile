@@ -18,7 +18,8 @@ import { useData } from '../DataContext';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import GradientFill from '../components/GradientFill';
 import LoadingView from '../components/LoadingView';
-import BottomSheet from '../components/BottomSheet';
+import BottomSheet, { startSheetHandoff } from '../components/BottomSheet';
+import { FormOnlyBox, useFormOnly, type PlanFormProps } from '../planForm';
 import DateField from '../components/DateField';
 import Button from '../components/Button';
 import SegmentedControl from '../components/SegmentedControl';
@@ -48,7 +49,7 @@ const cents = (n: number) => Math.round(n * 100) / 100;
 
 type Mode = 'value' | 'add' | 'withdraw';
 
-export default function InvestmentsScreen() {
+export default function InvestmentsScreen({ formOnly, addDate, addNonce, onFormClosed, onAdded }: PlanFormProps = {}) {
   const { colors } = useTheme();
   const who = useWho();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -79,6 +80,7 @@ export default function InvestmentsScreen() {
   const [saving, setSaving] = useState(false);
 
   useLayoutEffect(() => {
+    if (formOnly) return;
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity onPress={openAdd} accessibilityRole="button" accessibilityLabel="Add an investment" testID="investments-add" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -91,8 +93,25 @@ export default function InvestmentsScreen() {
   // Opened from a Transactions row: that investment's sheet.
   useEffect(() => {
     const id = route.params?.openId;
+    if (formOnly) return;
     if (id && model && (model.investments || []).some((i) => i.id === id)) openMove(id, 'value');
   }, [route.params?.openId]);
+
+  // Cath, 2026-11-06: from the Calendar: choose one to put money into, or start a new one.
+  const [pickOpen, setPickOpen] = useState(false);
+  useFormOnly({ formOnly, addNonce, onFormClosed }, formOpen || !!moveFor || pickOpen, () => {
+    if ((model?.investments || []).length) setPickOpen(true);
+    else openAdd();
+  });
+  function pickInvestment(id: string) {
+    startSheetHandoff(() => setPickOpen(false));
+    openMove(id, 'add');
+    if (addDate) setDate(addDate);
+  }
+  function pickNewInvestment() {
+    startSheetHandoff(() => setPickOpen(false));
+    openAdd();
+  }
 
   if (!model) return <LoadingView />;
   const list = model.investments || [];
@@ -154,12 +173,14 @@ export default function InvestmentsScreen() {
         const put = typeof startPutIn === 'number' && startPutIn > 0 ? cents(startPutIn) : 0;
         const worth = typeof startWorth === 'number' && startWorth > 0 ? cents(startWorth) : 0;
         // What was put in before using Finance Flow: history only, no account changes.
-        if (put > 0) entries.push({ id: makeId('invx'), date: todayISO(), type: 'add', amount: put, createdAt: now });
-        if (worth > 0 && worth !== put) entries.push({ id: makeId('invx'), date: todayISO(), type: 'value', amount: worth, createdAt: now + 1 });
+        const on = addDate && addDate <= todayISO() ? addDate : todayISO();
+        if (put > 0) entries.push({ id: makeId('invx'), date: on, type: 'add', amount: put, createdAt: now });
+        if (worth > 0 && worth !== put) entries.push({ id: makeId('invx'), date: on, type: 'value', amount: worth, createdAt: now + 1 });
         await saveModel({ ...model, investments: [...all, { id: makeId('inv'), name: n, kind, entries, createdAt: now }] });
       }
       hapticLight();
       showLeafTick(editingId ? 'Saved' : 'Added');
+      if (!editingId) onAdded?.();
       setFormOpen(false);
     } catch {
       setFormError(notSaved('this investment'));
@@ -205,6 +226,7 @@ export default function InvestmentsScreen() {
       await saveModel(next);
       hapticLight();
       showLeafTick(mode === 'value' ? 'Updated' : mode === 'add' ? 'Added' : 'Taken out');
+      onAdded?.();
       setMoveFor(null);
     } catch {
       setMoveError(notSaved('this'));
@@ -226,8 +248,10 @@ export default function InvestmentsScreen() {
   const gainColor = (gain: number) => (gain > 0 ? colors.positive : gain < 0 ? colors.negative : colors.inkDim);
   const dateValue = date === todayISO() ? 'Today' : date === yesterdayISO() ? 'Yesterday' : shortDate(date);
 
+  const Outer: any = formOnly ? FormOnlyBox : PullToRefreshScrollView;
   return (
-    <PullToRefreshScrollView contentContainerStyle={styles.content}>
+    <Outer contentContainerStyle={styles.content}>
+      {!formOnly && <>
       <View style={[styles.group, { padding: 16 }]}>
         <GradientFill match={[styles.group, { padding: 16 }]} />
         <Text style={styles.meta}>Worth now</Text>
@@ -275,6 +299,29 @@ export default function InvestmentsScreen() {
         )}
       </View>
       <Text style={styles.footer}>Type in what each one is worth when you check it (no live prices). Money you put in from an account is a move, like a transfer: it isn't spending.</Text>
+
+      </>}
+
+      {/* From the Calendar: which investment. */}
+      <BottomSheet visible={pickOpen} onClose={() => setPickOpen(false)} title="Put money into">
+        <View style={styles.group}>
+          <GradientFill match={styles.group} />
+          {list.map((inv, i) => (
+            <TouchableOpacity key={inv.id} style={[styles.row, i > 0 && styles.line]} onPress={() => pickInvestment(inv.id)} accessibilityRole="button" testID={`investment-pick-${inv.id}`}>
+              <View style={[styles.tile, { backgroundColor: colors.accentTint }]}>
+                <Ionicons name={kindInfo(inv.kind).icon as any} size={18} color={colors.gold} />
+              </View>
+              <Text style={[styles.rowTitle, { flex: 1 }]} numberOfLines={1}>{inv.name}</Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity style={[styles.row, styles.line]} onPress={pickNewInvestment} accessibilityRole="button" testID="investment-pick-new">
+            <View style={[styles.tile, { backgroundColor: colors.accentTint }]}>
+              <Ionicons name="add" size={20} color={colors.gold} />
+            </View>
+            <Text style={[styles.rowTitle, { flex: 1 }]}>New investment</Text>
+          </TouchableOpacity>
+        </View>
+      </BottomSheet>
 
       {/* New / edit */}
       <BottomSheet visible={formOpen} onClose={() => setFormOpen(false)} grouped header={<SheetBar title={editingId ? 'Edit investment' : 'New investment'} onCancel={() => setFormOpen(false)} onDone={saveInvestment} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}>
@@ -394,7 +441,7 @@ export default function InvestmentsScreen() {
           </>
         )}
       </BottomSheet>
-    </PullToRefreshScrollView>
+    </Outer>
   );
 }
 

@@ -45,6 +45,9 @@ export type CalendarEvent = {
   // its second line, and the page a tap opens. Never counted in any balance.
   sub?: string;
   open?: { page: string; params?: object };
+  // Cath, 2026-11-06 (mockup A): a trip or event shows as a ribbon. first and last mean the
+  // ribbon really starts or ends on this day (calendarBands.ts).
+  band?: { kind: 'trip' | 'event'; key: string; first: boolean; last: boolean };
 };
 
 function toNumber(v: number | '' | undefined): number {
@@ -476,6 +479,11 @@ export function computeMonthEvents(
   return fresh;
 }
 
+// Cath, 2026-11-06: every row on the Calendar opens its page. Income opens its person's page.
+function incomePage(source: HouseholdModel['income'][number]): CalendarEvent['open'] {
+  return source.personId ? { page: 'IncomePerson', params: { personId: source.personId } } : { page: 'Income' };
+}
+
 function computeMonthEventsNow(
   model: HouseholdModel,
   year: number,
@@ -520,13 +528,13 @@ function computeMonthEventsNow(
       const key = toISO(new Date(year, monthIndex, day));
       if (key <= todayKey) return;
       if (isPaydayReceived(source, key)) return; // already logged a day or two early
-      push(day, { type: 'income', label, amount });
+      push(day, { type: 'income', label, amount, open: incomePage(source) });
     });
     (source.paymentLog || []).forEach((e) => {
       const dt = parseISO(e.date);
       if (!dt || dt.getFullYear() !== year || dt.getMonth() !== monthIndex) return;
       const got = toNumber(e.amount);
-      if (got > 0) push(dt.getDate(), { type: 'income', label: `${label} (received)`, amount: got });
+      if (got > 0) push(dt.getDate(), { type: 'income', label: `${label} (received)`, amount: got, open: incomePage(source) });
     });
   });
 
@@ -538,14 +546,15 @@ function computeMonthEventsNow(
       const dt = parseISO(c.paidDate);
       if (!dt || dt.getFullYear() !== year || dt.getMonth() !== monthIndex) return;
       const label = 'name' in rec ? rec.name || 'Bill' : rec.creditorOrPerson || 'Debt';
-      push(dt.getDate(), { type: 'manual', label: `${label} payment`, amount: toNumber(c.amountPaid), direction: 'out' });
+      const kind = 'name' in rec ? 'bill' : 'debt';
+      push(dt.getDate(), { type: 'manual', label: `${label} payment`, amount: toNumber(c.amountPaid), direction: 'out', open: { page: 'PayDetail', params: { kind, id: rec.id, backTitle: 'Calendar' } } });
     });
   });
 
   model.manualTransactions.forEach((t) => {
     const dt = parseISO(t.date);
     if (!dt || dt.getFullYear() !== year || dt.getMonth() !== monthIndex) return;
-    push(dt.getDate(), { type: 'manual', label: t.label || 'Transaction', amount: t.amount, direction: t.direction });
+    push(dt.getDate(), { type: 'manual', label: t.label || 'Transaction', amount: t.amount, direction: t.direction, ...(toNumber(t.amount) > 0 ? { open: { page: 'TransactionDetail', params: { id: 'manual-' + t.id } } } : {}) });
   });
 
   model.savingsGoals.forEach((goal) => {
@@ -554,7 +563,7 @@ function computeMonthEventsNow(
       if (!dt || dt.getFullYear() !== year || dt.getMonth() !== monthIndex) return;
       const amount = toNumber(c.amount);
       if (amount === 0) return; // negative = moved back out of the pot (adds to spending money)
-      push(dt.getDate(), { type: 'saving', label: `${goal.name || 'Savings'} contribution`, amount });
+      push(dt.getDate(), { type: 'saving', label: `${goal.name || 'Savings'} contribution`, amount, open: { page: 'PotDetail', params: { id: goal.id } } });
     });
   });
 
@@ -665,6 +674,7 @@ export function computeRunningBalances(
 // ---- Peso formatting ----
 // Small local helper so Calendar doesn't need its own copy — matches the web app's
 // two-decimal-places style.
+const pesoText = new Map<number, string>();
 export function formatPeso(amount: number, currencySymbol: string = '₱'): string {
   // H-11 (2026-10-22): a missing or broken amount shows a dash, never "NaN" or "∞"; and the
   // sign comes from the amount rounded to centavos, so a hair below zero is "₱0.00", not
@@ -672,8 +682,14 @@ export function formatPeso(amount: number, currencySymbol: string = '₱'): stri
   if (typeof amount !== 'number' || !Number.isFinite(amount)) return `${currencySymbol}—`;
   const cents = Math.round(amount * 100);
   const isNegative = cents < 0;
-  const abs = Math.abs(cents) / 100;
-  const formatted = abs.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  // Speed (2026-11-06): turning a number into text is slow and the same amounts repeat all over
+  // the app, so each one is worked out once. The list is emptied if it ever gets very long.
+  let formatted = pesoText.get(Math.abs(cents));
+  if (formatted === undefined) {
+    formatted = (Math.abs(cents) / 100).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (pesoText.size >= 5000) pesoText.clear();
+    pesoText.set(Math.abs(cents), formatted);
+  }
   return `${isNegative ? '-' : ''}${currencySymbol}${formatted}`;
 }
 
@@ -709,7 +725,24 @@ function nextHouseholdPayDate(model: HouseholdModel, today: Date = new Date()): 
   return earliest;
 }
 
+// Speed (2026-11-06): Home, the mood colours and the widgets all ask for this after every change,
+// so it is worked out once per version of the data, per day.
+const leftToSpendCache = new WeakMap<object, Map<string, LeftToSpendResult>>();
 export function computeLeftToSpend(model: HouseholdModel, today: Date = new Date()): LeftToSpendResult {
+  let byDay = leftToSpendCache.get(model);
+  if (!byDay) {
+    byDay = new Map();
+    leftToSpendCache.set(model, byDay);
+  }
+  const key = toISO(stripTime(today));
+  const hit = byDay.get(key);
+  if (hit) return hit;
+  const fresh = computeLeftToSpendNow(model, today);
+  byDay.set(key, fresh);
+  return fresh;
+}
+
+function computeLeftToSpendNow(model: HouseholdModel, today: Date): LeftToSpendResult {
   const payDate = nextHouseholdPayDate(model, today);
   // Redesign: what you can spend UNTIL payday, so the payday's own (not yet received)
   // income isn't counted: read the balance the day before, never earlier than today.

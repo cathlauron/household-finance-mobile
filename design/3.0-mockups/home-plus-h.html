@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home Plus Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Plan: two phones in step, same taps, each with a status line and a running timer under it. */
+:root {
+  --ink: #111111; --dim: #636366; --line: #D1D1D6; --bg: #F2F2F7; --card: #FFFFFF; --soft: #E5E5EA;
+  --green: #2E6B47; --deep: #1B3F30; --tint: #E6F0EA; --on: #F2F2F7; --red: #D70015; --redbg: #FFEBEE;
+  --shadow: rgba(0,0,0,.14); --dimmer: rgba(0,0,0,.34);
+  --font: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink: #FFFFFF; --dim: #AEAEB2; --line: #38383A; --bg: #000000; --card: #1C1C1E; --soft: #2C2C2E;
+    --green: #5FC48A; --deep: #1E4A37; --tint: #15291D; --on: #06140C; --red: #FF6961; --redbg: #3F1725;
+    --shadow: rgba(0,0,0,.6); --dimmer: rgba(0,0,0,.6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ink: #FFFFFF; --dim: #AEAEB2; --line: #38383A; --bg: #000000; --card: #1C1C1E; --soft: #2C2C2E;
+  --green: #5FC48A; --deep: #1E4A37; --tint: #15291D; --on: #06140C; --red: #FF6961; --redbg: #3F1725;
+  --shadow: rgba(0,0,0,.6); --dimmer: rgba(0,0,0,.6);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); line-height: 1.45; }
+main { max-width: 760px; margin: 0 auto; padding: 28px 16px 56px; }
+h1 { font-size: 30px; line-height: 1.15; margin: 0 0 6px; font-weight: 800; text-wrap: balance; }
+h2 { font-size: 20px; margin: 0 0 4px; font-weight: 800; text-wrap: balance; }
+.lead { color: var(--dim); font-size: 16px; margin: 0 0 22px; max-width: 62ch; }
+.scenes { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 30px 22px; }
+.scene { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.cap { color: var(--dim); font-size: 14.5px; margin: 0; max-width: 60ch; min-height: 64px; }
+.status { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 36px; background: var(--card); border-radius: 10px; padding: 6px 12px; font-size: 14px; font-weight: 700; }
+.status.bad { background: var(--redbg); color: var(--red); }
+.status.good { background: var(--tint); color: var(--green); }
+.status b { font-variant-numeric: tabular-nums; font-weight: 800; }
+.replay { align-self: center; font: 700 14px var(--font); color: var(--green); background: var(--tint); border: 0; border-radius: 999px; padding: 7px 16px; cursor: pointer; margin-top: 18px; display: block; margin-left: auto; margin-right: auto; }
+.replay:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.note { background: var(--card); border-radius: 14px; padding: 16px 18px; margin-top: 26px; }
+.note ul { margin: 8px 0 0; padding-left: 20px; font-size: 15px; }
+.note li { margin-bottom: 7px; }
+
+.phone { position: relative; width: 300px; height: 620px; max-width: 100%; margin: 0 auto; border-radius: 34px; background: var(--bg); border: 7px solid var(--ink); overflow: hidden; box-shadow: 0 10px 28px var(--shadow); }
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--bg); padding: 18px 12px 0; transition: opacity 240ms cubic-bezier(.32,.72,0,1); }
+.screen.off { opacity: 0; pointer-events: none; }
+.hi { font-size: 21px; font-weight: 800; padding: 0 4px 10px; }
+.hero { background: var(--deep); color: #fff; border-radius: 16px; padding: 14px; }
+.hero small { font-size: 12.5px; opacity: .85; display: block; }
+.hero b { font-size: 27px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ghead { font-size: 12px; font-weight: 700; color: var(--dim); letter-spacing: .3px; text-transform: uppercase; margin: 12px 8px 5px; }
+.group { background: var(--card); border-radius: 12px; overflow: hidden; }
+.row { position: relative; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 12px; }
+.row + .row { border-top: 1px solid var(--line); }
+.rmain { flex: 1; min-width: 0; }
+.rname { font-size: 15px; font-weight: 600; }
+.sub { font-size: 12.5px; color: var(--dim); }
+.amt { font-size: 14.5px; font-weight: 700; color: var(--red); font-variant-numeric: tabular-nums; }
+.tabs { margin: auto -2px 10px; background: var(--card); border-radius: 26px; display: flex; font-size: 11.5px; font-weight: 700; color: var(--dim); padding: 13px 0; box-shadow: 0 1px 6px var(--shadow); }
+.tabs span { flex: 1; text-align: center; }
+.tabs span.on { color: var(--green); }
+.fab { position: absolute; right: 14px; bottom: 68px; width: 50px; height: 50px; border-radius: 50%; background: var(--tint); color: var(--green); font-size: 30px; line-height: 46px; text-align: center; box-shadow: 0 2px 8px var(--shadow); }
+.ttl { font-size: 26px; font-weight: 700; padding: 0 4px 10px; }
+@keyframes glow { 0% { background: var(--tint); } 100% { background: transparent; } }
+.arrive { animation: glow 1.6s ease-out; }
+.dim { position: absolute; inset: 0; background: var(--dimmer); opacity: 0; pointer-events: none; transition: opacity 220ms ease; }
+.dim.on { opacity: 1; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--bg); border-radius: 16px 16px 0 0; padding: 0 12px 16px; transform: translateY(102%); transition: transform 240ms cubic-bezier(.32,.72,0,1); }
+.sheet.on { transform: none; transition-duration: 280ms; }
+.sbar { display: flex; align-items: center; justify-content: space-between; font-size: 15.5px; font-weight: 600; color: var(--green); padding: 15px 2px 10px; }
+.sbar b { color: var(--ink); font-weight: 800; }
+.big { text-align: center; font-size: 30px; font-weight: 800; color: var(--red); padding: 6px 0 12px; font-variant-numeric: tabular-nums; }
+.form { background: var(--card); border-radius: 12px; overflow: hidden; margin-bottom: 110px; }
+.frow { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 46px; padding: 0 12px; font-size: 14.5px; font-weight: 600; }
+.frow + .frow { border-top: 1px solid var(--line); }
+.frow span:last-child { color: var(--dim); font-weight: 500; }
+.toast { position: absolute; left: 50%; top: 42%; transform: translate(-50%, 8px); background: var(--green); color: var(--on); font-weight: 700; font-size: 14px; padding: 8px 18px; border-radius: 999px; opacity: 0; transition: opacity 220ms, transform 220ms; pointer-events: none; z-index: 9; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+.finger { position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: rgba(120,120,128,.38); border: 2px solid rgba(255,255,255,.75); opacity: 0; left: 150px; top: 340px; transition: left 420ms cubic-bezier(.32,.72,0,1), top 420ms cubic-bezier(.32,.72,0,1), opacity 180ms, transform 120ms; pointer-events: none; z-index: 20; }
+.finger.on { opacity: 1; }
+.finger.press { transform: scale(.72); }
+@media (prefers-reduced-motion: reduce) {
+  .sheet, .finger, .dim, .toast, .screen { transition: none; }
+  .arrive { animation: none; }
+}
+</style>
+</head>
+<body>
+<main>
+  <h1>Home's +, now and fixed</h1>
+  <p class="lead"><b>Correction:</b> the Now phone only ever happened for guests with no account. On a signed-in account the form already closed straight away. Guests now match, so the Fixed phone shows how it works for everyone.</p>
+  <div class="scenes">
+    <section class="scene">
+      <h2>Now</h2>
+      <p class="cap">The form stays frozen while the app redraws. It looks like your tap didn't work, then it all moves at once.</p>
+      <div class="phone" id="pa"></div>
+      <div class="status" id="sa"><span>Ready</span><b></b></div>
+    </section>
+    <section class="scene">
+      <h2>Fixed</h2>
+      <p class="cap">The form slides down the moment you tap Add. Added shows, and the app does its redrawing after that.</p>
+      <div class="phone" id="pb"></div>
+      <div class="status" id="sb"><span>Ready</span><b></b></div>
+    </section>
+  </div>
+  <button class="replay" id="again" type="button">Play again</button>
+  <div class="note">
+    <h2>What to expect</h2>
+    <ul>
+      <li>The Now freeze uses the 0.85 seconds from the slowed test. The Fixed timer is an illustration.</li>
+      <li>The redrawing doesn't go away. It happens after the form has closed, while Transactions opens.</li>
+      <li>Saving works as before, so the form doesn't need to reopen on a failed save.</li>
+      <li>This covers every form, including the Bills, Debts and Loans + buttons on To-Pay.</li>
+    </ul>
+  </div>
+</main>
+<script>
+(function () {
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function rows(extra) {
+    return '<div class="group">' + (extra || '') +
+      '<div class="row"><div class="rmain"><div class="rname">Groceries</div><div class="sub">Food · Maribank</div></div><div class="amt">−₱1,240.00</div></div>' +
+      '<div class="row"><div class="rmain"><div class="rname">Grab</div><div class="sub">Transport · GCash</div></div><div class="amt">−₱186.00</div></div>' +
+      '<div class="row"><div class="rmain"><div class="rname">Electric</div><div class="sub">Bill · Maribank</div></div><div class="amt">−₱2,400.00</div></div></div>';
+  }
+  function tabs(on) { return '<div class="tabs">' + ['Home', 'Transactions', 'To-Pay', 'Plan'].map(function (t) { return '<span' + (t === on ? ' class="on"' : '') + '>' + t + '</span>'; }).join('') + '</div>'; }
+  function build() {
+    return '<div class="screen" data-t="home"><div class="hi">Hi, Cath</div><div class="hero"><small>Left to spend</small><b>₱9,860.00</b></div><div class="ghead">Recent</div>' + rows() + tabs('Home') + '</div>' +
+      '<div class="screen off" data-t="txn"><div class="ttl">Transactions</div><div class="ghead">Today</div>' + rows('<div class="row arrive" data-t="new" hidden><div class="rmain"><div class="rname">Lunch</div><div class="sub">Food · Maribank</div></div><div class="amt">−₱250.00</div></div>') + tabs('Transactions') + '</div>' +
+      '<div class="fab" data-t="plus">+</div><div class="dim"></div><div class="toast">Added</div><div class="finger"></div>' +
+      '<div class="sheet" data-t="form"><div class="sbar"><span>Cancel</span><b>New transaction</b><span data-t="ok">Add</span></div><div class="big">₱250</div><div class="form"><div class="frow"><span>Description</span><span>Lunch</span></div><div class="frow"><span>Category</span><span>Food</span></div><div class="frow"><span>Paid from</span><span>Maribank</span></div><div class="frow"><span>Date</span><span>Nov 6, 2026</span></div></div></div>';
+  }
+  var run = 0;
+  function wait(ms, r) { return new Promise(function (ok, no) { setTimeout(function () { r === run ? ok() : no('stop'); }, ms); }); }
+  function P(id, sid) { this.el = document.getElementById(id); this.s = document.getElementById(sid); this.tick = 0; }
+  P.prototype.$ = function (x) { return this.el.querySelector(x); };
+  P.prototype.say = function (t, c) { this.s.className = 'status' + (c ? ' ' + c : ''); this.s.children[0].textContent = t; };
+  P.prototype.clock = function (on) {
+    var me = this, b = this.s.children[1]; clearInterval(this.tick);
+    if (!on) return;
+    var t0 = performance.now(); this.tick = setInterval(function () { b.textContent = ((performance.now() - t0) / 1000).toFixed(1) + ' s'; }, 50);
+  };
+  P.prototype.tap = async function (sel, r) {
+    var t = this.$(sel), f = this.$('.finger'), a = t.getBoundingClientRect(), b = this.el.getBoundingClientRect();
+    f.style.left = (a.left - b.left + a.width / 2 - 7) + 'px'; f.style.top = (a.top - b.top + a.height / 2 - 7) + 'px';
+    f.classList.add('on'); await wait(600, r); f.classList.add('press'); await wait(140, r); f.classList.remove('press'); f.classList.remove('on');
+  };
+  P.prototype.reset = function () { this.el.innerHTML = build(); this.clock(false); this.s.children[1].textContent = ''; this.say('Ready'); };
+  P.prototype.open = async function (r) {
+    await this.tap('[data-t=plus]', r);
+    this.$('.dim').classList.add('on'); this.$('[data-t=form]').classList.add('on');
+    this.say('Filling in the form');
+    await wait(1100, r);
+    await this.tap('[data-t=ok]', r);
+    this.clock(true);
+  };
+  P.prototype.closeForm = function () { this.$('.dim').classList.remove('on'); this.$('[data-t=form]').classList.remove('on'); };
+  P.prototype.toast = async function (r) { var t = this.$('.toast'); t.classList.add('on'); await wait(900, r); t.classList.remove('on'); };
+  P.prototype.land = function () { this.$('[data-t=home]').classList.add('off'); this.$('[data-t=txn]').classList.remove('off'); this.$('[data-t=new]').hidden = false; };
+  var A = new P('pa', 'sa'), B = new P('pb', 'sb');
+  async function now(r) {
+    var p = A; await p.open(r);
+    p.say('Form stuck, not responding', 'bad');
+    await wait(850, r);
+    p.say('Closing', ''); p.closeForm(); p.toast(r).catch(function () {});
+    await wait(280, r);
+    await wait(420, r); // the second freeze before Transactions shows
+    p.land(); p.clock(false); p.say('Done', 'good');
+  }
+  async function fixed(r) {
+    var p = B; await p.open(r);
+    p.closeForm(); p.say('Form closed straight away', 'good'); p.toast(r).catch(function () {});
+    await wait(280, r);
+    await wait(170, r);
+    p.land(); p.clock(false); p.say('Done', 'good');
+  }
+  async function play() {
+    var r = ++run; A.reset(); B.reset();
+    try {
+      if (!reduce) await wait(1000, r);
+      await Promise.all([now(r), fixed(r)]);
+      if (reduce) return;
+      await wait(3600, r); play();
+    } catch (e) { if (e !== 'stop') throw e; }
+  }
+  document.getElementById('again').addEventListener('click', play);
+  play();
+})();
+</script>
+</body>
+</html>

@@ -30,7 +30,7 @@ export function walkFixtureModel(): HouseholdModel {
   m.balanceAccounts = {
     asOfDate: monthDay(2, 1),
     cash: [{ id: 'cash1', name: 'Cash', amount: 3000 }],
-    debit: [{ id: 'd1', name: 'Maribank', amount: 25142.41 }, { id: 'd2', name: 'RCBC', amount: 0.1 }],
+    debit: [{ id: 'd1', name: 'Maribank', amount: 625142.41 }, { id: 'd2', name: 'RCBC', amount: 0.1 }],
     credit: [{ id: 'c1', name: 'Atome', amount: 379.25, limit: 5000 }],
   };
   m.bills = [
@@ -60,5 +60,24 @@ export function walkFixtureModel(): HouseholdModel {
       checklist: [{ id: 'ti1', title: 'Flights', cost: 18400, checked: true, completedDate: today, markedOnly: true, receiptPhoto: PIC }, { id: 'ti2', title: 'Hotel', cost: 21000, checked: false }] },
   ];
   m.savingsGoals = [{ id: 'sg1', name: 'Emergency fund', targetAmount: 100000, targetDate: '', currentAmount: 25000, contributions: [] }];
+  // Speed tests (Cath, 2026-11-06): about a year of everyday spending, so timings look more like
+  // a real household's.
+  const shops = ['SM Hypermarket', 'Grab', 'Jollibee', 'Mercury Drug', 'Shopee', 'Meralco', 'Coffee', 'Puregold'];
+  const kinds = ['Groceries', 'Transport', 'Food', 'Health', 'Shopping', 'Utilities', 'Food', 'Groceries'];
+  const txns: any[] = [];
+  for (let back = 13; back >= 1; back--) {
+    for (let day = 1; day <= 28; day++) {
+      const k = (back * day) % shops.length;
+      txns.push({ id: `wt${back}-${day}`, date: monthDay(back, day), label: shops[k], amount: 80 + ((back * 37 + day * 53) % 900), direction: 'out', category: kinds[k], owner: 'shared', paymentMethod: { type: 'debit', accountId: 'd1' }, source: 'manual', createdAt: Date.now() - back * 86400000 });
+    }
+  }
+  m.manualTransactions = [...(m.manualTransactions || []), ...txns, { id: 'wl', date: monthDay(0, 14), label: 'Walk lunch', amount: 250, direction: 'out', category: 'Food', owner: 'shared', paymentMethod: { type: 'debit', accountId: 'd1' }, createdAt: Date.now() }];
+  // One of each kind of Calendar row, on the 14th of this month.
+  const d14 = new Date(monthDay(0, 14) + 'T00:00:00');
+  m.events = [{ id: 'we', name: 'Walk birthday', type: 'birthday', recurrence: 'annual', month: d14.getMonth() + 1, day: 14, budget: '', completed: false }];
+  m.yearlyGoals = [{ id: 'wg', title: 'Walk 10K', description: '', mode: 'checklist', targetAmount: '', currentAmount: '', targetDate: monthDay(0, 14), completed: false }];
+  m.recurring = [{ id: 'wr', label: 'Walk gym', amount: 800, direction: 'out', owner: 'shared', frequency: 'yearly', startDate: monthDay(0, 14), nextDate: monthDay(0, 14) }];
+  m.travel[0].todos = [{ id: 'wt', text: 'Walk pack', done: false, date: monthDay(0, 14) }];
+  m.travel.push({ id: 'trip2', name: 'Cebu', startDate: monthDay(0, 12), endDate: monthDay(0, 17), todos: [], checklist: [] });
   return m as HouseholdModel;
 }

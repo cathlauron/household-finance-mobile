@@ -394,7 +394,7 @@ In Expo Go:
 Needs the installed app (new build): the Due soon and Month widgets list it; in your phone's
 widget list (hold the home screen › Widgets › Finance Flow) the previews are green.
 
-## 29. Voice entry removed, release 3.5.0 (2026-11-04). Installed app. NOT YET TESTED.
+## 29. Voice entry removed, release 3.5.0 (2026-11-04). Installed app. Voice items not rechecked in Expo Go.
 1. Install 3.5.0 over 3.4.0. No form has a Say it button (+ transaction, Bills, Debts, Loans,
    Income, Savings, Goals, Events, Travel, Groceries, Budgets, Shared, Transfer, Accounts, ...).
 2. The app never asks for the microphone. (Android Settings › Apps › Finance Flow › Permissions:
@@ -404,7 +404,7 @@ widget list (hold the home screen › Widgets › Finance Flow) the previews are
 4. Welcome (log out or a new guest): midday shows "Log it in seconds" (a typed add), no Say it.
 5. Settings › Widgets lists 5.
 
-## 30. Finance Flow Beta, release 3.6.0 (2026-11-06). Installed app. NOT YET TESTED.
+## 30. Finance Flow Beta, release 3.6.0 (2026-11-06). AS DESCRIBED (Cath, 2026-11-06, Expo Go).
 1. Settings says "Version 3.6.0 Beta"; the welcome has a small BETA tag under the logo.
 2. Travel › Add: only Trip name, Dates and the Savings switch. Add opens the new trip on Budget.
 3. Inside a trip there is no Edit. Tap the name (with the small pencil): a Trip name sheet opens.
@@ -420,3 +420,28 @@ widget list (hold the home screen › Widgets › Finance Flow) the previews are
    start and end, a to-do's date, an item with a date and no cost, a savings or yearly goal's date,
    a subscription's cancel-by, moves, shared expenses, investments, repeats, money lent. Tapping
    one opens its page. Your projected balance does not change.
+
+## 31. Staying on the Calendar (2026-11-06). AS DESCRIBED (Cath, 2026-11-06, Expo Go).
+1. Calendar in Compact: + › Transaction › fill it in › Add. The form slides down, you stay on the
+   month, "Added" shows, and the day's dots give a small pop.
+2. Details: the same, and the new name is in the day.
+3. List: the same, and the new row glows in the list. Tapping a day first does this in Compact too.
+4. Bill, debt and loan from the Calendar's + behave the same way.
+5. Home's + still ends on Transactions.
+6. Saving from the Calendar feels quicker than in 3.6.0 Beta.
+7. Home's +, signed in and as a new guest: after Add the form closes straight away.
+8. Transactions: edit an amount, rename an account, delete an entry. Each shows straight away.
+9. Calendar: tap a day, then tap each kind of row: transaction, bill, debt, loan, income, saving, event, trip, goal. Each opens its page, and Back returns to the Calendar.
+10. Open a trip from the Calendar, To-Pay and Home's Due soon: one Back returns to where you were, and the top bar names it.
+
+## 32. Add anything from the Calendar, and ribbons (2026-11-06). AS DESCRIBED (Cath, 2026-11-06, Expo Go).
+1. Calendar › + : Transaction, Bill, Debt, Loan, then From your Plan. It swaps in place with no close and reopen. Back returns.
+2. Add an Event, a Trip, a Savings pot, a Yearly goal and a Grocery item. Each form has the picked day filled in. After Add you stay on the Calendar, and it shows on that day.
+3. Shared expense: with two people set up it opens on the day. Without, it says to add people first.
+4. Investment: choose one and Add money on today or an earlier day. A future day says it can't be dated in the future. New investment also works.
+5. A trip across several days is one ribbon with its name, in Compact and Details, and carries on to the next row. In List it is a thin line.
+6. An event has a small ribbon. Long names get cut short. Tap a day: "Trip · day 2 of 6". The row opens the trip, and one Back returns.
+7. A trip running into next month shows in both months. Greyed days stay empty.
+8. A trip during other things: dots or names still show under the ribbon. Your projected balance does not change.
+9. Groceries: Buy by is optional on the form, and shows on the item's row and the Calendar.
+10. Dark mode: the same.

@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { buildPages, monthCells, todayIndex, YEARS_EACH_SIDE, type Page } from '../calendarPages';
-import { goToMain } from '../navigation/goToMain';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
-import { View, StyleSheet, Modal, Pressable, ActivityIndicator, ScrollView, FlatList, useWindowDimensions } from 'react-native';
+import { Animated, Easing, View, StyleSheet, Modal, Pressable, ActivityIndicator, ScrollView, FlatList, useWindowDimensions } from 'react-native';
+import { CURVE, ROW_MS, SHEET_CLOSE_MS } from '../motion';
 import { TouchableOpacity } from '../components/Tap';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../components/AppText';
@@ -10,7 +10,8 @@ import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../DataContext';
 import { computeRunningBalances, formatPeso, computeMonthEvents, CalendarEvent } from '../balanceProjection';
-import { withEverythingDated } from '../calendarAll';
+import { newEventIndex, withEverythingDated } from '../calendarAll';
+import ArrivalGlow from '../components/ArrivalGlow';
 import {
   CalendarViewMode,
   CalendarNavMode,
@@ -29,14 +30,18 @@ import TransactionsScreen from './TransactionsScreen';
 import BillsScreen from './BillsScreen';
 import DebtsScreen from './DebtsScreen';
 import LoansScreen from './LoansScreen';
-import { expectArrival } from '../arrivalFocus';
+import EventsScreen from './EventsScreen';
+import TravelScreen from './TravelScreen';
+import SavingsScreen from './SavingsScreen';
+import GoalsScreen from './GoalsScreen';
+import SharedExpensesScreen from './SharedExpensesScreen';
+import InvestmentsScreen from './InvestmentsScreen';
+import GroceriesScreen from './GroceriesScreen';
+import { layoutWeek, marksFor, type WeekBand } from '../calendarBands';
 import { salaryHandoffPending } from '../salaryHandoff';
 import { accountHandoffPending } from '../accountHandoff';
 import { noteCalendarLeaving } from '../navigation/calendarLeaving';
-import { quietMovesFor } from '../quietMoves';
-import { buildTransactionsList } from '../transactions';
 import { hapticSelection } from '../haptics';
-import { requestToPayTab } from '../openToPayTabRequest';
 import { requestToPayAdd } from '../fabActions';
 import { afterSlide } from '../afterSlide';
 import { reduceMotionNow } from '../reduceMotion';
@@ -50,6 +55,7 @@ const MONTHS = [
 // to each row in the day panel. Matches the Finance Flow mockup: bills red, income green,
 // loans blue, savings in the saving colour; your own entries follow their direction.
 function eventColor(ev: CalendarEvent, colors: any): string {
+  if (ev.band?.kind === 'trip') return colors.planned;
   switch (ev.type) {
     case 'bill':
       return colors.negative;
@@ -129,6 +135,36 @@ function eventAmount(ev: CalendarEvent, colors: any): { text: string; color: str
 // says so at both ends of the year view. The months are worked out in calendarPages.ts.
 const TODAY_INDEX = todayIndex();
 
+// Cath, 2026-11-06 (mockup C): what the + sheet can add. Money first, then a second step for Plan.
+type PlanForm = 'event' | 'trip' | 'pot' | 'goal' | 'shared' | 'invest' | 'grocery';
+type FormKind = 'txn' | 'bills' | 'debts' | 'loans' | PlanForm;
+type AddIcon = keyof typeof Ionicons.glyphMap;
+type AddChoice = [key: string, form: FormKind, title: string, sub: string, icon: AddIcon];
+const ADD_MONEY: AddChoice[] = [
+  ['txn', 'txn', 'Transaction', 'Money that moved this day', 'swap-vertical-outline'],
+  ['bill', 'bills', 'Bill', 'Comes back every month or year', 'flash-outline'],
+  ['debt', 'debts', 'Debt', 'Owed and paid down over time', 'people-outline'],
+  ['loan', 'loans', 'Loan', 'Set payments until an end date', 'business-outline'],
+];
+const ADD_PLAN: AddChoice[] = [
+  ['event', 'event', 'Event', 'A birthday or celebration', 'balloon-outline'],
+  ['trip', 'trip', 'Trip', 'Starts on this day', 'airplane-outline'],
+  ['pot', 'pot', 'Savings pot', 'Saving for this date', 'leaf-outline'],
+  ['goal', 'goal', 'Yearly goal', 'Something to reach by this date', 'flag-outline'],
+  ['shared', 'shared', 'Shared expense', 'Split with someone', 'people-outline'],
+  ['invest', 'invest', 'Investment', 'Money put in on this day', 'trending-up-outline'],
+  ['grocery', 'grocery', 'Grocery item', 'To buy by this day', 'cart-outline'],
+];
+const PLAN_FORMS: Record<PlanForm, React.ComponentType<any>> = {
+  event: EventsScreen,
+  trip: TravelScreen,
+  pot: SavingsScreen,
+  goal: GoalsScreen,
+  shared: SharedExpensesScreen,
+  invest: InvestmentsScreen,
+  grocery: GroceriesScreen,
+};
+
 function weeksIn(year: number, month: number): number {
   const first = new Date(year, month, 1).getDay();
   const days = new Date(year, month + 1, 0).getDate();
@@ -167,6 +203,7 @@ type GridProps = {
   onDayPress: (y: number, m: number, d: number) => void;
   // Cath, 2026-11-06: a greyed day from the month before or after moves to that month.
   onGreyPress: (y: number, m: number, d: number) => void;
+  poppingDay?: number | null; // a day something was just added on
 };
 
 // One month as week rows with a line above each, iPhone style: days outside the month are
@@ -175,19 +212,102 @@ type GridProps = {
 // See-through levels added to a colour code for the soft day circles (hex alpha).
 const TODAY_TINT = '2E'; // about 18%
 const SELECTED_TINT = '1A'; // about 10%
+const ADD_TAP_GAP = 800; // taps on a + row closer than this count as one
+const ARRIVED_MS = 2000; // how long a just-added day stays marked
 const GREY_DAY_OPACITY = 0.36; // the days of the month before or after
 
-const MonthGrid = React.memo(function MonthGrid({ year, month, mode, rowHeight, selectedDay, onDayPress, onGreyPress }: GridProps) {
+// Cath, 2026-11-06 (mockup A): a trip's ribbon across its days, an event's on its day. A short
+// row (the List view) has a thin line and no name.
+const BAND_H = 12;
+const BAND_GAP = 1;
+const THIN_BAND_H = 4;
+const BAND_TOP = 37; // just under the day's number
+const THIN_TOP = 41; // behind the dots of a short row
+const DOTS_GAP = 3; // the dots' own space above them
+const THIN_BELOW = 52; // rows shorter than this draw the thin line
+const ONE_LANE_BELOW = 66; // no room for two ribbons on a shorter row
+function bandColor(kind: 'trip' | 'event', colors: any): string {
+  return kind === 'trip' ? colors.planned : colors.gold;
+}
+function Band({ band, thin, pop, colors }: { band: WeekBand; thin: boolean; pop: boolean; colors: any }) {
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!pop || reduceMotionNow()) return;
+    v.setValue(0);
+    Animated.timing(v, { toValue: 1, duration: ROW_MS, delay: SHEET_CLOSE_MS, easing: Easing.bezier(...CURVE), useNativeDriver: true }).start();
+  }, [pop, v]);
+  const color = bandColor(band.kind, colors);
+  const height = thin ? THIN_BAND_H : BAND_H;
+  const step = 100 / 7;
+  return (
+    <Animated.View
+      pointerEvents="none"
+      testID={pop ? 'calendar-day-pop' : `calendar-band-${band.key}`}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{
+        position: 'absolute',
+        left: `${band.from * step}%`,
+        width: `${(band.to - band.from + 1) * step}%`,
+        top: thin ? THIN_TOP : BAND_TOP + band.lane * (BAND_H + BAND_GAP),
+        height,
+        paddingLeft: band.roundStart ? 2 : 0,
+        paddingRight: band.roundEnd ? 2 : 0,
+        transform: pop ? [{ scale: v.interpolate({ inputRange: [0, 0.6, 1], outputRange: [1, band.to === band.from ? 1.3 : 1.05, 1] }) }] : undefined,
+      }}
+    >
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          paddingHorizontal: band.to === band.from ? 3 : 5,
+          backgroundColor: color + '33',
+          borderTopLeftRadius: band.roundStart ? 5 : 0,
+          borderBottomLeftRadius: band.roundStart ? 5 : 0,
+          borderTopRightRadius: band.roundEnd ? 5 : 0,
+          borderBottomRightRadius: band.roundEnd ? 5 : 0,
+        }}
+      >
+        {!thin && <Text style={{ fontSize: 10.5, lineHeight: BAND_H, fontWeight: '800', letterSpacing: -0.2, color, includeFontPadding: false }} numberOfLines={1}>{band.label}</Text>}
+      </View>
+    </Animated.View>
+  );
+}
+
+// Cath, 2026-11-06 (mockup C): a small pop on a day's marks once the form has gone down.
+function DayMarks({ pop, children }: { pop: boolean; children: React.ReactNode }) {
+  const v = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!pop || reduceMotionNow()) return;
+    v.setValue(0);
+    Animated.timing(v, { toValue: 1, duration: ROW_MS, delay: SHEET_CLOSE_MS, easing: Easing.bezier(...CURVE), useNativeDriver: true }).start();
+  }, [pop, v]);
+  if (!pop) return <>{children}</>;
+  return (
+    <Animated.View testID="calendar-day-pop" style={{ alignSelf: 'stretch', alignItems: 'center', transform: [{ scale: v.interpolate({ inputRange: [0, 0.6, 1], outputRange: [1, 1.5, 1] }) }] }}>
+      {children}
+    </Animated.View>
+  );
+}
+
+const MonthGrid = React.memo(function MonthGrid({ year, month, mode, rowHeight, selectedDay, onDayPress, onGreyPress, poppingDay }: GridProps) {
   const { colors } = useTheme();
   const { model } = useData();
   const s = useMemo(() => makeStyles(colors), [colors]);
   const events = model ? monthEventsFor(model, year, month) : ({} as Record<number, CalendarEvent[]>);
   const now = new Date();
   const rows = monthCells(year, month);
+  const thin = rowHeight < THIN_BELOW;
+  const maxLanes = rowHeight < ONE_LANE_BELOW ? 1 : undefined;
   return (
     <View>
-      {rows.map((row, ri) => (
+      {rows.map((row, ri) => {
+        const week = layoutWeek(row, events, maxLanes);
+        return (
         <View key={ri} style={[s.weekRow, { height: rowHeight }]}>
+          {week.bands.map((band) => (
+            <Band key={band.key} band={band} thin={thin} colors={colors} pop={poppingDay != null && band.roundStart && row[band.from]?.day === poppingDay} />
+          ))}
           {row.map((cell, ci) => {
             if (cell === null) return <View key={ci} style={s.cell} />;
             if (cell.outside) {
@@ -203,14 +323,17 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, mode, rowHeight, 
             const d = cell.day;
             const isToday = year === now.getFullYear() && month === now.getMonth() && d === now.getDate();
             const isSel = selectedDay === d;
-            const evs = events[d] || [];
+            const all = events[d] || [];
+            const evs = marksFor(all, week.hiddenKeys);
+            const lanes = week.lanesAt[ci];
+            const pillRoom = lanes > 0 ? 1 : 2;
             const weekend = ci === 0 || ci === 6;
             return (
               <Pressable
                 key={ci}
                 style={s.cell}
                 onPress={() => onDayPress(year, month, d)}
-                accessibilityLabel={`${MONTHS[month]} ${d}${evs.length ? `, ${evs.length} item${evs.length === 1 ? '' : 's'}` : ''}`}
+                accessibilityLabel={`${MONTHS[month]} ${d}${all.length ? `, ${all.length} item${all.length === 1 ? '' : 's'}` : ''}`}
               >
                 {/* Cath: the picked day showed a square on Android. The phone drops the rounded corners
                     when a colour is added to a plain box later, so every day starts with an
@@ -218,14 +341,16 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, mode, rowHeight, 
                 <View style={[s.num, { backgroundColor: isToday ? colors.gold + TODAY_TINT : isSel ? colors.ink + SELECTED_TINT : 'rgba(0,0,0,0)' }]}>
                   <Text style={[s.numText, { color: isToday ? colors.gold : isSel ? colors.ink : weekend ? colors.inkDim : colors.ink }, (isToday || isSel) && { fontWeight: '800' }]}>{d}</Text>
                 </View>
+                {lanes > 0 && !thin && <View style={{ height: lanes * (BAND_H + BAND_GAP) + BAND_GAP - DOTS_GAP }} />}
+                <DayMarks pop={poppingDay === d}>
                 {mode === 'details' ? (
                   <View style={s.pills}>
-                    {evs.slice(0, 2).map((ev, i) => (
+                    {evs.slice(0, pillRoom).map((ev, i) => (
                       <View key={i} style={[s.pill, { backgroundColor: eventColor(ev, colors) + '26' }]}>
                         <Text style={[s.pillText, { color: eventColor(ev, colors) }]} numberOfLines={1}>{ev.label}</Text>
                       </View>
                     ))}
-                    {evs.length > 2 && <Text style={s.pillMore}>+{evs.length - 2}</Text>}
+                    {evs.length > pillRoom && <Text style={s.pillMore}>+{evs.length - pillRoom}</Text>}
                   </View>
                 ) : (
                   <View style={s.dots}>
@@ -234,11 +359,13 @@ const MonthGrid = React.memo(function MonthGrid({ year, month, mode, rowHeight, 
                     ))}
                   </View>
                 )}
+                </DayMarks>
               </Pressable>
             );
           })}
         </View>
-      ))}
+        );
+      })}
     </View>
   );
 });
@@ -507,45 +634,90 @@ export default function CalendarScreen() {
   // Version 2.2 (Cath: don't jump to the other screen before I've added it): the form
   // opens right here over the calendar, starting on the picked day. Only after Add does
   // the app go to Transactions or To-Pay, where the new one slides in and glows.
-  const [formHosts, setFormHosts] = useState<{ kind: 'txn' | 'bills' | 'debts' | 'loans'; date: string; nonce: number }[]>([]);
+  const dayBefore = useRef<string[]>([]);
+  const [arrived, setArrived] = useState<string | null>(null); // the day something was just added on
+  const arrivedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [formHosts, setFormHosts] = useState<{ kind: FormKind; date: string; nonce: number }[]>([]);
+  // Cath, 2026-11-06 (mockup C): the + sheet's second step.
+  const [planOpen, setPlanOpen] = useState(false);
   // (Kept while it's off adding a salary, so it can come back with it - sweep fix.)
   const endFormHost = (nonce: number) =>
     setTimeout(() => {
       if (salaryHandoffPending() || accountHandoffPending()) return;
       setFormHosts((l) => l.filter((h) => h.nonce !== nonce));
     }, 500);
-  function add(kind: 'txn' | 'bill' | 'debt' | 'loan') {
+  const lastAdd = useRef(0);
+  function add(k: FormKind) {
+    // Sweep, 2026-11-06: a second quick tap on the row never opens a second form.
+    if (Date.now() - lastAdd.current < ADD_TAP_GAP) return;
+    lastAdd.current = Date.now();
     const date = isoOf(page.year, page.month, selDay);
-    const k = kind === 'txn' ? 'txn' : kind === 'bill' ? 'bills' : kind === 'debt' ? 'debts' : 'loans';
     const m = getModel();
-    if (m) expectArrival(k, k === 'txn' ? buildTransactionsList(m).map((t) => t.id) : (k === 'bills' ? m.bills : k === 'debts' ? m.debts : m.loans).map((x: { id: string }) => x.id));
+    dayBefore.current = m ? (monthEventsFor(m, page.year, page.month)[selDay] || []).map((e) => e.label) : [];
     // The form takes this sheet's place (no close and reopen).
-    startSheetHandoff(() => setAddOpen(false));
+    startSheetHandoff(() => {
+      setAddOpen(false);
+      setPlanOpen(false);
+    });
     setFormHosts((l) => [...l, { kind: k, date, nonce: Date.now() }]);
   }
-  function afterFormAdded(kind: 'txn' | 'bills' | 'debts' | 'loans') {
-    // 2026-10-23 (Cath: straight to the right screen, smoothly): the form and the Calendar
-    // go down together, in one motion. Underneath, the right tab (and Bills / Debts /
-    // Loans page) is already in place - switched at once, out of sight - and the new one
-    // lights up there. (Before: the form went first, the Calendar sat there a moment, then
-    // went down while the tab slid underneath: three moves in a row.)
-    noteCalendarLeaving();
-    quietMovesFor(400);
-    goToList(kind);
+  // Cath, 2026-11-06 (mockup C, "a little bit of both"; replaces 2026-10-23 "straight to the
+  // right screen"): you stay on the Calendar. Compact and Details show the month and the day
+  // gives a small pop; List, or a day's list that is open, glows the new row.
+  function afterFormAdded(date: string) {
+    const [y, m, d] = date.split('-').map(Number);
+    setSelected({ year: y, month: m - 1, day: d });
+    // The date may have been changed in the form: only mark a day that really got something new.
+    const latest = getModel();
+    if (!latest || newEventIndex(dayBefore.current, (monthEventsFor(latest, y, m - 1)[d] || []).map((e) => e.label)) < 0) return;
+    setArrived(date);
+    if (arrivedTimer.current) clearTimeout(arrivedTimer.current);
+    arrivedTimer.current = setTimeout(() => setArrived(null), ARRIVED_MS);
   }
-  function goToList(kind: 'txn' | 'bills' | 'debts' | 'loans') {
-    if (kind === 'txn') {
-      goToMain(navigation, { screen: 'Transactions' });
-      return;
-    }
-    requestToPayTab(kind);
-    goToMain(navigation, { screen: 'To-Pay' });
+
+  function openPlanStep() {
+    startSheetHandoff(() => setAddOpen(false));
+    setPlanOpen(true);
+  }
+  function backToAdd() {
+    startSheetHandoff(() => setPlanOpen(false));
+    setAddOpen(true);
+  }
+  function addRow(key: string, title: string, sub: string, icon: AddIcon, onPress: () => void, first: boolean) {
+    return (
+      <React.Fragment key={key}>
+        {!first && <View style={s.addSep} />}
+        <TouchableOpacity onPress={onPress} style={s.addRow} accessibilityRole="button" testID={`calendar-add-${key}`}>
+          <View style={[s.addIcon, { backgroundColor: colors.accentTint }]}>
+            <Ionicons name={icon} size={20} color={colors.gold} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.addTitle}>{title}</Text>
+            <Text style={s.addSub}>{sub}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} />
+        </TouchableOpacity>
+      </React.Fragment>
+    );
+  }
+  function addChoices(list: AddChoice[], withPlan: boolean) {
+    return (
+      <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+        <Text style={s.addSheetSub}>Everything you add starts on this day.</Text>
+        {/* Cath: no white box around the choices, just a soft line between them. */}
+        <View style={s.addGroup}>
+          {list.map(([key, form, title, sub, icon], i) => addRow(key, title, sub, icon, () => add(form), i === 0))}
+          {withPlan && addRow('plan', 'From your Plan', 'Events, trips, savings and more', 'list-outline', openPlanStep, false)}
+        </View>
+      </View>
+    );
   }
 
   const selectedForList = listLayout ? { y: page.year, m: page.month, d: selDay } : null;
   const pickY = selected?.year;
   const pickM = selected?.month;
   const pickD = selected?.day;
+  const popFor = useCallback((p: Page) => (arrived && arrived.slice(0, 7) === isoOf(p.year, p.month, 1).slice(0, 7) ? Number(arrived.slice(8, 10)) : null), [arrived]);
   const renderHorizontal = useCallback(
     ({ item }: { item: Page }) => (
       <View style={{ width }}>
@@ -557,19 +729,20 @@ export default function CalendarScreen() {
           selectedDay={item.year === pickY && item.month === pickM ? (pickD as number) : null}
           onDayPress={onDayPress}
           onGreyPress={onGreyPress}
+          poppingDay={popFor(item)}
         />
       </View>
     ),
-    [width, gridMode, onDayPress, onGreyPress, pickY, pickM, pickD]
+    [width, gridMode, onDayPress, onGreyPress, pickY, pickM, pickD, popFor]
   );
   const renderVertical = useCallback(
     ({ item }: { item: Page }) => (
       <View>
         <Text style={s.inlineMonth}>{item.month === 0 ? `${MONTHS[item.month]} ${item.year}` : MONTHS[item.month]}</Text>
-        <MonthGrid year={item.year} month={item.month} mode={gridMode} rowHeight={ROW_SCROLL} selectedDay={item.year === pickY && item.month === pickM ? (pickD as number) : null} onDayPress={onDayPress} onGreyPress={onGreyPress} />
+        <MonthGrid year={item.year} month={item.month} mode={gridMode} rowHeight={ROW_SCROLL} selectedDay={item.year === pickY && item.month === pickM ? (pickD as number) : null} onDayPress={onDayPress} onGreyPress={onGreyPress} poppingDay={popFor(item)} />
       </View>
     ),
-    [gridMode, ROW_SCROLL, onDayPress, onGreyPress, pickY, pickM, pickD, s]
+    [gridMode, ROW_SCROLL, onDayPress, onGreyPress, pickY, pickM, pickD, popFor, s]
   );
   const selY = selectedForList?.y;
   const selM = selectedForList?.m;
@@ -693,6 +866,7 @@ export default function CalendarScreen() {
     );
   } else if (listLayout) {
     const evs = monthEventsFor(model, page.year, page.month)[selDay] || [];
+    const glowAt = arrived === isoOf(page.year, page.month, selDay) ? newEventIndex(dayBefore.current, evs.map((e) => e.label)) : -1;
     const isToday = page.year === today.getFullYear() && page.month === today.getMonth() && selDay === today.getDate();
     const label = `${isToday ? 'Today · ' : ''}${DOW_LONG[new Date(page.year, page.month, selDay).getDay()]}, ${MONTHS[page.month].slice(0, 3)} ${selDay}`;
     const vertical = navMode === 'scroll';
@@ -740,14 +914,15 @@ export default function CalendarScreen() {
                 const amt = eventAmount(ev, colors);
                 const target = ev.open;
                 const open = target
-                  ? () => navigation.navigate(target.page, target.params)
+                  ? () => navigation.navigate(target.page, { ...target.params, backTitle: 'Calendar' })
                   : ev.tripId
-                  ? () => navigation.navigate('Travel', { tripId: ev.tripId })
+                  ? () => navigation.navigate('Travel', { tripId: ev.tripId, backTitle: 'Calendar' })
                   : ev.id && (ev.type === 'bill' || ev.type === 'debt' || ev.type === 'loan')
                     ? () => navigation.navigate('PayDetail', { kind: ev.type, id: ev.id, backTitle: 'Calendar' })
                     : undefined;
                 return (
                   <TouchableOpacity key={i} disabled={!open} onPress={open} activeOpacity={0.6} style={[s.row, i > 0 && s.rowTop]}>
+                    {i === glowAt && <View testID="calendar-row-glow" style={StyleSheet.absoluteFill} pointerEvents="none"><ArrivalGlow /></View>}
                     <View style={[s.rowDot, { backgroundColor: eventColor(ev, colors) }]} />
                     <View style={{ flex: 1 }}>
                       <Text style={s.rowTitle} numberOfLines={1}>{ev.label}</Text>
@@ -873,13 +1048,18 @@ export default function CalendarScreen() {
       {formHosts.map((h) => (
         <View key={h.nonce} pointerEvents="box-none" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
           {h.kind === 'txn' ? (
-            <TransactionsScreen formOnly addNonceProp={h.nonce} addDateProp={h.date} onFormClosed={() => endFormHost(h.nonce)} onAdded={() => afterFormAdded('txn')} />
+            <TransactionsScreen formOnly addNonceProp={h.nonce} addDateProp={h.date} onFormClosed={() => endFormHost(h.nonce)} onAdded={() => afterFormAdded(h.date)} />
           ) : h.kind === 'bills' ? (
-            <BillsScreen formOnly addCarry={{ amount: '', name: '', date: h.date, nonce: h.nonce }} onFormClosed={() => endFormHost(h.nonce)} onAdded={() => afterFormAdded('bills')} />
+            <BillsScreen formOnly addCarry={{ amount: '', name: '', date: h.date, nonce: h.nonce }} onFormClosed={() => endFormHost(h.nonce)} onAdded={() => afterFormAdded(h.date)} />
           ) : h.kind === 'debts' ? (
-            <DebtsScreen formOnly addCarry={{ amount: '', name: '', date: h.date, nonce: h.nonce }} onFormClosed={() => endFormHost(h.nonce)} onAdded={() => afterFormAdded('debts')} />
+            <DebtsScreen formOnly addCarry={{ amount: '', name: '', date: h.date, nonce: h.nonce }} onFormClosed={() => endFormHost(h.nonce)} onAdded={() => afterFormAdded(h.date)} />
+          ) : h.kind === 'loans' ? (
+            <LoansScreen formOnly addCarry={{ amount: '', name: '', date: h.date, nonce: h.nonce }} onFormClosed={() => endFormHost(h.nonce)} onAdded={() => afterFormAdded(h.date)} />
           ) : (
-            <LoansScreen formOnly addCarry={{ amount: '', name: '', date: h.date, nonce: h.nonce }} onFormClosed={() => endFormHost(h.nonce)} onAdded={() => afterFormAdded('loans')} />
+            (() => {
+              const Form = PLAN_FORMS[h.kind as PlanForm];
+              return <Form formOnly addDate={h.date} addNonce={h.nonce} onFormClosed={() => endFormHost(h.nonce)} onAdded={() => afterFormAdded(h.date)} />;
+            })()
           )}
         </View>
       ))}
@@ -903,34 +1083,25 @@ export default function CalendarScreen() {
           </View>
         }
       >
-        <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
-          <Text style={s.addSheetSub}>Everything you add starts on this day.</Text>
-          {/* Cath: no white box around the choices, just a soft line between them. */}
-          <View style={s.addGroup}>
-            {(
-              [
-                ['txn', 'Transaction', 'Money that moved this day', 'swap-vertical-outline'],
-                ['bill', 'Bill', 'Comes back every month or year', 'flash-outline'],
-                ['debt', 'Debt', 'Owed and paid down over time', 'people-outline'],
-                ['loan', 'Loan', 'Set payments until an end date', 'business-outline'],
-              ] as const
-            ).map(([id, title, sub, icon], i) => (
-              <React.Fragment key={id}>
-              {i > 0 && <View style={s.addSep} />}
-              <TouchableOpacity onPress={() => add(id)} style={s.addRow} accessibilityRole="button" testID={`calendar-add-${id}`}>
-                <View style={[s.addIcon, { backgroundColor: colors.accentTint }]}>
-                  <Ionicons name={icon} size={20} color={colors.gold} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.addTitle}>{title}</Text>
-                  <Text style={s.addSub}>{sub}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} />
-              </TouchableOpacity>
-              </React.Fragment>
-            ))}
+        {addChoices(ADD_MONEY, true)}
+      </BottomSheet>
+
+      {/* Cath, 2026-11-06 (mockup C): everything in Plan, as a second step. */}
+      <BottomSheet
+        visible={planOpen}
+        onClose={() => setPlanOpen(false)}
+        grouped
+        header={
+          <View style={s.addSheetHead}>
+            <TouchableOpacity onPress={backToAdd} accessibilityRole="button" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} testID="calendar-add-back">
+              <Text style={s.addSheetCancel}>Back</Text>
+            </TouchableOpacity>
+            <Text style={s.addSheetTitle} numberOfLines={1}>Add from Plan</Text>
+            <View style={{ width: 56 }} />
           </View>
-        </View>
+        }
+      >
+        {addChoices(ADD_PLAN, false)}
       </BottomSheet>
     </View>
   );

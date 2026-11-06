@@ -298,3 +298,40 @@ Areas: Day & night (theme, Home menu, Appearance), welcome O3a, set-up S1-S4, wi
 - Could not run tools/flicker-check.py (no Python on this computer); 111 recorded frames were
   looked at by hand instead (no flash, no blank frame). The web build has no row animation, so
   the row opening itself stays "Needs your phone".
+
+## Navigation map 2026-11-06
+- Map and timings: design/nav-flow/index.html. Found B-096 and B-097 (fixed).
+- H-65 corrected: the stuck form was measured as a guest, the only way the hidden browser can run.
+  A signed-in save already closed the form first (since 2.2). Guests now match (B-098), so no
+  close-first change or reopen-on-failure was needed. Still open: after a save the screen redraw
+  itself takes about 0.8 to 0.9 s on the slowed test on Home's +, while Transactions opens.
+  Profile: nearly all drawing, little money maths.
+- H-66: most of going back to Plan is getRect, react-native-web's own layout measuring, which
+  phones don't run. The redraw part is about a quarter of that time. Needs Cath's phone.
+- Open: H-67 opening a form from the Calendar builds a whole form host each time (1.2 s of redraw
+  on the slowed test). H-68 tab switches and opening Savings or Events are about 0.7 to 1.3 s of
+  redraw on the slowed test. Both left alone until her phone test says they matter.
+
+## Bug + smoothness sweep 2026-11-06 (after Cath's "device test is as described", before push and build)
+Reviewed every change since 7a7c5c6, then walked Home, Calendar (all views), every kind of Calendar
+row, Transactions, To-Pay, every Plan page in light and dark: no crashes, no errors.
+- Fixed: B-101 to B-105.
+- Confirmed in the browser: a tab under a page counts as hidden, and only then (B-097).
+- Open, low: H-69 setTripSaving builds from the screen's data, not the newest. A save in the same
+  frame could be lost. Touches saving, so ask first. Possible, rare.
+- Open, cosmetic: H-70 after New trip's Add, the Travel list can show for one frame before the trip
+  opens, behind the closing sheet. Possible, needs phone.
+- Open, cosmetic: H-71 changing the date in the Calendar's form leaves you on the first day; the
+  item is on its new date, but nothing points to it.
+- Untouched: encryption, sync, Firestore rules, deleting. Guest saves changed order only (B-098).
+- Not run: tools/flicker-check.py (no Python here); frames looked at by hand.
+- Closed: H-72 Plan pages looked slightly slower since 3.6.0. A closer test (15 repeat visits per version) found no slowdown, so nothing was changed. See SMOOTH-HUNT.md.
+
+## Bug + smoothness sweep 2026-11-06, second batch (after Cath's device test of add-from-Plan and ribbons)
+Reviewed every change in the batch: calendarAll, calendarBands, planForm, the Calendar, and the Event, Goal, Pot, Shared, Investment, Grocery and Trip forms.
+- Fixed: B-106 (two quick taps opened a form twice).
+- Checked, not a bug: Buy by is kept by every grocery save and on sync. Clearing it saves safely (the data is encrypted as text, so an empty field just drops out). Past days are allowed on pots, goals, events and trips. Hosted forms make no saves of their own: only the form's Add saves.
+- Safety: encryption, sync, merging, parts and Firestore rules files unchanged since 3.6.0. DataContext changed only for B-098 (guest save order).
+- Walks: Calendar views and event add, light and forced dark, 0 errors. Whole-app crawl light and dark, 0 errors. The same 14 steps time out as before (the script waits on hidden text), so those pages opened with no crash but the script did not confirm their content.
+- Not run: tools/flicker-check.py (no Python here). Feel: her phone test passed before B-106, and B-106 has no visible motion change.
+- Open: when a day under a ribbon gets something new, the ribbon pops with the day's marks. Harmless, ask Cath only if she notices.

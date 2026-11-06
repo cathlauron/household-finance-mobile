@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
 import Reanimated, { Easing, Extrapolation, interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useNavigationState } from '@react-navigation/native';
@@ -10,6 +10,25 @@ import { QuietWhenHidden } from '../DataContext';
 import { QuietThemeWhenHidden } from '../ThemeContext';
 import { PageActiveContext } from '../pageActive';
 import { tabDrag, takeCommittedDrag } from './tabDrag';
+
+// Cath, 2026-11-06 (navigation map): a tab under another page (the Calendar, Settings, a Plan
+// page) can't be seen, so its data changes run as background work like any hidden tab's. Saving
+// from the Calendar used to freeze while the tab behind it redrew.
+export function useMainOnTop(navigation: any): boolean {
+  const parent = navigation?.getParent?.();
+  const read = () => {
+    const state = parent?.getState?.();
+    return !state || state.routes[state.index]?.name === 'Main';
+  };
+  const [onTop, setOnTop] = useState(read);
+  useEffect(() => {
+    if (!parent) return;
+    setOnTop(read());
+    return parent.addListener('state', () => setOnTop(read()));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parent]);
+  return onTop;
+}
 
 // Switching tabs is a soft, minimal fade: the old tab fades out while drifting a few
 // pixels away, then the new tab fades in while settling the last few pixels into place
@@ -96,6 +115,8 @@ export default function TabPage({ routeIndex, options, navigation, route, showHe
   }, [place, routeIndex, x, width]);
 
 
+  const mainOnTop = useMainOnTop(navigation);
+
   // Smoothness 2026-10-23: the tab showing and the ones right beside it follow a finger
   // swipe; the others stay hidden off screen.
   const near = Math.abs(routeIndex - shownIndex) <= 1;
@@ -116,7 +137,7 @@ export default function TabPage({ routeIndex, options, navigation, route, showHe
       style={[styles.page, { zIndex: place === 0 ? 2 : 1, elevation: place === 0 ? 2 : 0 }, moved]}
     >
       <QuietThemeWhenHidden active={place === 0}>
-        <QuietWhenHidden active={place === 0}>
+        <QuietWhenHidden active={place === 0 && mainOnTop}>
           {/* Smoothness 2026-10-23: a hidden tab tells its contents so (new rows wait to
               light up, numbers don't count off screen). */}
           <PageActiveContext.Provider value={place === 0}>

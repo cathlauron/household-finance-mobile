@@ -113,9 +113,13 @@ type SavingsScreenProps = {
   // Version 2.2 (Cath: Edit should open where you are): just the pot's form, for the pot page.
   formOnly?: boolean;
   onFormClosed?: () => void;
+  // Cath, 2026-11-06: from the Calendar, a new pot with the picked day as its target date.
+  addDate?: string;
+  addNonce?: number;
+  onAdded?: () => void;
 };
 
-export default function SavingsScreen({ openSavingsId, openSavingsNonce, formOnly, onFormClosed }: SavingsScreenProps = {}) {
+export default function SavingsScreen({ openSavingsId, openSavingsNonce, formOnly, onFormClosed, addDate, addNonce, onAdded }: SavingsScreenProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel, getModel } = useData();
   // Version 2.2 (approved P4): a just-added pot slides in and glows.
@@ -209,6 +213,13 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce, formOnl
   useEffect(() => {
     clearFieldError();
   }, [nameInput, targetAmountInput, targetDateInput, contribRows, autoOnInput, autoAmtInput, modalOpen, clearFieldError]);
+
+  useEffect(() => {
+    if (!formOnly || !addNonce) return;
+    openAddModal();
+    if (addDate) setTargetDateInput(addDate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addNonce]);
 
   if (!model) {
     return (
@@ -389,6 +400,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce, formOnl
       // Fill in any payday additions that are due now that the setting is on.
       await saveModel(applyAutoSavings(updated) ?? updated);
       showLeafTick(editingId ? 'Saved' : 'Added');
+      if (!editingId) onAdded?.();
       closeModal();
     } catch (e) {
       setErrorMsg(notSaved('this pot'));

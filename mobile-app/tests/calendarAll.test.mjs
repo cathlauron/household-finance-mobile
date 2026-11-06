@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { withEverythingDated } from '../src/calendarAll.ts';
-import { computeMonthEvents, computeRunningBalances } from '../src/balanceProjection.ts';
+import { withEverythingDated, newEventIndex } from '../src/calendarAll.ts';
+import { computeMonthEvents, computeRunningBalances, eventDelta } from '../src/balanceProjection.ts';
 import { defaultModel } from '../src/defaultModel.ts';
 
 // Cath, 2026-11-06: "for calendar, i want it to show everything that i have added a date for,
@@ -46,8 +46,9 @@ test('trips: first and last day, to-dos with a date, and items with a date with 
     todos: [{ id: 'd', text: 'Pack', done: false, date: '2026-11-12' }, { id: 'e', text: 'No date', done: false }],
   }];
   const out = withEverythingDated({}, m, ...NOV);
-  assert.equal(find(out, 13, 'BKK').sub, 'Trip starts');
-  assert.equal(find(out, 20, 'BKK').sub, 'Trip ends');
+  assert.equal(find(out, 13, 'BKK').sub, 'Trip · day 1 of 8');
+  assert.equal(find(out, 20, 'BKK').sub, 'Trip · day 8 of 8');
+  assert.equal(find(out, 16, 'BKK').sub, 'Trip · day 4 of 8');
   assert.deepEqual(find(out, 13, 'BKK').open, { page: 'Travel', params: { tripId: 't' } });
   assert.ok(find(out, 5, 'Visa form'), 'an item with no cost');
   assert.equal(labels(out, 6).filter((x) => x === 'Hotel').length, 1, 'a due item with a cost shows once');
@@ -111,4 +112,92 @@ test('nothing here changes money: projected balances are the same', () => {
   withEverythingDated(base, m, ...NOV);
   assert.equal(JSON.stringify(base), copy, 'the money events are not touched');
   assert.equal(JSON.stringify(computeRunningBalances(m, ...NOV)), before);
+});
+
+test('the new row on a day: found even with a same-named one, or none at all', () => {
+  assert.equal(newEventIndex(['Rent', 'Lunch'], ['Rent', 'Water', 'Lunch']), 1);
+  assert.equal(newEventIndex(['Lunch'], ['Lunch', 'Lunch']), 1);
+  assert.equal(newEventIndex(['Rent'], ['Rent']), -1);
+});
+
+// Cath, 2026-11-06: "i want every detail be it a transaction, bill, debt, loan, or plan be
+// clickable and direct me to its page same thing with how bills does it."
+test('every row on the Calendar opens its page', () => {
+  const m = defaultModel();
+  m.balanceAccounts = { ...m.balanceAccounts, asOfDate: '2026-11-01' };
+  m.bills = [{ id: 'b', name: 'Water', recurringType: 'monthly', dueDate: { day: '5' }, owner: 'shared', cycles: [{ id: 'bc', dueDate: '2026-11-05', amountDue: 500, amountPaid: 500, paidDate: '2026-11-04', paidAt: 1 }] }];
+  m.debts = [{ id: 'd', creditorOrPerson: 'Ana', recurringType: 'monthly', dueDate: { day: '6' }, owner: 'shared', cycles: [{ id: 'dc', dueDate: '2026-11-06', amountDue: 300, amountPaid: '', paidDate: '' }] }];
+  m.loans = [{ id: 'l', name: 'Car', loanType: '', totalAmount: 9000, expectedPayment: 900, actualPayments: [], owner: '', direction: 'borrowed', recurringType: 'onetime', dueDate: { date: '2026-11-07' } }];
+  m.income = [{ id: 'i', sourceName: 'Salary', personId: 'p', expectedAmount: 20000, frequency: 'monthly', payDates: [], paymentLog: [{ id: 'pl', date: '2026-11-08', amount: 20000 }] }];
+  m.manualTransactions = [{ id: 't', date: '2026-11-09', label: 'Lunch', amount: 250, direction: 'out', category: 'Food', owner: 'shared' }];
+  m.savingsGoals = [{ id: 'g', name: 'Phone', targetAmount: 900, targetDate: '', currentAmount: 0, contributions: [{ id: 'c', date: '2026-11-10', amount: 100 }] }];
+  m.recurring = [{ id: 'r', label: 'Gym', amount: 800, direction: 'out', owner: '', frequency: 'monthly', startDate: '2026-11-02', nextDate: '2026-11-16' }];
+  const out = withEverythingDated(computeMonthEvents(m, ...NOV), m, ...NOV);
+  const all = Object.values(out).flat();
+  assert.ok(all.length >= 7);
+  for (const ev of all) assert.ok(ev.open || ev.tripId || (ev.id && ['bill', 'debt', 'loan'].includes(ev.type)), `${ev.type} ${ev.label} opens nothing`);
+  assert.deepEqual(find(out, 9, 'Lunch').open, { page: 'TransactionDetail', params: { id: 'manual-t' } });
+  assert.deepEqual(find(out, 4, 'Water payment').open, { page: 'PayDetail', params: { kind: 'bill', id: 'b', backTitle: 'Calendar' } });
+  assert.deepEqual(find(out, 8, 'Salary (received)').open, { page: 'IncomePerson', params: { personId: 'p' } });
+  assert.deepEqual(find(out, 10, 'Phone contribution').open, { page: 'PotDetail', params: { id: 'g' } });
+  assert.deepEqual(find(out, 16, 'Gym').open, { page: 'Recurring' });
+});
+
+test('money you lent stops showing once it is all paid back', () => {
+  const loan = { id: 'l', name: 'Lent to Ana', loanType: '', totalAmount: 1000, expectedPayment: 500, owner: '', direction: 'lent', recurringType: 'monthly', dueDate: { day: '11' } };
+  const m = defaultModel();
+  m.loans = [{ ...loan, actualPayments: [{ id: 'p1', date: '2026-09-11', actual: 500 }] }];
+  assert.ok(find(withEverythingDated({}, m, ...NOV), 11, 'Lent to Ana'));
+  m.loans = [{ ...loan, actualPayments: [{ id: 'p1', date: '2026-09-11', actual: 500 }, { id: 'p2', date: '2026-10-11', actual: 500 }] }];
+  assert.equal(find(withEverythingDated({}, m, ...NOV), 11, 'Lent to Ana'), undefined);
+});
+
+test('a row with no page to show does not pretend to open one', () => {
+  const m = defaultModel();
+  m.manualTransactions = [{ id: 't', date: '2026-11-09', label: 'Nothing', amount: 0, direction: 'out', category: '', owner: 'shared' }];
+  assert.equal(computeMonthEvents(m, ...NOV)[9][0].open, undefined);
+});
+
+// Cath, 2026-11-06 (mockup A): a trip shows on every one of its days, and across months.
+test('a trip that runs into next month shows in both, one ribbon end in each', () => {
+  const m = defaultModel();
+  m.travel = [{ id: 'tr', name: 'Japan', startDate: '2026-11-28', endDate: '2026-12-03', checklist: [] }];
+  const nov = withEverythingDated({}, m, ...NOV);
+  const dec = withEverythingDated({}, m, 2026, 11);
+  assert.deepEqual(Object.keys(nov).map(Number), [28, 29, 30]);
+  assert.deepEqual(Object.keys(dec).map(Number), [1, 2, 3]);
+  assert.equal(nov[30][0].sub, 'Trip · day 3 of 6');
+  assert.equal(nov[30][0].band.last, false);
+  assert.equal(dec[1][0].band.first, false);
+  assert.equal(dec[3][0].band.last, true);
+});
+
+test('a trip with one date, or an end before its start, is that one day', () => {
+  const m = defaultModel();
+  m.travel = [{ id: 'a', name: 'Only start', startDate: '2026-11-05', endDate: '', checklist: [] }, { id: 'b', name: 'Only end', startDate: '', endDate: '2026-11-08', checklist: [] }, { id: 'c', name: 'Backwards', startDate: '2026-11-20', endDate: '2026-11-02', checklist: [] }, { id: 'd', name: 'No dates', startDate: '', endDate: '', checklist: [] }];
+  const out = withEverythingDated({}, m, ...NOV);
+  assert.deepEqual(Object.keys(out).map(Number), [5, 8, 20]);
+  assert.equal(out[5][0].sub, 'Trip');
+});
+
+test('an event has a ribbon, and a trip or event never counts in a balance', () => {
+  const m = defaultModel();
+  m.events = [{ id: 'e', name: 'Party', type: 'other', recurrence: 'onetime', onetimeDate: '2026-11-09', budget: 500 }];
+  m.travel = [{ id: 'tr', name: 'Cebu', startDate: '2026-11-12', endDate: '2026-11-13', checklist: [] }];
+  const out = withEverythingDated({}, m, ...NOV);
+  assert.equal(out[9][0].band.kind, 'event');
+  for (const day of [9, 12, 13]) assert.equal(eventDelta(out[day][0]), 0);
+});
+
+test('a grocery item with a Buy by date shows on that day', () => {
+  const m = defaultModel();
+  m.groceries = [{ id: 'g', item: 'Rice', plannedAmount: 320, actualAmount: '', purchased: false, buyBy: '2026-11-14' }, { id: 'h', item: 'No date', plannedAmount: 50, actualAmount: '', purchased: false }];
+  const out = withEverythingDated({}, m, ...NOV);
+  assert.deepEqual(Object.keys(out).map(Number), [14]);
+  assert.equal(out[14][0].sub, 'Grocery item');
+  assert.equal(out[14][0].amount, 320);
+  assert.deepEqual(out[14][0].open, { page: 'Groceries' });
+  assert.equal(eventDelta(out[14][0]), 0);
+  m.groceries[0].purchased = true;
+  assert.equal(withEverythingDated({}, m, ...NOV)[14][0].sub, 'Grocery item · bought');
 });

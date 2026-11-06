@@ -1184,7 +1184,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (guestRef.current) {
       const entry = describeNewEntry(latestModelRef.current, sanitizedModel);
       // (The background tester's made-up household saves without asking: web only.)
-      setModel(sanitizedModel);
+      // Cath, 2026-11-06: the screens redraw one frame later, like a signed-in save, so a form
+      // that closes after saving starts closing first (it used to stay stuck for a guest).
+      requestAnimationFrame(() => setModel(latestModelRef.current));
+      latestModelRef.current = sanitizedModel;
       // Cath, 2026-10-30 (answer 9): the new entry shows in its list first (it's on this phone,
       // not saved yet), then "Keep your first entry safe" rises over it.
       if (entry && !walkFixtureOn) setTimeout(() => setGuestRequest({ model: sanitizedModel, entry }), GUEST_SHEET_AFTER_MS);

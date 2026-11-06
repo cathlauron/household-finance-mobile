@@ -366,6 +366,8 @@ export type GroceryItem = {
   plannedAmount: number | '';
   actualAmount: number | '';
   purchased: boolean;
+  // Cath, 2026-11-06: optional, shows the item on the Calendar.
+  buyBy?: string;
   createdAt?: number;
   // H-43 (Cath, 2026-10-29): who added it, who last changed it and when (whoStamp.ts).
   addedBy?: string;

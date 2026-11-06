@@ -25,7 +25,7 @@ export const headerButtonText = { ...backButtonText, top: 1 } as const;
 
 type Props = {
   navigation: any;
-  route: { name: string };
+  route: { name: string; params?: { backTitle?: string } };
   options: {
     title?: string;
     headerBackTitle?: string;
@@ -44,7 +44,8 @@ export default function LargeHeader({ navigation, route, options, back }: Props)
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const title = options.title ?? route.name;
-  const backLabel = options.headerBackTitle ?? back?.title ?? 'Back';
+  // (2026-11-06) A page opened from somewhere unusual says so, e.g. the Calendar.
+  const backLabel = route.params?.backTitle ?? options.headerBackTitle ?? back?.title ?? 'Back';
   const right = options.headerRight?.({ tintColor: colors.gold, canGoBack: !!back });
   const left = options.headerLeft?.({ tintColor: colors.gold, canGoBack: !!back });
   return (

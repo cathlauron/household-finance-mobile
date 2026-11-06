@@ -1562,3 +1562,19 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   name; TripItemDrop on both lists (item, cost, note, date); greyed days; calendarAll.ts. Reminders
   never count in a balance. Paid trip items show as "paid", finished to-dos as "done".
   Release 3.6.0 (versionCode 11). TEST-3 s30. Sweep in BUG-HUNT.md and SMOOTH-HUNT.md.
+- 2026-11-06: Cath: navigation flow for each screen, "the plus on calendar goes through a lot of
+  screens". Published design/nav-flow (map, timings). Mockup C; her pick: "a little bit of both",
+  by view. DONE, not committed yet: stays on the Calendar after Add (B-096); a tab under a page
+  updates in the background (B-097). Open: H-65, H-66. TEST-3 s31.
+- 2026-11-06: Cath said yes to the Home + fix. Found the stuck form only happened for guests (see
+  H-65, B-098). Fixed that one line instead of the bigger change in the mockup. Not committed yet.
+- 2026-11-06: speed pass (Cath: "Yes, start them"). The test household now has a year of spending.
+  B-099 done. Not committed yet. Open: H-66, H-67, H-68, all waiting on her phone test.
+- 2026-11-06: Cath: smoother now. Every Calendar row opens its page (B-100). She wants to test before any push.
+- 2026-11-06: Cath: device test as described (TEST-3 s30, s31). Sweep run, B-101 to B-105 fixed. Waiting on her approval to push and build (3.6.1 Beta).
+- 2026-11-06: Cath picked layout C for the Calendar's + sheet (Money rows, then From your Plan as a second step). Mockup design/3.0-mockups/calendar-add-all.html. Still open: what Investment adds, and a Buy by date on grocery items. Not built yet.
+- 2026-11-06: Cath picked ribbon A for trips and events on the Calendar. Investment from the Calendar adds money into an investment (choose one or start a new one). Grocery items get an optional Buy by date that shows on the Calendar.
+- 2026-11-06: Built add-from-Plan (mockup C), ribbons (mockup A), Buy by, money into an investment. TEST-3 s32. Needs her phone with s31 items 9 and 10.
+- 2026-11-06: Cath: device test as described (TEST-3 s32, plus s31 items 9 and 10 and the five sweep fixes). Full sweep of this batch next, then her approval to push and build.
+- 2026-11-06: Sweep of the add-from-Plan batch done. B-106 fixed. Waiting on her approval to push and build (suggested 3.7.0 Beta, versionCode 12). Not committed yet.
+- 2026-11-06: Cath approved push and build: release 3.7.0 Beta (versionCode 12).

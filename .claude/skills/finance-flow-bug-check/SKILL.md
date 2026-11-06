@@ -182,6 +182,17 @@ until she picks.
   (TripItemDrop), the name and dates open their small sheets.
 - 2026-11-06: **Greyed days.** The Calendar fills first and last rows with the next or previous
   month's days, greyed, with no dots; tapping one moves to that month.
+- 2026-11-06: **Every Calendar row opens its page**, the way bills do. A new kind of row needs an open target.
+- 2026-11-06: **Adding from the Calendar stays on the Calendar.** Compact and Details: the day's
+  marks pop. List, or an open day's list: the new row glows. Home's + still ends on Transactions.
+
+- 2026-11-06: **Add anything from the Calendar.** The + sheet is Money, then From your Plan as a
+  second step (mockup C). Each Plan screen draws just its form (planForm.tsx), on the picked day. A new
+  kind of thing in Plan gets a row there too.
+- 2026-11-06: **Trips and events are ribbons** (mockup A, calendarBands.ts): one band across a trip's
+  days, a small band on an event's day, a thin line in List. The day's row says "Trip · day 2 of 6".
+- 2026-11-06: Grocery items have an optional Buy by date, which shows on the Calendar. Investment from
+  the Calendar is money into one (choose it, or start a new one).
 
 ## Same kind of thing, same behaviour
 

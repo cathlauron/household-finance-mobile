@@ -17,6 +17,7 @@ import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { useFormOnly, type PlanFormProps } from '../planForm';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import type { EventItem, HouseholdModel, SavingsGoal, ManualTransaction } from '../types';
@@ -162,7 +163,7 @@ function rollOverAnnualEvents(events: EventItem[], txns: ManualTransaction[], to
   return changed ? next : null;
 }
 
-export default function EventsScreen() {
+export default function EventsScreen({ formOnly, addDate, addNonce, onFormClosed, onAdded }: PlanFormProps = {}) {
   const { colors } = useTheme();
   const who = useWho();
   const { model, saveModel, getModel } = useData();
@@ -195,6 +196,7 @@ export default function EventsScreen() {
 
   // Redesign: Add in the top bar adds an event.
   useLayoutEffect(() => {
+    if (formOnly) return;
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity onPress={openAddModal} accessibilityRole="button" accessibilityLabel="Add an event" testID="events-add" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -205,7 +207,7 @@ export default function EventsScreen() {
   });
 
   useEffect(() => {
-    if (!model) return;
+    if (!model || formOnly) return;
     const rolled = rollOverAnnualEvents(model.events ?? [], model.manualTransactions ?? [], todayISO());
     if (rolled) saveModel({ ...model, events: rolled });
   }, [model, saveModel]);
@@ -214,6 +216,15 @@ export default function EventsScreen() {
   useEffect(() => {
     clearFieldError();
   }, [nameInput, monthInput, dayInput, onetimeDateInput, recurrenceInput, modalOpen, clearFieldError]);
+
+  // Cath, 2026-11-06: from the Calendar, on the picked day.
+  useFormOnly({ formOnly, addNonce, onFormClosed }, modalOpen, () => {
+    openAddModal();
+    if (!addDate) return;
+    setOnetimeDateInput(addDate);
+    setMonthInput(String(Number(addDate.slice(5, 7))));
+    setDayInput(String(Number(addDate.slice(8, 10))));
+  });
 
   if (!model) {
     return (
@@ -437,6 +448,7 @@ export default function EventsScreen() {
     try {
       await saveModel(updated);
       showLeafTick(editingId ? 'Saved' : 'Added');
+      if (!editingId) onAdded?.();
       closeModal();
     } catch (e) {
       setErrorMsg(notSaved('this event'));
@@ -522,7 +534,7 @@ export default function EventsScreen() {
     // Smoothness 2026-10-23 (Cath picked "follows your finger"): the pages slide with your
     // finger; each has its own scrolling.
     <View style={styles.container}>
-      <SlidingPages<'up' | 'done'>
+      {!formOnly && <SlidingPages<'up' | 'done'>
         testID="events-pages"
         accessibilityLabel="Events view"
         options={[
@@ -646,7 +658,7 @@ export default function EventsScreen() {
             )}
           </PullToRefreshScrollView>
         )}
-      />
+      />}
 
       <BottomSheet
         visible={modalOpen}

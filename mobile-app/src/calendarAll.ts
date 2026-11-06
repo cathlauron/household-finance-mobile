@@ -21,6 +21,27 @@ function dayIn(iso: string | undefined, year: number, month: number): number | n
 }
 const money = (v: unknown): number => (typeof v === 'number' && v > 0 ? v : 0);
 
+const dayCount = (fromIso: string, toIso: string): number =>
+  Math.round((new Date(toIso + 'T00:00:00').getTime() - new Date(fromIso + 'T00:00:00').getTime()) / 86400000);
+
+// Cath, 2026-11-06 (mockup A): every day of a trip that falls in this month. A trip with one date,
+// or with an end before its start, is that one day.
+function tripDaysIn(start: string, end: string, year: number, month: number): { day: number; nth: number; total: number; first: boolean; last: boolean }[] {
+  const from = start || end;
+  if (!from) return [];
+  const to = start && end && end >= start ? end : from;
+  const total = dayCount(from, to) + 1;
+  const days: { day: number; nth: number; total: number; first: boolean; last: boolean }[] = [];
+  const inMonth = new Date(year, month + 1, 0).getDate();
+  for (let day = 1; day <= inMonth; day++) {
+    const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    if (iso < from || iso > to) continue;
+    const nth = dayCount(from, iso) + 1;
+    days.push({ day, nth, total, first: nth === 1, last: nth === total });
+  }
+  return days;
+}
+
 function repeatsIn(rule: NonNullable<HouseholdModel['recurring']>[number], year: number, month: number): number[] {
   const days: number[] = [];
   const end = `${year}-${String(month + 1).padStart(2, '0')}-31`;
@@ -37,30 +58,28 @@ function repeatsIn(rule: NonNullable<HouseholdModel['recurring']>[number], year:
 
 export function withEverythingDated(events: Record<number, CalendarEvent[]>, model: HouseholdModel, year: number, month: number): Record<number, CalendarEvent[]> {
   const out: Record<number, CalendarEvent[]> = { ...withTripItems(events, model, year, month) };
-  const add = (day: number | null, label: string, sub: string, amount: number, open?: CalendarEvent['open']) => {
+  const add = (day: number | null, label: string, sub: string, amount: number, open?: CalendarEvent['open'], band?: CalendarEvent['band']) => {
     if (!day) return;
-    out[day] = [...(out[day] || []), { type: 'reminder', label, sub, amount, ...(open ? { open } : {}) }];
+    out[day] = [...(out[day] || []), { type: 'reminder', label, sub, amount, ...(open ? { open } : {}), ...(band ? { band } : {}) }];
   };
 
   for (const ev of model.events || []) {
     const kind = EVENT_KIND[ev.type] || 'Event';
     const open = { page: 'Events' };
+    const band = { kind: 'event' as const, key: `event-${ev.id}`, first: true, last: true };
     if (ev.recurrence === 'onetime') {
-      add(dayIn(ev.onetimeDate, year, month), ev.name || 'Event', kind, money(eventBudget(ev)), open);
+      add(dayIn(ev.onetimeDate, year, month), ev.name || 'Event', kind, money(eventBudget(ev)), open, band);
     } else if (typeof ev.month === 'number' && typeof ev.day === 'number' && ev.month - 1 === month) {
       // A Feb 29 birthday shows on the last day of February in other years.
-      add(Math.min(ev.day, new Date(year, month + 1, 0).getDate()), ev.name || 'Event', kind, money(eventBudget(ev)), open);
+      add(Math.min(ev.day, new Date(year, month + 1, 0).getDate()), ev.name || 'Event', kind, money(eventBudget(ev)), open, band);
     }
   }
 
   for (const trip of model.travel || []) {
     const name = trip.name || 'Trip';
     const open = { page: 'Travel', params: { tripId: trip.id } };
-    if (trip.startDate && trip.startDate === trip.endDate) {
-      add(dayIn(trip.startDate, year, month), name, 'Trip', 0, open);
-    } else {
-      add(dayIn(trip.startDate, year, month), name, 'Trip starts', 0, open);
-      add(dayIn(trip.endDate, year, month), name, 'Trip ends', 0, open);
+    for (const d of tripDaysIn(trip.startDate, trip.endDate, year, month)) {
+      add(d.day, name, d.total > 1 ? `Trip · day ${d.nth} of ${d.total}` : 'Trip', 0, open, { kind: 'trip', key: `trip-${trip.id}`, first: d.first, last: d.last });
     }
     for (const item of trip.checklist || []) {
       // An unpaid item with a cost is already there from withTripItems.
@@ -82,6 +101,10 @@ export function withEverythingDated(events: Record<number, CalendarEvent[]>, mod
     add(dayIn(goal.targetDate, year, month), goal.title || 'Goal', goal.completed ? 'Yearly goal · done' : 'Yearly goal', money(goal.targetAmount), { page: 'YearlyGoals' });
   }
 
+  for (const g of model.groceries || []) {
+    add(dayIn(g.buyBy, year, month), g.item || 'Grocery item', g.purchased ? 'Grocery item · bought' : 'Grocery item', money(g.plannedAmount), { page: 'Groceries' });
+  }
+
   for (const bill of model.bills || []) {
     if (bill.subscriptionStatus === 'cancelled') continue;
     add(dayIn(bill.cancelBy, year, month), bill.name || 'Subscription', 'Cancel by', 0, { page: 'Subscriptions' });
@@ -89,6 +112,9 @@ export function withEverythingDated(events: Record<number, CalendarEvent[]>, mod
   for (const loan of model.loans || []) {
     // A loan you pay with an amount is already on the day.
     if (loan.direction !== 'lent' && money(loan.expectedPayment)) continue;
+    // Money you lent stops showing once it is all paid back.
+    const paidBack = (loan.actualPayments || []).reduce((sum, p) => sum + money(p.actual), 0);
+    if (loan.direction === 'lent' && money(loan.totalAmount) && paidBack >= money(loan.totalAmount)) continue;
     for (const day of loanOccurrenceInMonth(loan, year, month)) {
       add(day, loan.name || 'Loan', loan.direction === 'lent' ? 'Loan · owed to you' : 'Loan payment', money(loan.expectedPayment), { page: 'PayDetail', params: { kind: 'loan', id: loan.id, backTitle: 'Calendar' } });
     }
@@ -111,8 +137,20 @@ export function withEverythingDated(events: Record<number, CalendarEvent[]>, mod
     }
   }
   for (const rule of model.recurring || []) {
-    for (const day of repeatsIn(rule, year, month)) add(day, rule.label || 'Repeat', 'Repeats', money(rule.amount));
+    for (const day of repeatsIn(rule, year, month)) add(day, rule.label || 'Repeat', 'Repeats', money(rule.amount), { page: 'Recurring' });
   }
 
   return out;
+}
+
+// Cath, 2026-11-06 (mockup C): which row on a day is the one just added: the first label that
+// wasn't there before (-1 if none). Same-named rows count one by one.
+export function newEventIndex(before: string[], after: string[]): number {
+  const left = [...before];
+  for (let i = 0; i < after.length; i++) {
+    const k = left.indexOf(after[i]);
+    if (k < 0) return i;
+    left.splice(k, 1);
+  }
+  return -1;
 }

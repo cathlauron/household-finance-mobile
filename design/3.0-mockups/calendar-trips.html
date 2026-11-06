@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trips on the Calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Plan: the app's own colours and font; three phones show the same Cebu trip and birthday. */
+:root {
+  --ink: #111111; --dim: #636366; --line: #D1D1D6; --bg: #F2F2F7; --card: #FFFFFF;
+  --green: #2E6B47; --tint: #E6F0EA; --on: #F2F2F7; --blue: #1D63B8; --red: #D70015; --indigo: #4F46E5; --orange: #C2410C;
+  --shadow: rgba(0,0,0,.14);
+  --font: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink: #FFFFFF; --dim: #AEAEB2; --line: #38383A; --bg: #000000; --card: #1C1C1E;
+    --green: #5FC48A; --tint: #15291D; --on: #06140C; --blue: #6FB1F5; --red: #FF6961; --indigo: #818CF8; --orange: #FF9F5A;
+    --shadow: rgba(0,0,0,.6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ink: #FFFFFF; --dim: #AEAEB2; --line: #38383A; --bg: #000000; --card: #1C1C1E;
+  --green: #5FC48A; --tint: #15291D; --on: #06140C; --blue: #6FB1F5; --red: #FF6961; --indigo: #818CF8; --orange: #FF9F5A;
+  --shadow: rgba(0,0,0,.6);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); line-height: 1.45; }
+main { max-width: 1040px; margin: 0 auto; padding: 28px 16px 56px; }
+h1 { font-size: 30px; line-height: 1.15; margin: 0 0 6px; font-weight: 800; text-wrap: balance; }
+h2 { font-size: 20px; margin: 0 0 4px; font-weight: 800; text-wrap: balance; }
+.lead { color: var(--dim); font-size: 16px; margin: 0 0 22px; max-width: 66ch; }
+.scenes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px 22px; }
+.scene { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.cap { color: var(--dim); font-size: 14.5px; margin: 0; max-width: 60ch; min-height: 88px; }
+.tag { display: inline-block; font-size: 12px; font-weight: 800; color: var(--green); background: var(--tint); border-radius: 999px; padding: 1px 9px; margin-left: 4px; vertical-align: 2px; white-space: nowrap; }
+.replay { align-self: flex-start; font: 700 13.5px var(--font); color: var(--green); background: var(--tint); border: 0; border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.replay:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.state { text-align: center; font-size: 13px; font-weight: 700; color: var(--dim); min-height: 20px; }
+section.block { margin-top: 34px; }
+.ask { background: var(--card); border-radius: 14px; padding: 15px 16px; margin-top: 10px; }
+.ask ul { margin: 0; padding-left: 18px; font-size: 15px; }
+.ask li { margin-bottom: 6px; }
+
+.phone { position: relative; width: 300px; height: 630px; max-width: 100%; margin: 0 auto; border-radius: 34px; background: var(--bg); border: 7px solid var(--ink); overflow: hidden; box-shadow: 0 10px 28px var(--shadow); }
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--bg); }
+.calbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 14px 4px; color: var(--green); font-weight: 600; font-size: 16px; }
+.calbar .back { display: flex; align-items: center; gap: 3px; }
+.calbar .right { display: flex; align-items: center; gap: 12px; }
+.plus { font-size: 26px; line-height: 1; font-weight: 500; padding: 0 2px; }
+.mtitle { font-size: 27px; font-weight: 700; padding: 2px 16px 6px; }
+.dow { display: flex; font-size: 11.5px; font-weight: 700; color: var(--dim); text-align: center; padding: 4px 0 5px; border-bottom: 1px solid var(--dim); }
+.dow span, .week > .day { flex: 1 1 0; min-width: 0; }
+.gridwrap { transition: opacity 200ms ease; }
+.gridwrap.fade { opacity: 0; }
+.week { position: relative; display: flex; height: 70px; border-top: 1px solid var(--line); }
+.week:first-child { border-top: 0; }
+.details .week { height: 86px; }
+.day { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; padding-top: 5px; }
+.num { width: 31px; height: 31px; border-radius: 50%; display: grid; place-items: center; font-size: 17px; font-weight: 600; }
+.wk .num { color: var(--dim); }
+.grey .num { color: var(--dim); opacity: .36; font-weight: 500; }
+.today .num { color: var(--green); background: color-mix(in srgb, var(--green) 18%, transparent); font-weight: 800; }
+.sel .num { background: var(--green); color: var(--on); font-weight: 800; }
+.dots { display: flex; gap: 3px; height: 6px; margin-top: 3px; }
+.dots i { width: 6px; height: 6px; border-radius: 50%; }
+.hasrib .dots { margin-top: 19px; }
+.hasrib .pills { margin-top: 18px; }
+.pills { width: 100%; padding: 0 2px; display: flex; flex-direction: column; gap: 2px; margin-top: 2px; }
+.pill { border-radius: 4px; padding: 1px 3px; font-size: 10px; font-weight: 700; letter-spacing: -.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rib { position: absolute; z-index: 0; top: 37px; height: 15px; background: color-mix(in srgb, var(--blue) 22%, transparent); color: var(--blue); font-size: 10.5px; font-weight: 800; line-height: 15px; padding: 0 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rib.solo { background: color-mix(in srgb, var(--green) 20%, transparent); color: var(--green); padding: 0 3px; font-size: 10px; letter-spacing: -.2px; }
+.rib.s { border-radius: 5px 0 0 5px; } .rib.e { border-radius: 0 5px 5px 0; } .rib.s.e { border-radius: 5px; }
+.tintb { position: absolute; z-index: 0; top: 2px; height: 37px; background: color-mix(in srgb, var(--blue) 18%, transparent); }
+.tintb.s { border-radius: 19px 0 0 19px; } .tintb.e { border-radius: 0 19px 19px 0; } .tintb.s.e { border-radius: 19px; }
+.tintb.solo { background: color-mix(in srgb, var(--green) 20%, transparent); }
+.mini .week { height: 43px; }
+.mini .day { padding-top: 3px; }
+.mini .num { width: 25px; height: 25px; font-size: 14.5px; }
+.mini .dots { margin-top: 2px; height: 5px; }
+.mini .dots i { width: 5px; height: 5px; }
+.mini .hasrib .dots { margin-top: 7px; }
+.mini .rib { top: 29px; height: 5px; padding: 0; color: transparent; }
+.mini .tintb { top: 1px; height: 29px; }
+.dayhead { padding: 10px 16px 7px; font-size: 14px; font-weight: 800; border-top: 1px solid var(--line); }
+.group { background: var(--card); border-radius: 12px; margin: 0 12px; overflow: hidden; }
+.row { display: flex; align-items: center; gap: 10px; min-height: 54px; padding: 8px 12px; }
+.rdot { flex: none; width: 8px; height: 8px; border-radius: 50%; }
+.rname { font-size: 15px; font-weight: 600; }
+.sub { font-size: 12.5px; color: var(--dim); }
+.chv { margin-left: auto; color: var(--dim); }
+.finger { position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: rgba(120,120,128,.38); border: 2px solid rgba(255,255,255,.75); opacity: 0; left: 150px; top: 340px; transition: left 420ms cubic-bezier(.32,.72,0,1), top 420ms cubic-bezier(.32,.72,0,1), opacity 180ms, transform 120ms; pointer-events: none; z-index: 20; }
+.finger.on { opacity: 1; }
+.finger.press { transform: scale(.72); }
+.foot { margin-top: auto; padding: 10px 16px 14px; font-size: 13px; display: flex; justify-content: space-between; color: var(--green); font-weight: 700; background: var(--card); }
+@media (prefers-reduced-motion: reduce) { .finger, .gridwrap { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Trips and events on the Calendar</h1>
+  <p class="lead">Each phone shows the same month: a Cebu trip from Nov 12 to 17, and Mama's birthday on Nov 25. Each one plays Compact, then Details, then a tapped day. Pick the one you like, or tell me what to change.</p>
+  <div class="scenes">
+    <section class="scene">
+      <h2>A. A ribbon with the name <span class="tag">I suggest this</span></h2>
+      <p class="cap">One band runs across the whole trip with its name on it, and carries on to the next row. An event gets a small band too, though a one-day band cuts long names short. You can spot both without tapping, even in Compact.</p>
+      <div class="phone" id="pa"></div>
+      <div class="state" id="sa"></div>
+      <button class="replay" data-p="a" type="button">Play again</button>
+    </section>
+    <section class="scene">
+      <h2>B. Shaded days</h2>
+      <p class="cap">The trip's days get a soft shade joined together, and an event's day is shaded too. It's the calmest look, but Compact shows no names, and a shaded event can look like today's circle.</p>
+      <div class="phone" id="pb"></div>
+      <div class="state" id="sb"></div>
+      <button class="replay" data-p="b" type="button">Play again</button>
+    </section>
+    <section class="scene">
+      <h2>C. A mark on every day</h2>
+      <p class="cap">Each trip day gets the usual dot, or its name in Details. It's closest to today's Calendar, but the days don't look connected, and the name repeats on every day.</p>
+      <div class="phone" id="pc"></div>
+      <div class="state" id="sc"></div>
+      <button class="replay" data-p="c" type="button">Play again</button>
+    </section>
+  </div>
+  <section class="block">
+    <h2>Works the same with any of them</h2>
+    <div class="ask"><ul>
+      <li>A tapped day shows the trip as "Trip · day 2 of 6". Tapping that row opens the trip.</li>
+      <li>A trip with only a start date, or a one-day trip, shows on that one day.</li>
+      <li>A trip that runs into next month stops at the end of this month and carries on in the next. Greyed days stay empty, as they do now.</li>
+      <li>A trip or event with no amount never changes your projected balance.</li>
+    </ul></div>
+  </section>
+</main>
+<script>
+(function () {
+  var chev = '<svg width="11" height="18" viewBox="0 0 11 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2 2 9l7 7"/></svg>';
+  var doc = '<svg width="19" height="21" viewBox="0 0 19 21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="2" width="15" height="17" rx="2.5"/><path d="M6 7h7M6 11h7M6 15h4"/></svg>';
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var START = 12, END = 17, BDAY = 25, first = new Date(2026, 10, 1).getDay();
+  var BNAME = "Mama's birthday";
+  var items = { 6: [['Meralco', '--red']], 10: [['Olive', '--indigo']], 16: [['Miduri', '--indigo']], 20: [['Tita Lorna', '--orange']] };
+  function pos(n) { var x = n + first - 1; return { w: Math.floor(x / 7), c: x % 7 }; }
+  function seg(a, b, base, flags, label) {
+    var p = pos(a), q = pos(b), one = 100 / 7, l = flags.indexOf('s') >= 0 ? 2 : 0, r = flags.indexOf('e') >= 0 ? 2 : 0;
+    return '<div class="' + base + ' ' + flags + '" style="left:calc(' + (p.c * one) + '% + ' + l + 'px);width:calc(' + ((q.c - p.c + 1) * one) + '% - ' + (l + r) + 'px)">' + (label || '') + '</div>';
+  }
+  function spans(k) {
+    var out = {}, base = k === 'a' ? 'rib' : 'tintb';
+    if (k === 'c') return out;
+    function put(w, html) { out[w] = (out[w] || '') + html; }
+    for (var d = START; d <= END;) {
+      var p = pos(d), last = Math.min(END, d + 6 - p.c);
+      put(p.w, seg(d, last, base, (d === START ? 's ' : '') + (last === END ? 'e' : ''), k === 'a' ? 'Cebu' : ''));
+      d = last + 1;
+    }
+    put(pos(BDAY).w, seg(BDAY, BDAY, base, 's e solo', k === 'a' ? BNAME : ''));
+    return out;
+  }
+  function grid(k, mode, sel) {
+    var sp = spans(k), out = '';
+    for (var w = 0; w < Math.ceil((first + 30) / 7); w++) {
+      out += '<div class="week">' + (sp[w] || '');
+      for (var c = 0; c < 7; c++) {
+        var dt = new Date(2026, 10, w * 7 + c - first + 1), inside = dt.getMonth() === 10, n = dt.getDate();
+        var trip = inside && n >= START && n <= END, bd = inside && n === BDAY, rib = k === 'a' && (trip || bd);
+        var list = inside ? (items[n] || []).slice() : [];
+        if (k === 'c' && trip) list.unshift(['Cebu', '--blue']);
+        if (k === 'c' && bd) list.unshift([BNAME, '--green']);
+        if (k === 'b' && bd && mode === 'details') list.unshift([BNAME, '--green']);
+        if (k === 'b' && trip && n === START && mode === 'details') list.unshift(['Cebu', '--blue']);
+        var cls = 'day' + (inside ? '' : ' grey') + ((c === 0 || c === 6) && inside ? ' wk' : '') + (inside && n === 6 ? ' today' : '') + (inside && n === sel ? ' sel' : '') + (rib ? ' hasrib' : '');
+        var marks = mode === 'details'
+          ? '<div class="pills">' + list.map(function (x) { return '<div class="pill" style="color:var(' + x[1] + ');background:color-mix(in srgb,var(' + x[1] + ') 16%,transparent)">' + x[0] + '</div>'; }).join('') + '</div>'
+          : '<div class="dots">' + list.map(function (x) { return '<i style="background:var(' + x[1] + ')"></i>'; }).join('') + '</div>';
+        out += '<div class="' + cls + '"' + (inside && n === 13 ? ' data-t="d13"' : '') + '><div class="num">' + n + '</div>' + marks + '</div>';
+      }
+      out += '</div>';
+    }
+    return out;
+  }
+  function Player(id, k, st) { this.el = document.getElementById(id); this.k = k; this.st = document.getElementById(st); this.run = 0; }
+  Player.prototype.$ = function (s) { return this.el.querySelector(s); };
+  Player.prototype.wait = function (ms, r) { var me = this; return new Promise(function (ok, no) { setTimeout(function () { me.run === r ? ok() : no('stop'); }, ms); }); };
+  Player.prototype.show = function (mode) {
+    var day = mode === 'day', m = day ? 'compact' : mode, g = this.$('.gridwrap');
+    g.className = 'gridwrap ' + m + (day ? ' mini' : '');
+    g.innerHTML = grid(this.k, m, day ? 13 : 0) + (day ? '<div class="dayhead">Fri, Nov 13</div><div class="group"><div class="row"><div class="rdot" style="background:var(--blue)"></div><div><div class="rname">Cebu</div><div class="sub">Trip · day 2 of 6</div></div><span class="chv">›</span></div></div>' : '');
+    this.st.textContent = day ? 'A tapped day' : m === 'details' ? 'Details view' : 'Compact view';
+  };
+  Player.prototype.tap = async function (sel, r) {
+    var t = this.$(sel), f = this.$('.finger'), a = t.getBoundingClientRect(), b = this.el.getBoundingClientRect();
+    f.style.left = (a.left - b.left + a.width / 2 - 7) + 'px'; f.style.top = (a.top - b.top + 13) + 'px';
+    f.classList.add('on'); await this.wait(620, r); f.classList.add('press'); await this.wait(150, r); f.classList.remove('press'); f.classList.remove('on');
+  };
+  Player.prototype.swap = async function (mode, r) {
+    var g = this.$('.gridwrap'); g.classList.add('fade'); await this.wait(200, r);
+    this.show(mode); g.classList.add('fade'); await this.wait(20, r); g.classList.remove('fade');
+  };
+  Player.prototype.play = async function () {
+    var r = ++this.run;
+    this.el.innerHTML = '<div class="screen"><div class="calbar"><div class="back">' + chev + ' 2026</div><div class="right"><span data-t="view">' + doc + '</span><span class="plus">+</span><span>Done</span></div></div><div class="mtitle">November</div><div class="dow"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div><div class="gridwrap"></div><div class="foot"><span>Today</span><span>Nov 6 · ₱42,300.00</span></div></div><div class="finger"></div>';
+    this.show('compact');
+    if (reduce) return;
+    try {
+      await this.wait(3000, r); await this.tap('[data-t=view]', r); await this.swap('details', r);
+      await this.wait(3400, r); await this.tap('[data-t=d13]', r); await this.swap('day', r);
+      await this.wait(3400, r); this.play();
+    } catch (e) { if (e !== 'stop') throw e; }
+  };
+  var ps = { a: new Player('pa', 'a', 'sa'), b: new Player('pb', 'b', 'sb'), c: new Player('pc', 'c', 'sc') };
+  ps.a.play(); ps.b.play(); ps.c.play();
+  document.querySelectorAll('.replay').forEach(function (b) { b.addEventListener('click', function () { ps[b.getAttribute('data-p')].play(); }); });
+})();
+</script>
+</body>
+</html>

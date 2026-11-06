@@ -126,7 +126,7 @@ export default function HomeScreen({ username }: Props) {
       return;
     }
     if (item.group === 'due' && item.due.type === 'trip') {
-      (navigation as any).navigate('Travel', { tripId: item.due.tripId });
+      (navigation as any).navigate('Travel', { tripId: item.due.tripId, backTitle: 'Home' });
       return;
     }
     // Redesign: open the full Bill / Debt / Loan page.

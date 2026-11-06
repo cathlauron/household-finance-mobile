@@ -16,6 +16,7 @@ import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { useFormOnly, type PlanFormProps } from '../planForm';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import type {
@@ -138,7 +139,7 @@ function isValidDateOrEmpty(s: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(s.trim());
 }
 
-export default function TravelScreen() {
+export default function TravelScreen({ formOnly, addDate, addNonce, onFormClosed, onAdded }: PlanFormProps = {}) {
   const { colors } = useTheme();
   const { model, saveModel, getModel } = useData();
   // Version 2.2 (approved P4): a just-added trip item slides in and glows.
@@ -189,6 +190,7 @@ export default function TravelScreen() {
   // name becomes the title, "‹ Travel" goes back to the list).
   const openTrip = featuredId ? (model?.travel ?? []).find((x) => x.id === featuredId) : undefined;
   useLayoutEffect(() => {
+    if (formOnly) return;
     navigation.setOptions({
       title: openTrip ? openTrip.name || 'Trip' : 'Travel',
       headerBackTitle: openTrip ? 'Travel' : 'Plan',
@@ -210,12 +212,20 @@ export default function TravelScreen() {
   }, [featuredId]);
   // Back (the top-left link or the phone's Back button) from a trip returns to the list.
   useEffect(() => {
+    if (formOnly) return;
     return navigation.addListener('beforeRemove', (e: any) => {
-      if (!featuredId || !openTrip) return;
+      // (2026-11-06) A trip opened from another page goes straight back to that page.
+      if (!featuredId || !openTrip || featuredId === routeTripId) return;
       e.preventDefault();
       setFeaturedId(null);
     });
-  }, [navigation, featuredId, openTrip]);
+  }, [navigation, featuredId, openTrip, routeTripId, formOnly]);
+
+  // Cath, 2026-11-06: from the Calendar, starting on the picked day.
+  useFormOnly({ formOnly, addNonce, onFormClosed }, modalOpen, () => {
+    openAddModal();
+    if (addDate) setStartDateInput(addDate);
+  });
 
   // The red message goes away as soon as the person changes something.
   useEffect(() => {
@@ -547,6 +557,11 @@ export default function TravelScreen() {
     const trip: TravelTrip = { id: makeId('trip'), name, startDate: startDateInput.trim(), endDate: endDateInput.trim(), checklist: [], trackInSavings, budget: 0, createdAt: Date.now() };
     await saveModel({ ...current, travel: [...(current.travel ?? []), trip] });
     showLeafTick('Added');
+    if (formOnly) {
+      onAdded?.();
+      closeModal();
+      return;
+    }
     closeModal();
     setPageTab('budget');
     setFeaturedId(trip.id);
@@ -597,6 +612,7 @@ export default function TravelScreen() {
 
   return (
     <View style={styles.container}>
+      {!formOnly && <>
       <ReceiptViewer photo={viewReceipt} onClose={() => setViewReceipt(null)} />
       {/* Version 2.2 (Cath: Budget / To-do on a trip didn't swipe): the whole trip page
           swipes between Budget and To-do, not just the boxes at the top. */}
@@ -835,6 +851,7 @@ export default function TravelScreen() {
       </PullToRefreshScrollView>
       </View>
       </SwipeTabs>
+      </>}
 
       <BottomSheet
         visible={datesTripId !== null}

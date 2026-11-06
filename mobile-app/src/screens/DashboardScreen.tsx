@@ -147,7 +147,7 @@ export default function DashboardScreen({
 
   function openDueItem(item: DueItem) {
     if (item.type === 'trip') {
-      navigation.navigate('Travel', { tripId: item.tripId });
+      navigation.navigate('Travel', { tripId: item.tripId, backTitle: 'Home' });
       return;
     }
     // Redesign: open the full Bill / Debt / Loan page.

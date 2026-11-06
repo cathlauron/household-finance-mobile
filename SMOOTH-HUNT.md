@@ -151,3 +151,22 @@ Could not be checked here (stays "Needs your phone"):
 - The Calendar's greyed days move months with the same list scroll as Today; instant with Reduce
   Motion (B-095). Trip name uses the shared BottomSheet and SheetBar.
 - test:motion passes (21). Needs your phone: the feel of the row opening and of the month slide.
+
+## Sweep 2026-11-06 (before push and build)
+- No hand-typed speeds or curves in the new code; test:motion passes (21). DayMarks uses ROW_MS and
+  SHEET_CLOSE_MS with the house curve on the native driver, and is off with Reduce Motion.
+- Look: Calendar day lists and trip drop-downs compared in light and dark; they use the shared rows,
+  buttons and fields. S-note: the date field's label sits 4 px right of the others in every form that
+  uses it. It is shared, so left alone.
+- Needs your phone: the day's pop, the row glow and the month slide.
+
+## Fair timing, 2026-11-06 (same test, same small household, 3.6.0 vs current, 3 runs each in turn)
+Longest freeze, middle run. Calendar Add 1.29 s to 0.21 s. Home + Add 0.85 s to 0.19 s. To-Pay tab 0.33 s to 0.16 s.
+Maybe slower: Transactions tab 0.14 s to 0.22 s (every run slower), Plan to Events 0.12 s to 0.27 s, Events back 0.23 s to 0.43 s (runs overlap).
+Possible cause, not proven: Main now redraws when a page opens or closes over it (B-097, QuietWhenHidden). The earlier "react" numbers used another test and a bigger household, so they can't be compared with the first map.
+
+## Closer check of the "maybe slower" steps, 2026-11-06
+Same test, 3.6.0, current, and current without useMainOnTop: 3 runs each in turn, 6 rounds per run (15 repeat visits per step per version, plus 3 first visits). Current matched or beat 3.6.0 on every step except the Plan tab (0.20 s to 0.22 s, within the spread). Transactions 0.26 s to 0.22 s, open Events 0.29 s to 0.28 s, Events back 0.44 s to 0.40 s, open Savings 0.28 s to 0.26 s, Savings back 0.44 s to 0.37 s. Taking useMainOnTop out did not help. The earlier "maybe slower" came from too few runs. Nothing changed in the app.
+
+## Correction, 2026-11-06
+The "light and dark" walks earlier today were light only: the test browser's dark setting doesn't reach the app. Dark needs the app's own colorModePreference set to dark. Rerun properly on the current code: whole-app walk and the new Calendar forms, no crashes or errors. Calendar and the Plan sheet compared by eye in dark. 14 walk steps time out the same way in light, dark and the earlier run (the script waits on text that is on screen but hidden), so those pages opened with no crash, but the script did not confirm their content.

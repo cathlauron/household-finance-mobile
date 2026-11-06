@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stay on Calendar Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Plan: the app's own colours and font; two phones play the same add and end differently. */
+:root {
+  --ink: #111111; --dim: #636366; --line: #D1D1D6; --bg: #F2F2F7; --card: #FFFFFF; --soft: #E5E5EA;
+  --green: #2E6B47; --tint: #E6F0EA; --on: #F2F2F7; --blue: #1D63B8; --red: #D70015; --indigo: #4F46E5;
+  --shadow: rgba(0,0,0,.14); --dimmer: rgba(0,0,0,.34);
+  --font: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink: #FFFFFF; --dim: #AEAEB2; --line: #38383A; --bg: #000000; --card: #1C1C1E; --soft: #2C2C2E;
+    --green: #5FC48A; --tint: #15291D; --on: #06140C; --blue: #6FB1F5; --red: #FF6961; --indigo: #818CF8;
+    --shadow: rgba(0,0,0,.6); --dimmer: rgba(0,0,0,.6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ink: #FFFFFF; --dim: #AEAEB2; --line: #38383A; --bg: #000000; --card: #1C1C1E; --soft: #2C2C2E;
+  --green: #5FC48A; --tint: #15291D; --on: #06140C; --blue: #6FB1F5; --red: #FF6961; --indigo: #818CF8;
+  --shadow: rgba(0,0,0,.6); --dimmer: rgba(0,0,0,.6);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); line-height: 1.45; }
+main { max-width: 760px; margin: 0 auto; padding: 28px 16px 56px; }
+h1 { font-size: 30px; line-height: 1.15; margin: 0 0 6px; font-weight: 800; text-wrap: balance; }
+h2 { font-size: 20px; margin: 0 0 4px; font-weight: 800; text-wrap: balance; }
+.lead { color: var(--dim); font-size: 16px; margin: 0 0 22px; max-width: 62ch; }
+.scenes { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 30px 22px; }
+.scene { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.cap { color: var(--dim); font-size: 14.5px; margin: 0; max-width: 60ch; min-height: 86px; }
+.tag { display: inline-block; font-size: 12px; font-weight: 800; color: var(--green); background: var(--tint); border-radius: 999px; padding: 1px 9px; margin-left: 6px; vertical-align: 2px; }
+.replay { align-self: flex-start; font: 700 13.5px var(--font); color: var(--green); background: var(--tint); border: 0; border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.replay:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.note { background: var(--card); border-radius: 14px; padding: 16px 18px; margin-top: 30px; }
+.note ul { margin: 8px 0 0; padding-left: 20px; font-size: 15px; }
+.note li { margin-bottom: 7px; }
+
+.phone { position: relative; width: 300px; height: 630px; max-width: 100%; margin: 0 auto; border-radius: 34px; background: var(--bg); border: 7px solid var(--ink); overflow: hidden; box-shadow: 0 10px 28px var(--shadow); }
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--bg); }
+.calbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 14px 4px; color: var(--green); font-weight: 600; font-size: 16px; }
+.calbar .back { display: flex; align-items: center; gap: 3px; }
+.calbar .right { display: flex; align-items: center; gap: 14px; }
+.plus { font-size: 26px; line-height: 1; font-weight: 500; padding: 0 2px; }
+.mtitle { font-size: 27px; font-weight: 700; padding: 2px 16px 6px; }
+.dow { display: flex; font-size: 11.5px; font-weight: 700; color: var(--dim); text-align: center; padding: 4px 0 5px; border-bottom: 1px solid var(--dim); }
+.dow span, .week > div { flex: 1; min-width: 0; }
+.week { display: flex; height: 70px; border-top: 1px solid var(--line); }
+.week:first-child { border-top: 0; }
+.day { display: flex; flex-direction: column; align-items: center; padding-top: 5px; }
+.num { width: 31px; height: 31px; border-radius: 50%; display: grid; place-items: center; font-size: 17px; font-weight: 600; }
+.wk .num { color: var(--dim); }
+.grey .num { color: var(--dim); opacity: .36; font-weight: 500; }
+.today .num { color: var(--green); background: color-mix(in srgb, var(--green) 18%, transparent); font-weight: 800; }
+.dots { display: flex; gap: 3px; height: 6px; margin-top: 4px; }
+.dots i { width: 6px; height: 6px; border-radius: 50%; }
+@keyframes pop { 0% { transform: scale(0); } 60% { transform: scale(1.5); } 100% { transform: scale(1); } }
+.dots i.new { animation: pop 420ms cubic-bezier(.32,.72,0,1) both; }
+.foot { margin-top: auto; padding: 10px 16px 14px; font-size: 13px; display: flex; justify-content: space-between; color: var(--green); font-weight: 700; background: var(--card); }
+
+/* The day's list (variant B) */
+.daypage { position: absolute; inset: 0; background: var(--bg); display: flex; flex-direction: column; opacity: 0; pointer-events: none; transition: opacity 240ms cubic-bezier(.32,.72,0,1); }
+.daypage.on { opacity: 1; }
+.mini .week { height: 43px; }
+.mini .day { padding-top: 3px; }
+.mini .num { width: 25px; height: 25px; font-size: 14.5px; }
+.mini .dots { margin-top: 2px; height: 5px; }
+.mini .dots i { width: 5px; height: 5px; }
+.dayhead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 10px 16px 7px; font-size: 14px; border-top: 1px solid var(--line); }
+.dayhead b { font-weight: 800; white-space: nowrap; }
+.dayhead span { color: var(--dim); font-size: 12.5px; white-space: nowrap; }
+.group { background: var(--card); border-radius: 12px; margin: 0 12px; overflow: hidden; }
+.row { display: flex; align-items: center; gap: 10px; min-height: 54px; padding: 8px 12px; }
+.row + .row { border-top: 1px solid var(--line); }
+.rdot { flex: none; width: 8px; height: 8px; border-radius: 50%; }
+.rmain { flex: 1; min-width: 0; }
+.rname { font-size: 15px; font-weight: 600; }
+.sub { font-size: 12.5px; color: var(--dim); }
+.amt { font-size: 14.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+@keyframes glow { 0% { background: var(--tint); } 100% { background: transparent; } }
+.arrive { animation: glow 1.6s ease-out; }
+
+/* Sheets */
+.dim { position: absolute; inset: 0; background: var(--dimmer); opacity: 0; pointer-events: none; transition: opacity 220ms ease; }
+.dim.on { opacity: 1; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--bg); border-radius: 16px 16px 0 0; padding: 0 12px 16px; transform: translateY(102%); transition: transform 240ms cubic-bezier(.32,.72,0,1); }
+.sheet.on { transform: none; transition-duration: 280ms; }
+.sheet.instant { transition: none; }
+.sbar { display: flex; align-items: center; justify-content: space-between; font-size: 15.5px; font-weight: 600; color: var(--green); padding: 15px 2px 10px; }
+.sbar b { color: var(--ink); font-weight: 800; }
+.choice { display: flex; align-items: center; gap: 12px; padding: 10px 2px; font-size: 15px; font-weight: 700; }
+.choice + .choice { border-top: 1px solid var(--line); }
+.tile { flex: none; width: 34px; height: 34px; border-radius: 10px; background: var(--tint); }
+.choice small { display: block; font-size: 12.5px; color: var(--dim); font-weight: 500; }
+.big { text-align: center; font-size: 30px; font-weight: 800; color: var(--red); padding: 8px 0 12px; font-variant-numeric: tabular-nums; }
+.form { background: var(--card); border-radius: 12px; overflow: hidden; }
+.frow { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 46px; padding: 0 12px; font-size: 14.5px; font-weight: 600; }
+.frow + .frow { border-top: 1px solid var(--line); }
+.frow span:last-child { color: var(--dim); font-weight: 500; }
+.toast { position: absolute; left: 50%; top: 44%; transform: translate(-50%, 8px); background: var(--green); color: var(--on); font-weight: 700; font-size: 14px; padding: 8px 18px; border-radius: 999px; opacity: 0; transition: opacity 220ms, transform 220ms; pointer-events: none; white-space: nowrap; z-index: 9; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+.finger { position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: rgba(120,120,128,.38); border: 2px solid rgba(255,255,255,.75); opacity: 0; left: 150px; top: 340px; transition: left 420ms cubic-bezier(.32,.72,0,1), top 420ms cubic-bezier(.32,.72,0,1), opacity 180ms, transform 120ms; pointer-events: none; z-index: 20; }
+.finger.on { opacity: 1; }
+.finger.press { transform: scale(.72); }
+@media (prefers-reduced-motion: reduce) {
+  .sheet, .finger, .dim, .toast, .daypage { transition: none; }
+  .arrive, .dots i.new { animation: none; }
+}
+</style>
+</head>
+<body>
+<main>
+  <h1>Staying on the Calendar</h1>
+  <p class="lead">Both phones add ₱250 for lunch from the Calendar's +. In both, you never leave the Calendar. Pick the ending you like, or tell me what to change.</p>
+  <div class="scenes">
+    <section class="scene">
+      <h2>A. Back on the month</h2>
+      <p class="cap">The form slides down and the month is right there. A new dot pops onto the day, and a small Added note shows for a moment.</p>
+      <div class="phone" id="pa"></div>
+      <button class="replay" data-p="a" type="button">Play again</button>
+    </section>
+    <section class="scene">
+      <h2>B. Opens that day's list <span class="tag">I suggest this</span></h2>
+      <p class="cap">The form slides down onto the same page you get by tapping a day: the month on top and that day's list below. Your new item softly glows there. ‹ November goes back to the full month.</p>
+      <div class="phone" id="pb"></div>
+      <button class="replay" data-p="b" type="button">Play again</button>
+    </section>
+  </div>
+  <div class="note">
+    <h2>Works the same for</h2>
+    <ul>
+      <li>Bills, debts and loans added from the Calendar's +. You stay on the Calendar for those too.</li>
+      <li>Any day you picked first: the new item lands on that day.</li>
+      <li>The List view: your new item glows in the list that's already showing.</li>
+      <li>Home's +: this doesn't change. It still ends on Transactions.</li>
+    </ul>
+  </div>
+</main>
+<script>
+(function () {
+  var chev = '<svg width="11" height="18" viewBox="0 0 11 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2 2 9l7 7"/></svg>';
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var marks = { 6: ['--red'], 10: ['--green', '--blue'], 15: ['--red', '--indigo'], 20: ['--blue'], 25: ['--green'] };
+  function grid() {
+    var y = 2026, m = 10, first = new Date(y, m, 1).getDay(), days = 30, out = '';
+    for (var w = 0; w < Math.ceil((first + days) / 7); w++) {
+      out += '<div class="week">';
+      for (var c = 0; c < 7; c++) {
+        var d = new Date(y, m, w * 7 + c - first + 1), inside = d.getMonth() === m, n = d.getDate();
+        var cls = 'day' + (inside ? '' : ' grey') + ((c === 0 || c === 6) && inside ? ' wk' : '') + (inside && n === 6 ? ' today' : '');
+        var dots = inside ? (marks[n] || []).map(function (k) { return '<i style="background:var(' + k + ')"></i>'; }).join('') : '';
+        out += '<div class="' + cls + '"' + (inside && n === 6 ? ' data-t="six"' : '') + '><div class="num">' + n + '</div><div class="dots">' + dots + '</div></div>';
+      }
+      out += '</div>';
+    }
+    return out;
+  }
+  function build() {
+    return '<div class="screen"><div class="calbar"><div class="back">' + chev + ' 2026</div><div class="right"><span class="plus" data-t="plus">+</span><span>Done</span></div></div>' +
+      '<div class="mtitle">November</div><div class="dow"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div><div>' + grid() + '</div>' +
+      '<div class="foot"><span>Today</span><span data-t="bal">Nov 6 · ₱42,300.00</span></div></div>' +
+      '<div class="daypage" data-t="day"><div class="calbar"><div class="back">' + chev + ' November</div><div class="right"><span class="plus">+</span><span>Done</span></div></div>' +
+      '<div class="mtitle">November</div><div class="dow"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div><div class="mini">' + grid() + '</div><div class="dayhead"><b>Today · Fri, Nov 6</b><span data-t="dbal">Balance ₱42,300.00</span></div>' +
+      '<div class="group" data-t="rows"><div class="row"><div class="rdot" style="background:var(--red)"></div><div class="rmain"><div class="rname">Electric</div><div class="sub">Bill</div></div><div class="amt">−₱2,400.00</div></div></div></div>' +
+      '<div class="dim"></div><div class="toast"></div><div class="finger"></div>' +
+      '<div class="sheet" data-t="add"><div class="sbar"><span>Cancel</span><b>Add on Fri, Nov 6</b><span style="width:42px"></span></div>' +
+      '<div class="choice" data-t="txn"><div class="tile"></div><div>Transaction<small>Money that moved this day</small></div></div>' +
+      '<div class="choice"><div class="tile"></div><div>Bill<small>Comes back every month or year</small></div></div>' +
+      '<div class="choice"><div class="tile"></div><div>Debt<small>Owed and paid down over time</small></div></div>' +
+      '<div class="choice"><div class="tile"></div><div>Loan<small>Set payments until an end date</small></div></div></div>' +
+      '<div class="sheet instant" data-t="form"><div class="sbar"><span>Cancel</span><b>New transaction</b><span data-t="ok">Add</span></div>' +
+      '<div class="big" data-t="amt">₱0</div><div class="form"><div class="frow"><span>Description</span><span data-t="desc"></span></div><div class="frow"><span>Category</span><span>Food</span></div><div class="frow"><span>Paid from</span><span data-t="from">Choose</span></div><div class="frow"><span>Date</span><span>Nov 6, 2026</span></div></div><div style="height:120px"></div></div>';
+  }
+  function Player(id, end) { this.el = document.getElementById(id); this.end = end; this.run = 0; }
+  Player.prototype.$ = function (s) { return this.el.querySelector(s); };
+  Player.prototype.wait = function (ms, r) { var me = this; return new Promise(function (ok, no) { setTimeout(function () { me.run === r ? ok() : no('stop'); }, ms); }); };
+  Player.prototype.tap = async function (sel, r) {
+    var t = this.$(sel), f = this.$('.finger'), a = t.getBoundingClientRect(), b = this.el.getBoundingClientRect();
+    f.style.left = (a.left - b.left + a.width / 2 - 7) + 'px';
+    f.style.top = (a.top - b.top + Math.min(a.height / 2, 24) - 7) + 'px';
+    f.classList.add('on'); await this.wait(650, r);
+    f.classList.add('press'); await this.wait(150, r); f.classList.remove('press');
+    f.classList.remove('on');
+  };
+  Player.prototype.type = async function (sel, text, r) { var s = this.$(sel); for (var i = 1; i <= text.length; i++) { s.textContent = text.slice(0, i); await this.wait(75, r); } };
+  Player.prototype.script = async function (r) {
+    var dim = this.$('.dim'), add = this.$('[data-t=add]'), form = this.$('[data-t=form]');
+    await this.tap('[data-t=plus]', r);
+    add.classList.add('on'); dim.classList.add('on');
+    await this.wait(900, r);
+    await this.tap('[data-t=txn]', r);
+    form.classList.add('on'); add.classList.add('instant'); add.classList.remove('on');
+    await this.wait(600, r);
+    var amt = this.$('[data-t=amt]'); amt.textContent = '₱2'; await this.wait(120, r); amt.textContent = '₱25'; await this.wait(120, r); amt.textContent = '₱250'; await this.wait(350, r);
+    await this.type('[data-t=desc]', 'Lunch', r);
+    await this.wait(250, r);
+    this.$('[data-t=from]').textContent = 'Maribank'; await this.wait(500, r);
+    await this.tap('[data-t=ok]', r);
+    form.classList.remove('instant'); await this.wait(20, r);
+    form.classList.remove('on'); dim.classList.remove('on');
+    await this.end(this, r);
+  };
+  Player.prototype.play = async function () {
+    var r = ++this.run; this.el.innerHTML = build();
+    try {
+      if (!reduce) await this.wait(1000, r);
+      await this.script(r);
+      if (reduce) return;
+      await this.wait(3200, r); this.play();
+    } catch (e) { if (e !== 'stop') throw e; }
+  };
+  async function toast(p, text, r) { var t = p.$('.toast'); t.textContent = text; t.classList.add('on'); await p.wait(1300, r); t.classList.remove('on'); }
+  var A = new Player('pa', async function (p, r) {
+    await p.wait(280, r);
+    p.$('[data-t=six] .dots').insertAdjacentHTML('beforeend', '<i class="new" style="background:var(--red)"></i>');
+    p.$('[data-t=bal]').textContent = 'Nov 6 · ₱42,050.00';
+    await toast(p, 'Added', r);
+  });
+  var B = new Player('pb', async function (p, r) {
+    p.$('[data-t=day]').classList.add('on');
+    await p.wait(280, r);
+    p.$('[data-t=rows]').insertAdjacentHTML('beforeend', '<div class="row arrive"><div class="rdot" style="background:var(--red)"></div><div class="rmain"><div class="rname">Lunch</div><div class="sub">Spent · Maribank</div></div><div class="amt" style="color:var(--red)">−₱250.00</div></div>');
+    p.$('[data-t=dbal]').textContent = 'Balance ₱42,050.00';
+    p.$('.mini [data-t=six] .dots').insertAdjacentHTML('beforeend', '<i class="new" style="background:var(--red)"></i>');
+    await p.wait(1300, r);
+  });
+  var ps = { a: A, b: B };
+  A.play(); setTimeout(function () { B.play(); }, reduce ? 0 : 300);
+  document.querySelectorAll('.replay').forEach(function (b) { b.addEventListener('click', function () { ps[b.getAttribute('data-p')].play(); }); });
+})();
+</script>
+</body>
+</html>

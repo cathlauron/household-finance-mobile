@@ -10,6 +10,8 @@ import { headerButtonText } from '../navigation/LargeHeader';
 import { useTheme } from '../ThemeContext';
 import { MarkedLabel } from '../components/MarkedLabel';
 import { useData } from '../DataContext';
+import { FormOnlyBox, useFormOnly, type PlanFormProps } from '../planForm';
+import { finishSheetHandoff } from '../components/BottomSheet';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import GradientFill from '../components/GradientFill';
 import { formatPeso } from '../balanceProjection';
@@ -47,7 +49,7 @@ function shortDate(iso: string): string {
   return dateText(new Date(iso + 'T00:00:00'));
 }
 
-export default function SharedExpensesScreen() {
+export default function SharedExpensesScreen({ formOnly, addDate, addNonce, onFormClosed, onAdded }: PlanFormProps = {}) {
   const { colors } = useTheme();
   const who = useWho();
   const { model, saveModel, username } = useData();
@@ -126,6 +128,14 @@ export default function SharedExpensesScreen() {
     }
   }, [route.params, model]);
 
+  // Cath, 2026-11-06: from the Calendar, dated the picked day.
+  useFormOnly({ formOnly, addNonce, onFormClosed }, sheetOpen, () => {
+    if (!openAdd()) {
+      finishSheetHandoff();
+      onFormClosed?.();
+    } else if (addDate) setDate(addDate);
+  });
+
   function openEdit(e: SharedExpense) {
     setFromTxnId(e.transactionId ?? null);
     setEditingId(e.id);
@@ -142,6 +152,7 @@ export default function SharedExpensesScreen() {
   }
 
   useLayoutEffect(() => {
+    if (formOnly) return;
     navigation.setOptions({
       headerRight: () => (
         <TouchableOpacity onPress={openAdd} accessibilityRole="button" accessibilityLabel="Add a shared expense" testID="shared-add" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -253,6 +264,7 @@ export default function SharedExpensesScreen() {
       await saveModel({ ...model, sharedExpenses: editingId ? list.map((x) => (x.id === editingId ? record : x)) : [...list, record] });
       hapticLight();
       showLeafTick(editingId ? 'Saved' : 'Added');
+      if (!editingId) onAdded?.();
       setSheetOpen(false);
     } catch {
       setError(notSaved('this expense'));
@@ -365,8 +377,10 @@ export default function SharedExpensesScreen() {
   const netColor = net > 0 ? colors.positive : net < 0 ? colors.negative : colors.ink;
   const withText = others.length ? `With ${others.map((p) => p.name).join(', ').replace(/, ([^,]*)$/, ' and $1')}` : 'Add the people you share costs with';
 
+  const Outer: any = formOnly ? FormOnlyBox : PullToRefreshScrollView;
   return (
-    <PullToRefreshScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <Outer contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      {!formOnly && <>
       <View style={[styles.group, { padding: 16 }]}>
         <GradientFill match={[styles.group, { padding: 16 }]} />
         <Text style={styles.meta}>Overall</Text>
@@ -557,6 +571,7 @@ export default function SharedExpensesScreen() {
           })
         )}
       </View>
+      </>}
 
       <BottomSheet
         visible={sheetOpen}
@@ -609,7 +624,7 @@ export default function SharedExpensesScreen() {
         {!!error && <Text style={[styles.meta, { color: colors.negative, marginHorizontal: 16, marginBottom: 12 }]}>{error}</Text>}
         {editingId && <Button label="Delete shared expense" variant="destructive" onPress={deleteExpense} />}
       </BottomSheet>
-    </PullToRefreshScrollView>
+    </Outer>
   );
 }
 

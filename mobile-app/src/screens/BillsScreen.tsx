@@ -683,7 +683,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
                     amountColor={late ? colors.negative : colors.planned}
                     badge={late ? { text: 'Overdue', tone: 'overdue' } : days <= 7 ? { text: days <= 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days`, tone: 'soon' } : undefined}
                     divider={rowIndex > 0}
-                    onPress={() => navigation.navigate('Travel', { tripId: d.tripId })}
+                    onPress={() => navigation.navigate('Travel', { tripId: d.tripId, backTitle: 'To-Pay' })}
                   />
                 );
               })}

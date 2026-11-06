@@ -70,7 +70,7 @@ export default function TransactionDetailScreen() {
   useLayoutEffect(() => {
     navigation.setOptions({
       title: '',
-      headerBackTitle: 'Transactions',
+      headerBackTitle: route.params?.backTitle ?? 'Transactions',
       headerRight: isManual
         ? () => (
             <TouchableOpacity

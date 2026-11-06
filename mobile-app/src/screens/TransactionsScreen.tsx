@@ -9,6 +9,7 @@ import { useArrival } from '../useArrival';
 import ArrivalGlow from '../components/ArrivalGlow';
 import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { showLeafTick } from '../components/LeafTick';
+import { daySignature } from '../dayRows';
 import { afterSlide } from '../afterSlide';
 import AppSwitch from '../components/AppSwitch';
 import { View, StyleSheet, SafeAreaView, ActivityIndicator, Image, Alert } from 'react-native';
@@ -125,7 +126,23 @@ function groupByDate(list: TransactionEntry[]): { date: string; items: Transacti
   });
   return groups;
 }
+// Speed (2026-11-06): each day's heading is worked out once a day.
+const headings = new Map<string, string>();
+let headingsDay = '';
 function dayHeading(dateStr: string): string {
+  const stamp = new Date().toDateString();
+  if (stamp !== headingsDay) {
+    headingsDay = stamp;
+    headings.clear();
+  }
+  let text = headings.get(dateStr);
+  if (text === undefined) {
+    text = dayHeadingNow(dateStr);
+    headings.set(dateStr, text);
+  }
+  return text;
+}
+function dayHeadingNow(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');
   if (isNaN(d.getTime())) return dateStr;
   const today = new Date();
@@ -420,7 +437,7 @@ export default function TransactionsScreen({
     const t = setTimeout(() => setBatchesShown((n) => n + 1), BATCH_GAP_MS);
     return () => clearTimeout(t);
   }, [batchesShown, chunks.length]);
-  const renderDay = useCallback((day: (typeof days)[number]) => {
+  const drawDay = useCallback((day: (typeof days)[number]) => {
     if (!model) return null;
     return (
         <View key={day.date} style={styles.daySection}>
@@ -561,6 +578,25 @@ export default function TransactionsScreen({
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model, colors, arrivedTxn, isLinked, username, manualById]);
+  // Speed (Cath, 2026-11-06): a day's rows are kept until something they show changes, so saving
+  // one transaction doesn't redraw the whole list. A new look or setting draws them all again.
+  const swipeOn = Boolean(model?.settings.swipeToDeleteEnabled);
+  const drawnDays = useMemo(() => new Map<string, { sig: string; rows: React.ReactNode }>(), [colors, isLinked, username, swipeOn]);
+  const renderDay = useCallback((day: (typeof days)[number]) => {
+    if (!model) return null;
+    const sig = daySignature(day as any, {
+      manual: (rawId) => manualById.get(rawId),
+      account: (pm) => accountLabel(model, pm as any) ?? '',
+      arrived: arrivedTxn,
+      heading: dayHeading(day.date),
+    });
+    const kept = drawnDays.get(day.date);
+    if (kept && kept.sig === sig) return kept.rows;
+    const rows = drawDay(day);
+    drawnDays.set(day.date, { sig, rows });
+    return rows;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawDay, drawnDays]);
   const listBlock = useMemo(() => {
     // The form on its own (Edit on a transaction's page, + on Home) never shows the list.
     if (!model || formOnly) return null;
