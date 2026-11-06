@@ -43,6 +43,7 @@ function PlainAmountInput({
   onChangeAmount,
   onBlur,
   placeholder = '0.00',
+  testID,
   allowDecimals = true,
   allowNegative = false,
   prefix = '₱',
@@ -132,6 +133,7 @@ function PlainAmountInput({
       ) : null}
       {prefix ? <Text style={styles.affix}>{prefix}</Text> : null}
       <TextInput
+        testID={testID}
         style={[styles.input, inputStyle]}
         placeholder={placeholder}
         placeholderTextColor={colors.inkFaint}

@@ -28,7 +28,7 @@ const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
 const cents = (n: number) => Math.round(n * 100) / 100;
 
-const LABEL: Record<CalendarEvent['type'], string> = {
+const LABEL: Record<Exclude<CalendarEvent['type'], 'reminder'>, string> = {
   bill: 'Bills',
   debt: 'Debts',
   loan: 'Loans',
@@ -62,7 +62,7 @@ export function leftToSpendItems(model: HouseholdModel, today: Date, target: Dat
     if (Math.abs(it.amount) >= 0.005) items.push({ ...it, amount: cents(it.amount) });
   };
   const tracked = new Set((model.loans || []).filter((l) => l.direction !== 'lent' && isTrackedLoan(l) && num(l.expectedPayment) > 0).map((l) => l.id));
-  const KIND: Record<CalendarEvent['type'], string> = { bill: 'Bill', debt: 'Debt', loan: 'Loan', saving: 'Savings', manual: 'Planned', income: 'Income' };
+  const KIND: Record<Exclude<CalendarEvent['type'], 'reminder'>, string> = { bill: 'Bill', debt: 'Debt', loan: 'Loan', saving: 'Savings', manual: 'Planned', income: 'Income' };
 
   // The calendar's events from today to the Left to Spend date. Today: only bills, debts and
   // loans still unpaid (today's transactions, moves and paydays are already in the balances).

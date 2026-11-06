@@ -550,12 +550,14 @@ export function DueNowChoice({ rt, day, month, value, onChange }: { rt: Recurrin
 }
 
 // A small grey label and a field, used inside an open row (More details).
-export function InlineField({ label, value, onChangeText, placeholder, keyboardType, multiline, mark }: { label: string; value: string; onChangeText: (t: string) => void; placeholder?: string; keyboardType?: KeyboardTypeOptions; multiline?: boolean; mark?: FieldMark }) {
+export function InlineField({ label, value, onChangeText, placeholder, keyboardType, multiline, mark, testID, autoFocus }: { label: string; value: string; onChangeText: (t: string) => void; placeholder?: string; keyboardType?: KeyboardTypeOptions; multiline?: boolean; mark?: FieldMark; testID?: string; autoFocus?: boolean }) {
   const { colors } = useTheme();
   return (
     <View style={{ marginBottom: 10 }}>
       <MarkedLabel text={label} mark={mark} style={{ fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6 }} />
       <TextInput
+        testID={testID}
+        autoFocus={autoFocus}
         style={{ backgroundColor: colors.navy2, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, color: colors.ink }}
         value={value}
         onChangeText={onChangeText}
@@ -568,12 +570,12 @@ export function InlineField({ label, value, onChangeText, placeholder, keyboardT
   );
 }
 
-export function InlineAmount({ label, value, onChange, placeholder, mark }: { label: string; value: number | ''; onChange: (v: number | '') => void; placeholder?: string; mark?: FieldMark }) {
+export function InlineAmount({ label, value, onChange, placeholder, mark, testID }: { label: string; value: number | ''; onChange: (v: number | '') => void; placeholder?: string; mark?: FieldMark; testID?: string }) {
   const { colors } = useTheme();
   return (
     <View style={{ marginBottom: 10 }}>
       <MarkedLabel text={label} mark={mark} style={{ fontSize: 13, fontWeight: '600', color: colors.inkDim, marginBottom: 6 }} />
-      <AmountInput value={value} onChangeAmount={onChange} placeholder={placeholder ?? '0.00'} style={{ backgroundColor: colors.navy2, marginBottom: 0 }} />
+      <AmountInput testID={testID} value={value} onChangeAmount={onChange} placeholder={placeholder ?? '0.00'} style={{ backgroundColor: colors.navy2, marginBottom: 0 }} />
     </View>
   );
 }

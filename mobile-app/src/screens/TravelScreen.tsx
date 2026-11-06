@@ -1,19 +1,16 @@
 import React, { useEffect, useRef, useLayoutEffect, useState } from 'react';
 import { animateNextLayout } from '../animateLayout';
 import { redUnlessZero, toneUnlessZero } from '../moneyColor';
-import ErrorNote from '../components/ErrorNote';
-import { alertDidntWork } from '../messages';
 import { useArrival } from '../useArrival';
 import ArrivalGlow from '../components/ArrivalGlow';
 import { showLeafTick } from '../components/LeafTick';
 import { SwipeTabs } from '../navigation/swipeTabs';
-import SegmentedControl from '../components/SegmentedControl';
 import SlidingPages from '../components/SlidingPages';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { todayISO, dateText } from '../dateUtils';
 import { View, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import { TouchableOpacity } from '../components/Tap';
-import { Text, TextInput } from '../components/AppText';
+import { Text } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
 import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -43,13 +40,12 @@ import { makeId } from '../utils';
 import { useStickyState } from '../stickyState';
 import DateField from '../components/DateField';
 import { hapticSelection } from '../haptics';
-import Button from '../components/Button';
 import GradientFill from '../components/GradientFill';
 import Guided, { useFieldErrors } from '../components/Guided';
 import BottomSheet from '../components/BottomSheet';
-import { SheetBar, BigTotal, FormGroup, InputRow, PickerRow, SwitchRow, Footnote, GroupLabel, InlineField, InlineAmount, useOpenRow } from '../components/SimpleForm';
+import { SheetBar, FormGroup, InputRow, PickerRow, SwitchRow, Footnote, useOpenRow } from '../components/SimpleForm';
+import TripItemDrop, { type TripDraft } from '../components/TripItemDrop';
 
-import { askToRemove } from '../askToRemove';
 import { PaidLine, paidRowContent } from '../components/PaidLine';
 function tripChecklistTotal(trip: TravelTrip): number {
   return (trip.checklist ?? [])
@@ -151,22 +147,9 @@ export default function TravelScreen() {
   const styles = React.useMemo(() => makeStyles(colors), [colors]);
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [nameInput, setNameInput] = useState('');
   const [startDateInput, setStartDateInput] = useState('');
   const [endDateInput, setEndDateInput] = useState('');
-  const [checklist, setChecklist] = useState<TravelChecklistItem[]>([]);
-  // H-44 (Cath, 2026-10-29): what's being typed in an item's cost box ("12." isn't a number yet).
-  const [costDrafts, setCostDrafts] = useState<Record<string, string>>({});
-  // Version 2.1 (T1): Budget | To-do inside the trip.
-  const [tripTab, setTripTab] = useState<'budget' | 'todo'>('budget');
-  const [todos, setTodos] = useState<TravelTodo[]>([]);
-  const [todoDateOpen, setTodoDateOpen] = useState<string | null>(null); // the to-do whose date is open in the form
-  const [todoText, setTodoText] = useState('');
-  const [itemTitleInput, setItemTitleInput] = useState('');
-  const [itemCostInput, setItemCostInput] = useState<number | ''>('');
-  const [itemNoteInput, setItemNoteInput] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
   const [trackInSavings, setTrackInSavings] = useState(false);
   const [featuredId, setFeaturedId] = useState<string | null>(null);
   // 2026-11-03 (mockup P2): To-Pay and Home's Due soon open a trip straight on its Budget.
@@ -179,51 +162,52 @@ export default function TravelScreen() {
   }, [routeTripId]);
   // Version 2.1 (approved T1): Budget | To-do on the Travel page itself, under the trip.
   const [pageTab, setPageTab] = useStickyState<'budget' | 'todo'>('travel.pageTab', 'budget');
-  const [pageTodoText, setPageTodoText] = useState('');
-  const [pageTodoDate, setPageTodoDate] = useState('');
-  const [pageTodoDateOpen, setPageTodoDateOpen] = useState(false);
-  const [pageItemText, setPageItemText] = useState('');
-  const [pageItemCost, setPageItemCost] = useState('');
-  // 2026-11-03 (mockup P1): an optional due date for a budget item, and which item's date is open in the form.
-  const [pageItemDate, setPageItemDate] = useState('');
-  const [pageItemDateOpen, setPageItemDateOpen] = useState(false);
-  const [itemDateOpen, setItemDateOpen] = useState<string | null>(null);
+  // Cath, 2026-11-06 (mockup scenes 3 and 4): one drop-down open at a time: an item's id, a
+  // to-do's id, 'new-item' or 'new-todo'.
+  const [dropOpen, setDropOpen] = useState<string | null>(null);
+  // Cath, 2026-11-06 (mockup scene 2): tap the trip name to change it.
+  const [nameTripId, setNameTripId] = useState<string | null>(null);
+  const [nameDraft, setNameDraft] = useState('');
+  const [nameError, setNameError] = useState('');
   // Version 2.2 (Cath): tap the dates on a trip ("No dates yet") to set them right there.
   const [datesTripId, setDatesTripId] = useState<string | null>(null);
   const [datesStart, setDatesStart] = useState('');
   const [datesEnd, setDatesEnd] = useState('');
   const [datesError, setDatesError] = useState('');
-  // Version 2.2 (Cath, canvas P1-P3): "How was it paid?" for a ticked item (tripId null =
-  // an item in the trip form).
-  const [payAsk, setPayAsk] = useState<{ tripId: string | null; itemId: string } | null>(null);
+  // Version 2.2 (Cath, canvas P1-P3): "How was it paid?" for a ticked item.
+  const [payAsk, setPayAsk] = useState<{ tripId: string; itemId: string } | null>(null);
   // Cath, 2026-10-27 (canvas R3): a paid item's receipt, open full size.
   const [viewReceipt, setViewReceipt] = useState<string | null>(null);
   const [openRow, toggleRow] = useOpenRow(modalOpen);
   // Version 2.1: tapping Save/Add with something missing takes the person straight to it.
-  const fieldErrors = useFieldErrors<'name' | 'dates' | 'item'>();
+  const fieldErrors = useFieldErrors<'name' | 'dates'>();
   const clearFieldError = fieldErrors.clear;
   const nameRef = useRef<any>(null);
   const navigation = useNavigation<any>();
 
   // Version 2.2 (Cath, canvas T1-T4): Travel lists your trips; tapping one opens it (its
-  // name becomes the title, "‹ Travel" goes back to the list, Edit opens its form).
+  // name becomes the title, "‹ Travel" goes back to the list).
   const openTrip = featuredId ? (model?.travel ?? []).find((x) => x.id === featuredId) : undefined;
   useLayoutEffect(() => {
     navigation.setOptions({
       title: openTrip ? openTrip.name || 'Trip' : 'Travel',
       headerBackTitle: openTrip ? 'Travel' : 'Plan',
-      headerRight: () =>
-        openTrip ? (
-          <TouchableOpacity onPress={() => openEditModal(openTrip)} accessibilityRole="button" accessibilityLabel="Edit trip" testID="travel-edit" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={[headerButtonText, { color: colors.gold }]}>Edit</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity onPress={openAddModal} accessibilityRole="button" accessibilityLabel="Add a trip" testID="travel-add" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={[headerButtonText, { color: colors.gold }]}>Add</Text>
-          </TouchableOpacity>
-        ),
-    });
+      // Cath, 2026-11-06 (mockup scene 2): no Edit button; everything on a trip is edited by
+      // tapping it, and tapping the name changes the name.
+      headerRight: openTrip
+        ? undefined
+        : () => (
+            <TouchableOpacity onPress={openAddModal} accessibilityRole="button" accessibilityLabel="Add a trip" testID="travel-add" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={[headerButtonText, { color: colors.gold }]}>Add</Text>
+            </TouchableOpacity>
+          ),
+      headerTitlePress: openTrip ? () => openTripName(openTrip) : undefined,
+    } as any);
   });
+  // A drop-down belongs to the trip it was opened on.
+  useEffect(() => {
+    setDropOpen(null);
+  }, [featuredId]);
   // Back (the top-left link or the phone's Back button) from a trip returns to the list.
   useEffect(() => {
     return navigation.addListener('beforeRemove', (e: any) => {
@@ -236,7 +220,7 @@ export default function TravelScreen() {
   // The red message goes away as soon as the person changes something.
   useEffect(() => {
     clearFieldError();
-  }, [nameInput, startDateInput, endDateInput, itemTitleInput, modalOpen, clearFieldError]);
+  }, [nameInput, startDateInput, endDateInput, modalOpen, clearFieldError]);
 
   if (!model) {
     return (
@@ -269,26 +253,73 @@ export default function TravelScreen() {
     );
   }
 
-  // Saves a trip's checklist change straight away (with its transactions and balances).
-  function commitChecklist(tripId: string, change: (list: TravelChecklistItem[]) => TravelChecklistItem[]) {
+  // Saves a trip's checklist change straight away, with its transactions, balances, budget and
+  // savings pot. (2026-11-06) A pot stays when the budget drops to nothing: only the switch or
+  // Delete trip removes a pot, because it can hold money.
+  function commitChecklist(tripId: string, change: (list: TravelChecklistItem[]) => TravelChecklistItem[], newName?: string) {
     const latest = getModel() ?? model;
     const trip = latest ? (latest.travel ?? []).find((x) => x.id === tripId) : undefined;
     if (!latest || !trip) return;
     const prior = trip.checklist || [];
-    const { checklist: synced, transactions, takeOffs } = reconcileTravelChecklistTransactions(prior, change(prior), latest.manualTransactions || [], trip.name);
+    const name = newName ?? trip.name;
+    const { checklist: synced, transactions, takeOffs } = reconcileTravelChecklistTransactions(prior, change(prior), latest.manualTransactions || [], name);
+    const next: TravelTrip = { ...trip, name, checklist: synced };
+    const budget = tripFullChecklistTotal(next);
+    const pots = latest.savingsGoals ?? [];
+    const { goals, savingsGoalId } =
+      budget > 0
+        ? syncTripSavingsGoal(next, budget, pots)
+        : { goals: pots.map((g) => (g.id === trip.savingsGoalId ? { ...g, name: 'Travel: ' + name } : g)), savingsGoalId: trip.savingsGoalId };
     let updated: HouseholdModel = {
       ...latest,
-      travel: (latest.travel ?? []).map((x) => (x.id === tripId ? { ...x, checklist: synced } : x)),
+      savingsGoals: goals,
+      travel: (latest.travel ?? []).map((x) => (x.id === tripId ? { ...next, budget, savingsGoalId } : x)),
       manualTransactions: transactions,
     };
     for (const k of takeOffs) updated = takeOffSavedBalance(updated, k.pm, k.amount);
     saveModel(updated);
   }
 
-  // The "How was it paid?" sheet's two answers (page or trip form).
+  function toggleDrop(id: string) {
+    animateNextLayout();
+    setDropOpen((cur) => (cur === id ? null : id));
+  }
+  function closeDrop() {
+    animateNextLayout();
+    setDropOpen(null);
+  }
+  // Saves a budget item from its drop-down (itemId null = a new one).
+  function saveItem(tripId: string, itemId: string | null, d: TripDraft) {
+    hapticSelection();
+    closeDrop();
+    const extras = { ...(d.note ? { note: d.note } : {}), ...(d.date ? { dueDate: d.date } : {}) };
+    const typed: number | '' = typeof d.cost === 'number' && d.cost > 0 ? Math.round(d.cost * 100) / 100 : '';
+    commitChecklist(tripId, (list) =>
+      itemId === null
+        ? [...list, { id: makeId('travelitem'), title: d.title, cost: typed, checked: false, ...extras }]
+        : list.map((i) => {
+            if (i.id !== itemId) return i;
+            const { note: _note, dueDate: _due, ...rest } = i;
+            // A paid item keeps an amount (clearing it would leave its payment behind).
+            const cost = typed === '' && i.checked && typeof i.cost === 'number' && i.cost > 0 ? i.cost : typed;
+            return { ...rest, title: d.title, cost, ...extras };
+          })
+    );
+  }
+  function removeItem(tripId: string, item: TravelChecklistItem) {
+    return {
+      title: `Remove "${item.title || 'this item'}"?`,
+      note: item.checked ? 'It comes off this trip now, with its payment.' : 'It comes off this trip now.',
+      onYes: () => {
+        closeDrop();
+        commitChecklist(tripId, (list) => list.filter((i) => i.id !== item.id));
+      },
+    };
+  }
+
+  // The "How was it paid?" sheet's two answers.
   function payAskItem(): TravelChecklistItem | undefined {
     if (!payAsk) return undefined;
-    if (payAsk.tripId === null) return checklist.find((i) => i.id === payAsk.itemId);
     return (model?.travel ?? []).find((x) => x.id === payAsk.tripId)?.checklist?.find((i) => i.id === payAsk.itemId);
   }
   function answerPaid(paid: Partial<TravelChecklistItem>) {
@@ -296,11 +327,6 @@ export default function TravelScreen() {
     setPayAsk(null);
     if (!ask) return;
     const apply = (i: TravelChecklistItem): TravelChecklistItem => (i.id === ask.itemId ? { ...i, checked: true, paidWith: undefined, markedOnly: undefined, receiptPhoto: undefined, ...paid } : i);
-    if (ask.tripId === null) {
-      // In the trip form: kept with the rest of the form until Save.
-      setChecklist((prev) => prev.map(apply));
-      return;
-    }
     commitChecklist(ask.tripId, (list) => list.map(apply));
     showLeafTick('Paid');
   }
@@ -324,21 +350,54 @@ export default function TravelScreen() {
   }
 
   // To-do changes on the Travel page save straight away (they never touch money).
-  async function saveTripTodos(trip: TravelTrip, next: TravelTodo[]) {
-    if (!model) return;
-    await saveModel({ ...model, travel: trips.map((t) => (t.id === trip.id ? { ...t, todos: next } : t)) });
+  function saveTripTodos(tripId: string, change: (list: TravelTodo[]) => TravelTodo[]) {
+    const latest = getModel() ?? model;
+    if (!latest) return;
+    saveModel({ ...latest, travel: (latest.travel ?? []).map((t) => (t.id === tripId ? { ...t, todos: change(t.todos || []) } : t)) });
   }
-  // Voice entry (mockup V, Cath 2026-10-30): to-dos and budget items said in one go are all
-  // added when Add is tapped (nothing is saved before that).
-
-  async function addPageTodo(trip: TravelTrip) {
-    const text = pageTodoText.trim();
-    if (!text) return;
+  // Saves a to-do from its drop-down (todoId null = a new one). Its cost is only a reminder.
+  function saveTodo(tripId: string, todoId: string | null, d: TripDraft) {
     hapticSelection();
-    setPageTodoText('');
-    setPageTodoDate('');
-    setPageTodoDateOpen(false);
-    await saveTripTodos(trip, [...(trip.todos || []), { id: makeId('todo'), text, done: false, ...(pageTodoDate ? { date: pageTodoDate } : {}) }]);
+    closeDrop();
+    const extras = { ...(typeof d.cost === 'number' && d.cost > 0 ? { cost: Math.round(d.cost * 100) / 100 } : {}), ...(d.note ? { note: d.note } : {}), ...(d.date ? { date: d.date } : {}) };
+    saveTripTodos(tripId, (list) =>
+      todoId === null
+        ? [...list, { id: makeId('todo'), text: d.title, done: false, ...extras }]
+        : list.map((x) => {
+            if (x.id !== todoId) return x;
+            const { cost: _cost, note: _note, date: _date, ...rest } = x;
+            return { ...rest, text: d.title, ...extras };
+          })
+    );
+  }
+  function removeTodo(tripId: string, td: TravelTodo) {
+    return {
+      title: `Remove "${td.text}"?`,
+      note: 'It comes off this trip\'s to-do list.',
+      onYes: () => {
+        closeDrop();
+        saveTripTodos(tripId, (list) => list.filter((x) => x.id !== td.id));
+      },
+    };
+  }
+
+  function openTripName(trip: TravelTrip) {
+    setNameDraft(trip.name);
+    setNameError('');
+    setNameTripId(trip.id);
+  }
+  function saveTripName() {
+    const name = nameDraft.trim();
+    if (!name) {
+      setNameError('Give this trip a name.');
+      return;
+    }
+    const tripId = nameTripId;
+    setNameTripId(null);
+    if (!tripId) return;
+    hapticSelection();
+    commitChecklist(tripId, (list) => list, name);
+    showLeafTick('Saved');
   }
 
   function openTripDates(trip: TravelTrip) {
@@ -439,26 +498,6 @@ export default function TravelScreen() {
     await apply();
   }
 
-  // Canvas T3: add a checklist item right on the trip page (saved straight away).
-  async function addPageItem(trip: TravelTrip) {
-    if (!model) return;
-    const title = pageItemText.trim();
-    if (!title) return;
-    const n = parseFloat(pageItemCost);
-    const cost: number | '' = isNaN(n) || n <= 0 ? '' : Math.round(n * 100) / 100;
-    hapticSelection();
-    setPageItemText('');
-    setPageItemCost('');
-    const due = pageItemDate;
-    setPageItemDate('');
-    setPageItemDateOpen(false);
-    const titles = [title];
-    const draft: TravelTrip = { ...trip, checklist: [...(trip.checklist || []), ...titles.map((tt, k) => ({ id: makeId('travelitem'), title: tt, cost: k === 0 ? cost : ('' as const), checked: false, ...(due ? { dueDate: due } : {}) }))] };
-    const budget = tripFullChecklistTotal(draft);
-    const { goals, savingsGoalId } = syncTripSavingsGoal(draft, budget, model.savingsGoals ?? []);
-    await saveModel({ ...model, savingsGoals: goals, travel: trips.map((x) => (x.id === trip.id ? { ...draft, budget, savingsGoalId } : x)) });
-  }
-
   function tripRow(trip: TravelTrip, i: number, onPress: () => void, sub: string, amount: string, amountColor: string) {
     return (
       <SwipeableRow key={trip.id} enabled={Boolean(model!.settings.swipeToDeleteEnabled)} onDelete={() => handleSwipeDeleteTrip(trip)} testID={`trip-swipe-${trip.id}`} flat>
@@ -476,222 +515,41 @@ export default function TravelScreen() {
   }
 
   function openAddModal() {
-    setEditingId(null);
     setNameInput('');
     setStartDateInput('');
     setEndDateInput('');
-    setChecklist([]);
-    setTodos([]);
-    setTodoText('');
-    setTodoDateOpen(null);
-    setTripTab('budget');
     setTrackInSavings(false);
-    setItemTitleInput('');
-    setItemCostInput('');
-    setItemNoteInput('');
-    setErrorMsg('');
-    setModalOpen(true);
-  }
-
-  // tab (2026-11-03): tapping a to-do on the trip page opens the form on To-do.
-  function openEditModal(trip: TravelTrip, tab: 'budget' | 'todo' = 'budget') {
-    setEditingId(trip.id);
-    setNameInput(trip.name);
-    setStartDateInput(trip.startDate);
-    setEndDateInput(trip.endDate);
-    setChecklist(trip.checklist ?? []);
-    setTodos(trip.todos ?? []);
-    setTodoText('');
-    setTodoDateOpen(null);
-    setItemDateOpen(null);
-    setTripTab(tab);
-    setTrackInSavings(trip.trackInSavings ?? false);
-    setItemTitleInput('');
-    setItemCostInput('');
-    setItemNoteInput('');
-    setErrorMsg('');
     setModalOpen(true);
   }
 
   function closeModal() {
     setModalOpen(false);
-    setEditingId(null);
-    setErrorMsg('');
   }
 
-  function handleAddChecklistItem() {
-    const title = itemTitleInput.trim();
-    if (!title) {
-      setErrorMsg(''); fieldErrors.show('item', 'What is this item?');
-      return;
-    }
-    const cost: number | '' = itemCostInput;
-    const note = itemNoteInput.trim();
-    const newItem: TravelChecklistItem = {
-      id: makeId('travelitem'),
-      title,
-      cost,
-      ...(note ? { note } : {}),
-      checked: false,
-    };
-    setChecklist((prev) => [...prev, newItem]);
-    setItemTitleInput('');
-    setItemCostInput('');
-    setItemNoteInput('');
-    setErrorMsg('');
-  }
-
-  // Edits an item's note in the form (saved with the trip, like the name and dates).
-  function handleChecklistNote(id: string, note: string) {
-    setChecklist((prev) => prev.map((i) => (i.id === id ? { ...i, note } : i)));
-  }
-
-  // H-44 (Cath, 2026-10-29: "allow everything to be editable"): an item's name and cost can
-  // be changed in the form, e.g. an item added with only a name gets its cost later. Saved
-  // with the trip; a paid item's transaction and balance follow (travelChecklist.ts).
-  function handleChecklistTitle(id: string, title: string) {
-    setChecklist((prev) => prev.map((i) => (i.id === id ? { ...i, title } : i)));
-  }
-  function handleChecklistCost(id: string, raw: string) {
-    const text = raw.replace(/[^0-9.]/g, '');
-    setCostDrafts((d) => ({ ...d, [id]: text }));
-    const n = parseFloat(text);
-    setChecklist((prev) =>
-      prev.map((i) => {
-        if (i.id !== id) return i;
-        // A paid item keeps an amount (clearing it would leave its payment behind).
-        if (!(n > 0)) return i.checked && typeof i.cost === 'number' && i.cost > 0 ? i : { ...i, cost: '' };
-        return { ...i, cost: Math.round(n * 100) / 100 };
-      })
-    );
-  }
-
-  function handleToggleChecklistItem(id: string) {
-    const item = checklist.find((i) => i.id === id);
-    // Version 2.2 (canvas P1): ticking an item with a cost asks how it was paid.
-    if (item && !item.checked && typeof item.cost === 'number' && item.cost > 0) {
-      setPayAsk({ tripId: null, itemId: id });
-      return;
-    }
-    setChecklist((prev) =>
-      prev.map((i) =>
-        i.id === id
-          ? i.checked
-            ? { ...i, checked: false, completedDate: undefined, paidWith: undefined, markedOnly: undefined, receiptPhoto: undefined }
-            : { ...i, checked: true, completedDate: todayISO() }
-          : i
-      )
-    );
-  }
-
-  async function handleRemoveChecklistItem(id: string) {
-    const newChecklist = checklist.filter((i) => i.id !== id);
-    setChecklist(newChecklist);
-
-    // Deleting a checklist item is a one-way, destructive action (unlike editing the
-    // trip's name/dates, which only takes effect once "Save trip" is tapped) — so for an
-    // existing, already-saved trip, persist the removal (and clean up any linked expense)
-    // right away instead of waiting for Save. This matches how every other delete button
-    // in the app behaves, and avoids leaving a dangling expenseTransactionId behind if the
-    // person cancels out of the modal afterward instead of saving.
-    if (!model || !editingId) return;
-    const latest = getModel() ?? model;
-    const currentList = latest.travel ?? [];
-    const priorTrip = currentList.find((t) => t.id === editingId);
-    if (!priorTrip) return;
-
-    // Version 2.2 (review fix): only the removal is saved now, against the trip as it is
-    // saved. The rest of the form (ticks, names, costs) still waits for Save; before, the
-    // whole unsaved form was saved here, so a tick made in the form never logged its payment.
-    const savedList = priorTrip.checklist || [];
-    const { checklist: synced, transactions, takeOffs } = reconcileTravelChecklistTransactions(
-      savedList,
-      savedList.filter((i) => i.id !== id),
-      latest.manualTransactions || [],
-      priorTrip.name
-    );
-    let updated: HouseholdModel = {
-      ...latest,
-      travel: currentList.map((t) => (t.id === editingId ? { ...priorTrip, checklist: synced } : t)),
-      manualTransactions: transactions,
-    };
-    for (const k of takeOffs) updated = takeOffSavedBalance(updated, k.pm, k.amount);
-    try {
-      await saveModel(updated);
-    } catch (e) {
-      Alert.alert(...alertDidntWork('remove this item'));
-    }
-  }
-
-  function addTodo() {
-    const text = todoText.trim();
-    if (!text) return;
-    setTodos((list) => [...list, { id: makeId('todo'), text, done: false }]);
-    setTodoText('');
-  }
-
-  async function handleSaveTrip() {
-    if (!model) return;
-    const trimmedName = nameInput.trim();
-    if (!trimmedName) {
-      setErrorMsg(''); fieldErrors.show('name', 'Give this trip a name.');
+  // Cath, 2026-11-06 (mockup scene 1): a new trip is only its name, dates and the Savings switch;
+  // its Budget and To-do are on the trip itself, which opens straight away.
+  async function handleAddTrip() {
+    const current = getModel() ?? model;
+    if (!current) return;
+    const name = nameInput.trim();
+    if (!name) {
+      fieldErrors.show('name', 'Give this trip a name.');
       return;
     }
     if (!isValidDateOrEmpty(startDateInput) || !isValidDateOrEmpty(endDateInput)) {
-      setErrorMsg(''); fieldErrors.show('dates', 'Pick the trip dates.');
+      fieldErrors.show('dates', 'Pick the trip dates.');
       return;
     }
-
-    const currentList = model.travel ?? [];
-    const priorTrip = editingId ? currentList.find((t) => t.id === editingId) : undefined;
-    const { checklist: reconciledChecklist, transactions: reconciledTransactions, takeOffs } =
-      reconcileTravelChecklistTransactions(
-        priorTrip?.checklist ?? [],
-        // Tidy notes: trim them, and drop empty ones.
-        checklist.map(({ note, ...rest }) => (note?.trim() ? { ...rest, note: note.trim() } : rest)),
-        model.manualTransactions ?? [],
-        trimmedName
-      );
-    const draftTrip: TravelTrip = {
-      id: editingId ?? makeId('trip'),
-      name: trimmedName,
-      startDate: startDateInput.trim(),
-      endDate: endDateInput.trim(),
-      checklist: reconciledChecklist,
-      ...(todos.length ? { todos } : {}),
-      trackInSavings,
-      savingsGoalId: priorTrip?.savingsGoalId,
-      createdAt: priorTrip?.createdAt ?? Date.now(),
-    };
-    const budget = tripFullChecklistTotal(draftTrip);
-    const { goals: syncedGoals, savingsGoalId } = syncTripSavingsGoal(
-      draftTrip,
-      budget,
-      model.savingsGoals ?? []
-    );
-    const finalTrip: TravelTrip = { ...draftTrip, budget, savingsGoalId };
-    const updatedList: TravelTrip[] = editingId
-      ? currentList.map((t) => (t.id === editingId ? finalTrip : t))
-      : [...currentList, finalTrip];
-    let updated: HouseholdModel = {
-      ...model,
-      travel: updatedList,
-      savingsGoals: syncedGoals,
-      manualTransactions: reconciledTransactions,
-    };
-    for (const k of takeOffs) updated = takeOffSavedBalance(updated, k.pm, k.amount);
-    await saveModel(updated);
-    showLeafTick(editingId ? 'Saved' : 'Added');
+    if (startDateInput && endDateInput && endDateInput < startDateInput) {
+      fieldErrors.show('dates', 'The end is before the start.');
+      return;
+    }
+    const trip: TravelTrip = { id: makeId('trip'), name, startDate: startDateInput.trim(), endDate: endDateInput.trim(), checklist: [], trackInSavings, budget: 0, createdAt: Date.now() };
+    await saveModel({ ...current, travel: [...(current.travel ?? []), trip] });
+    showLeafTick('Added');
     closeModal();
-  }
-
-  async function handleDeleteTrip() {
-    // H-21 (2026-10-22): the newest data, not the data from when the pop-up opened.
-    const current = getModel() ?? model;
-    if (!editingId || !current) return;
-    if (featuredId === editingId) setFeaturedId(null);
-    await saveModel(withoutTrip(current, editingId));
-    closeModal();
+    setPageTab('budget');
+    setFeaturedId(trip.id);
   }
 
   async function performDeleteTripById(id: string) {
@@ -712,16 +570,7 @@ export default function TravelScreen() {
     );
   }
 
-  // Shown at the top of the trip form: the whole checklist added up, and the dates in one line.
-  const formBudget = checklist.reduce((sum, i) => sum + (typeof i.cost === 'number' ? i.cost : 0), 0);
   const formDates = startDateInput || endDateInput ? niceRange({ startDate: startDateInput, endDate: endDateInput } as TravelTrip) : 'Optional';
-
-  function confirmDeleteTrip() {
-    Alert.alert('Delete this trip?', 'Deletes the trip and any linked savings goal or expenses. Cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => handleDeleteTrip() },
-    ]);
-  }
 
   const payItem = payAskItem();
   const paySheet = (visible: boolean, list: TravelChecklistItem[]) => (
@@ -854,7 +703,8 @@ export default function TravelScreen() {
                         <Text style={[styles.tripSub, { paddingHorizontal: 16, paddingTop: 14 }]}>What will it cost? Flights, hotel, food…</Text>
                       )}
                       {(t.checklist || []).map((item, i) => (
-                        <View key={item.id} style={[styles.checkRow, i > 0 && styles.rowDivider]}>
+                        <React.Fragment key={item.id}>
+                        <View style={[styles.checkRow, i > 0 && styles.rowDivider]}>
                           {arrived === item.id && <ArrivalGlow />}
                           <TouchableOpacity
                             onPress={() => toggleItem(t, item)}
@@ -866,7 +716,7 @@ export default function TravelScreen() {
                           >
                             {item.checked && <Ionicons name="checkmark" size={15} color={colors.onButton} />}
                           </TouchableOpacity>
-                          <TouchableOpacity style={[{ flex: 1, flexDirection: 'row', alignItems: 'center' }, item.checked && paidRowContent]} onPress={() => openEditModal(t)} accessibilityRole="button">
+                          <TouchableOpacity style={[{ flex: 1, flexDirection: 'row', alignItems: 'center' }, item.checked && paidRowContent]} onPress={() => toggleDrop(item.id)} accessibilityRole="button" accessibilityHint="Edit this item" testID={`travel-item-${item.id}`}>
                             {item.checked && <PaidLine testID={`travel-item-paid-${item.id}`} />}
                             <View style={{ flex: 1, marginRight: 8 }}>
                               <Text style={styles.tripName} numberOfLines={1}>{item.title || 'Item'}</Text>
@@ -883,44 +733,23 @@ export default function TravelScreen() {
                             <Text style={[styles.tripAmount, item.checked ? { color: colors.negative } : { color: toneUnlessZero(typeof item.cost === 'number' ? item.cost : 0, colors.planned, colors) }]}>{typeof item.cost === 'number' ? formatPeso(item.cost) : ''}</Text>
                           </TouchableOpacity>
                         </View>
-                      ))}
-                      <View style={[styles.checkRow, (t.checklist || []).length > 0 && styles.rowDivider]}>
-                        <Ionicons name="add" size={22} color={colors.gold} style={{ marginRight: 10 }} />
-                        <TextInput
-                          style={[styles.tripName, { flex: 1, minWidth: 0, paddingVertical: 4 }]}
-                          value={pageItemText}
-                          onChangeText={setPageItemText}
-                          placeholder="Add an item"
-                          placeholderTextColor={colors.inkFaint}
-                          returnKeyType="next"
-                          maxLength={80}
-                          testID="travel-page-item-input"
-                        />
-                        <TextInput
-                          style={[styles.tripName, styles.costInput, !!pageItemText.trim() && { width: 76 }]}
-                          value={pageItemCost}
-                          onChangeText={(v) => setPageItemCost(v.replace(/[^0-9.]/g, ''))}
-                          placeholder="₱ Cost"
-                          placeholderTextColor={colors.inkFaint}
-                          keyboardType="decimal-pad"
-                          returnKeyType="done"
-                          onSubmitEditing={() => addPageItem(t)}
-                          testID="travel-page-item-cost"
-                        />
-                        <TouchableOpacity onPress={() => { animateNextLayout(); setPageItemDateOpen((v) => !v); }} accessibilityRole="button" accessibilityLabel="Add a due date (optional)" hitSlop={8} style={{ marginLeft: 8 }} testID="travel-page-item-date">
-                          <Ionicons name="calendar-outline" size={20} color={pageItemDate ? colors.gold : colors.inkFaint} />
-                        </TouchableOpacity>
-                        {!!pageItemText.trim() && (
-                          <TouchableOpacity onPress={() => addPageItem(t)} accessibilityRole="button" style={[styles.addItemButton, { backgroundColor: colors.accentTint, marginTop: 0, marginBottom: 0, marginLeft: 8, paddingVertical: 6, paddingHorizontal: 14 }]} testID="travel-page-item-add">
-                            <Text style={[styles.addItemButtonText, { color: colors.gold, fontSize: 14 }]}>Add</Text>
-                          </TouchableOpacity>
+                        {dropOpen === item.id && (
+                          <TripItemDrop
+                            kind="item"
+                            paid={item.checked}
+                            initial={{ title: item.title, cost: item.cost, note: item.note, date: item.dueDate }}
+                            onSave={(d) => saveItem(t.id, item.id, d)}
+                            onCancel={closeDrop}
+                            remove={removeItem(t.id, item)}
+                          />
                         )}
-                      </View>
-                      {pageItemDateOpen && (
-                        <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
-                          <DateField mark="optional" label="Due date" value={pageItemDate} onChange={setPageItemDate} placeholder="Pick a date" clearable testID="travel-page-item-datefield" />
-                        </View>
-                      )}
+                        </React.Fragment>
+                      ))}
+                      <TouchableOpacity style={[styles.checkRow, (t.checklist || []).length > 0 && styles.rowDivider]} onPress={() => toggleDrop('new-item')} accessibilityRole="button" testID="travel-add-item">
+                        <Ionicons name="add" size={22} color={colors.gold} style={{ marginRight: 10 }} />
+                        <Text style={[styles.tripName, { color: colors.gold }]}>Add an item</Text>
+                      </TouchableOpacity>
+                      {dropOpen === 'new-item' && <TripItemDrop kind="item" isNew onSave={(d) => saveItem(t.id, null, d)} onCancel={closeDrop} />}
                     </View>
                     <Text style={styles.groupFooter}>Blue is planned. Tick an item once it's paid and choose the account it came from (or just mark it paid). Paid for something on this list? Tick it here instead of adding it with + on Home, so it isn't counted twice.</Text>
                   </>
@@ -930,9 +759,10 @@ export default function TravelScreen() {
                   <View style={styles.listGroup}>
                     <GradientFill match={styles.listGroup} />
                     {(t.todos || []).map((td, i) => (
-                      <View key={td.id} style={[styles.checkRow, i > 0 && styles.rowDivider]}>
+                      <React.Fragment key={td.id}>
+                      <View style={[styles.checkRow, i > 0 && styles.rowDivider]}>
                         <TouchableOpacity
-                          onPress={() => { hapticSelection(); saveTripTodos(t, (t.todos || []).map((x) => (x.id === td.id ? { ...x, done: !x.done } : x))); }}
+                          onPress={() => { hapticSelection(); saveTripTodos(t.id, (list) => list.map((x) => (x.id === td.id ? { ...x, done: !x.done } : x))); }}
                           style={[styles.check, td.done && { backgroundColor: colors.buttonFill, borderColor: colors.buttonFill }]}
                           accessibilityRole="checkbox"
                           accessibilityState={{ checked: td.done }}
@@ -941,53 +771,33 @@ export default function TravelScreen() {
                         >
                           {td.done && <Ionicons name="checkmark" size={15} color={colors.onButton} />}
                         </TouchableOpacity>
-                        {/* 2026-11-03 (Cath: "to-do list should be editable"): tap it to edit (words and date). */}
-                        <TouchableOpacity style={{ flex: 1, marginRight: 8 }} onPress={() => openEditModal(t, 'todo')} accessibilityRole="button" accessibilityHint="Edit this to-do" testID={`travel-page-todo-edit-${td.id}`}>
+                        {/* Cath, 2026-11-06 (mockup scene 4): tap it to open it right here. */}
+                        <TouchableOpacity style={{ flex: 1, marginRight: 8 }} onPress={() => toggleDrop(td.id)} accessibilityRole="button" accessibilityHint="Edit this to-do" testID={`travel-page-todo-edit-${td.id}`}>
                           <Text style={[styles.tripName, td.done && { color: colors.inkDim, textDecorationLine: 'line-through' }]}>{td.text}</Text>
-                          {(td.done || !!td.date || who.others(td.addedBy)) && <Text style={styles.tripSub}>{[td.done ? 'Done' : td.date ? shortDay(td.date as string) : '', who.others(td.addedBy) ? `added by ${who.nameOf(td.addedBy)}` : ''].filter(Boolean).join(' · ')}</Text>}
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => askToRemove(`Remove "${td.text}"?`, 'It comes off this trip\'s to-do list.', () => {
-                            const latest = (getModel() ?? model)?.travel?.find((x) => x.id === t.id) ?? t;
-                            saveTripTodos(latest, (latest.todos || []).filter((x) => x.id !== td.id));
-                          })}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Remove ${td.text}`}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Ionicons name="close-circle" size={20} color={colors.inkFaint} />
+                          {(() => {
+                            const line = [td.done ? 'Done' : td.date ? shortDay(td.date) : '', typeof td.cost === 'number' ? formatPeso(td.cost) : '', td.note || '', who.others(td.addedBy) ? `added by ${who.nameOf(td.addedBy)}` : ''].filter(Boolean).join(' · ');
+                            return line ? <Text style={styles.tripSub} numberOfLines={2}>{line}</Text> : null;
+                          })()}
                         </TouchableOpacity>
                       </View>
-                    ))}
-                    <View style={[styles.checkRow, (t.todos || []).length > 0 && styles.rowDivider]}>
-                      <Ionicons name="add" size={22} color={colors.gold} style={{ marginRight: 10 }} />
-                      <TextInput
-                        style={[styles.tripName, { flex: 1, paddingVertical: 4 }]}
-                        value={pageTodoText}
-                        onChangeText={setPageTodoText}
-                        placeholder="Add to the list"
-                        placeholderTextColor={colors.inkFaint}
-                        returnKeyType="done"
-                        onSubmitEditing={() => addPageTodo(t)}
-                        maxLength={120}
-                        testID="travel-page-todo-input"
-                      />
-                      <TouchableOpacity onPress={() => { animateNextLayout(); setPageTodoDateOpen((v) => !v); }} accessibilityRole="button" accessibilityLabel="Add a date (optional)" hitSlop={8} style={{ marginHorizontal: 8 }}>
-                        <Ionicons name="calendar-outline" size={20} color={pageTodoDate ? colors.gold : colors.inkFaint} />
-                      </TouchableOpacity>
-                      {!!pageTodoText.trim() && (
-                        <TouchableOpacity onPress={() => addPageTodo(t)} accessibilityRole="button" testID="travel-page-todo-add" style={[styles.addItemButton, { backgroundColor: colors.accentTint, marginTop: 0, paddingVertical: 6, paddingHorizontal: 12 }]}>
-                          <Text style={[styles.addItemButtonText, { color: colors.gold }]}>Add</Text>
-                        </TouchableOpacity>
+                      {dropOpen === td.id && (
+                        <TripItemDrop
+                          kind="todo"
+                          initial={{ title: td.text, cost: td.cost ?? '', note: td.note, date: td.date }}
+                          onSave={(d) => saveTodo(t.id, td.id, d)}
+                          onCancel={closeDrop}
+                          remove={removeTodo(t.id, td)}
+                        />
                       )}
-                    </View>
-                    {pageTodoDateOpen && (
-                      <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
-                        <DateField mark="optional" label="Date" value={pageTodoDate} onChange={setPageTodoDate} placeholder="Pick a date" clearable />
-                      </View>
-                    )}
+                      </React.Fragment>
+                    ))}
+                    <TouchableOpacity style={[styles.checkRow, (t.todos || []).length > 0 && styles.rowDivider]} onPress={() => toggleDrop('new-todo')} accessibilityRole="button" testID="travel-add-todo">
+                      <Ionicons name="add" size={22} color={colors.gold} style={{ marginRight: 10 }} />
+                      <Text style={[styles.tripName, { color: colors.gold }]}>Add to the list</Text>
+                    </TouchableOpacity>
+                    {dropOpen === 'new-todo' && <TripItemDrop kind="todo" isNew onSave={(d) => saveTodo(t.id, null, d)} onCancel={closeDrop} />}
                   </View>
-                  <Text style={styles.groupFooter}>Plain notes with tick boxes, and an optional date. Nothing here touches your money.</Text>
+                  <Text style={styles.groupFooter}>Your notes for this trip, with tick boxes. Nothing here touches your money.</Text>
                   </>
                   )
                 }
@@ -1042,17 +852,26 @@ export default function TravelScreen() {
       </BottomSheet>
 
       <BottomSheet
+        visible={nameTripId !== null}
+        onClose={() => setNameTripId(null)}
+        grouped
+        header={<SheetBar title="Trip name" onCancel={() => setNameTripId(null)} onDone={saveTripName} doneLabel="Save" />}
+      >
+        <FormGroup>
+          <InputRow mark="required" label="Trip name" value={nameDraft} onChangeText={(t) => { setNameDraft(t); setNameError(''); }} placeholder="e.g. Baguio weekend" autoFocus testID="travel-rename-input" invalid={!!nameError} />
+        </FormGroup>
+        {!!nameError && <Text style={[styles.groupFooter, { color: colors.negative, marginTop: 0 }]}>{nameError}</Text>}
+      </BottomSheet>
+
+      <BottomSheet
         visible={modalOpen}
         onClose={closeModal}
         grouped
-        header={<SheetBar title={editingId ? 'Edit trip' : 'New trip'} onCancel={closeModal} onDone={handleSaveTrip} doneLabel={editingId ? 'Save' : 'Add'} />}
+        header={<SheetBar title="New trip" onCancel={closeModal} onDone={handleAddTrip} doneLabel="Add" />}
       >
-        {/* The budget isn't typed: it's everything on the checklist added up (blue = planned). */}
-        {tripTab === 'budget' && <BigTotal label="Budget" value={formatPeso(formBudget)} sub="Adds up from your checklist" color={colors.planned} />}
-
         <FormGroup>
           <Guided {...fieldErrors.props('name')} focusRef={nameRef}>
-            <InputRow mark="required" label="Trip name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Baguio weekend" autoFocus={!editingId} testID="travel-name-input" inputRef={nameRef} invalid={fieldErrors.field === 'name'} />
+            <InputRow mark="required" label="Trip name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Baguio weekend" autoFocus testID="travel-name-input" inputRef={nameRef} invalid={fieldErrors.field === 'name'} />
           </Guided>
           <Guided {...fieldErrors.props('dates')} onShow={() => { if (openRow !== 'dates') toggleRow('dates'); }}>
           <PickerRow mark="optional" label="Dates" value={formDates} open={openRow === 'dates'} invalid={fieldErrors.field === 'dates'} onToggle={() => toggleRow('dates')} testID="travel-dates-row">
@@ -1061,169 +880,10 @@ export default function TravelScreen() {
           </PickerRow>
           </Guided>
         </FormGroup>
-
-        <View style={{ marginBottom: 16 }}>
-          <SegmentedControl<'budget' | 'todo'>
-            accessibilityLabel="Trip view"
-            options={[
-              { id: 'budget', label: 'Budget' },
-              { id: 'todo', label: `To-do${todos.length ? ` (${todos.filter((t) => !t.done).length})` : ''}` },
-            ]}
-            value={tripTab}
-            onChange={setTripTab}
-          />
-        </View>
-
-        <SwipeTabs inner onSwipe={(d) => setTripTab(d > 0 ? 'todo' : 'budget')}>
-        <View collapsable={false}>
-        {tripTab === 'todo' && (
-          <>
-            <FormGroup>
-              {todos.map((t) => (
-                <React.Fragment key={t.id}>
-                <View style={styles.formItemRow}>
-                  <TouchableOpacity
-                    style={[styles.check, t.done && { backgroundColor: colors.buttonFill, borderColor: colors.buttonFill }]}
-                    onPress={() => { hapticSelection(); setTodos((list) => list.map((x) => (x.id === t.id ? { ...x, done: !x.done } : x))); }}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: t.done }}
-                    accessibilityLabel={t.text}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    {t.done && <Ionicons name="checkmark" size={15} color={colors.onButton} />}
-                  </TouchableOpacity>
-                  <TextInput
-                    style={[styles.formItemTitle, { flex: 1, paddingVertical: 2 }, t.done && { color: colors.inkDim, textDecorationLine: 'line-through' }]}
-                    value={t.text}
-                    onChangeText={(text) => setTodos((list) => list.map((x) => (x.id === t.id ? { ...x, text } : x)))}
-                    maxLength={120}
-                    testID={`travel-form-todo-${t.id}`}
-                  />
-                  <TouchableOpacity onPress={() => { animateNextLayout(); setTodoDateOpen((o) => (o === t.id ? null : t.id)); }} accessibilityRole="button" accessibilityLabel={t.date ? `Date ${shortDay(t.date)}, change it` : 'Add a date (optional)'} hitSlop={8} style={{ marginLeft: 10 }} testID={`travel-form-todo-date-${t.id}`}>
-                    <Ionicons name="calendar-outline" size={20} color={t.date ? colors.gold : colors.inkFaint} />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => askToRemove(`Remove "${t.text}"?`, 'It comes off the to-do list when you tap Save.', () => setTodos((list) => list.filter((x) => x.id !== t.id)))} accessibilityRole="button" accessibilityLabel={`Remove ${t.text}`} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 10 }}>
-                    <Ionicons name="close-circle" size={20} color={colors.inkFaint} />
-                  </TouchableOpacity>
-                </View>
-                {todoDateOpen === t.id && (
-                  <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-                    <DateField mark="optional" label="Date" value={t.date ?? ''} onChange={(d: string) => setTodos((list) => list.map((x) => (x.id === t.id ? { ...x, date: d || undefined } : x)))} placeholder="Pick a date" clearable testID={`travel-form-todo-datefield-${t.id}`} />
-                  </View>
-                )}
-                </React.Fragment>
-              ))}
-              <View style={styles.formItemRow}>
-                <TextInput
-                  style={[styles.formItemTitle, { flex: 1, paddingVertical: 2 }]}
-                  value={todoText}
-                  onChangeText={setTodoText}
-                  placeholder={todos.length ? 'Add to the list' : 'e.g. Pack jackets, book the bus'}
-                  placeholderTextColor={colors.inkFaint}
-                  returnKeyType="done"
-                  blurOnSubmit={false}
-                  onSubmitEditing={addTodo}
-                  maxLength={120}
-                  testID="travel-todo-input"
-                />
-                <TouchableOpacity onPress={addTodo} accessibilityRole="button" hitSlop={8} style={[styles.addItemButton, { backgroundColor: colors.accentTint, marginTop: 0, paddingVertical: 6, paddingHorizontal: 12 }]}>
-                  <Text style={[styles.addItemButtonText, { color: colors.gold }]}>Add</Text>
-                </TouchableOpacity>
-              </View>
-            </FormGroup>
-            <Footnote>Your notes for this trip, all in one place. Ticking them never touches your money.</Footnote>
-          </>
-        )}
-        {tripTab === 'budget' && (
-        <>
-        <GroupLabel>Checklist</GroupLabel>
         <FormGroup>
-          {checklist.map((item) => (
-            <React.Fragment key={item.id}>
-            <View style={styles.formItemRow}>
-              <TouchableOpacity
-                style={[styles.check, item.checked && { backgroundColor: colors.buttonFill, borderColor: colors.buttonFill }]}
-                onPress={() => { hapticSelection(); handleToggleChecklistItem(item.id); }}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: item.checked }}
-                accessibilityLabel={`Mark ${item.title} as paid`}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                {item.checked && <Ionicons name="checkmark" size={15} color={colors.onButton} />}
-              </TouchableOpacity>
-              <View style={{ flex: 1, marginRight: 8 }}>
-                <TextInput
-                  style={[styles.formItemTitle, styles.formItemTitleInput, item.checked && { color: colors.inkDim, textDecorationLine: 'line-through' }]}
-                  value={item.title}
-                  onChangeText={(t) => handleChecklistTitle(item.id, t)}
-                  placeholder="Item"
-                  placeholderTextColor={colors.inkFaint}
-                  accessibilityLabel={`Name of ${item.title || 'this item'}`}
-                  maxLength={80}
-                  testID={`travel-form-item-title-${item.id}`}
-                />
-                <TextInput
-                  style={styles.checklistNoteInput}
-                  placeholder="Add a note"
-                  placeholderTextColor={colors.inkFaint}
-                  value={item.note ?? ''}
-                  onChangeText={(t) => handleChecklistNote(item.id, t)}
-                  accessibilityLabel={`Note for ${item.title}`}
-                  maxLength={140}
-                />
-              </View>
-              <TextInput
-                style={[styles.formItemCost, styles.costInput, item.checked ? { color: colors.negative, textDecorationLine: 'line-through' } : { color: toneUnlessZero(typeof item.cost === 'number' ? item.cost : 0, colors.planned, colors) }]}
-                value={costDrafts[item.id] ?? (typeof item.cost === 'number' ? formatPeso(item.cost) : '')}
-                onFocus={() => setCostDrafts((d) => ({ ...d, [item.id]: typeof item.cost === 'number' ? String(item.cost) : '' }))}
-                onBlur={() => setCostDrafts((d) => { const { [item.id]: _gone, ...rest } = d; return rest; })}
-                onChangeText={(v) => handleChecklistCost(item.id, v)}
-                placeholder="₱ Cost"
-                placeholderTextColor={colors.inkFaint}
-                keyboardType="decimal-pad"
-                accessibilityLabel={`Cost of ${item.title || 'this item'}`}
-                testID={`travel-form-item-cost-${item.id}`}
-              />
-              <TouchableOpacity onPress={() => { animateNextLayout(); setItemDateOpen((o) => (o === item.id ? null : item.id)); }} accessibilityRole="button" accessibilityLabel={item.dueDate ? `Due ${shortDay(item.dueDate)}, change it` : 'Add a due date (optional)'} hitSlop={8} style={{ marginLeft: 10 }} testID={`travel-form-item-date-${item.id}`}>
-                <Ionicons name="calendar-outline" size={20} color={item.dueDate ? colors.gold : colors.inkFaint} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => askToRemove(`Remove "${item.title || 'this item'}"?`, item.checked ? 'It comes off this trip now, with its payment.' : 'It comes off this trip now.', () => handleRemoveChecklistItem(item.id))} accessibilityRole="button" accessibilityLabel={`Remove ${item.title}`} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginLeft: 10 }}>
-                <Ionicons name="close-circle" size={20} color={colors.inkFaint} />
-              </TouchableOpacity>
-            </View>
-            {itemDateOpen === item.id && (
-              <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-                <DateField mark="optional" label="Due date" value={item.dueDate ?? ''} onChange={(d: string) => setChecklist((list) => list.map((x) => (x.id === item.id ? { ...x, dueDate: d || undefined } : x)))} placeholder="Pick a date" clearable testID={`travel-form-item-datefield-${item.id}`} />
-              </View>
-            )}
-            </React.Fragment>
-          ))}
-          <PickerRow label="+ Add item" value="" open={openRow === 'item'} onToggle={() => toggleRow('item')} testID="travel-add-item-row">
-            <Guided {...fieldErrors.props('item')} inset={false}>
-              <InlineField mark="required" label="Item" value={itemTitleInput} onChangeText={setItemTitleInput} placeholder="e.g. Bus tickets, Hotel" />
-            </Guided>
-            <InlineAmount mark="optional" label="Cost" value={itemCostInput} onChange={setItemCostInput} />
-            <InlineField mark="optional" label="Note" value={itemNoteInput} onChangeText={setItemNoteInput} placeholder="e.g. Booked on Agoda, check-in 2 PM" />
-            <TouchableOpacity style={[styles.addItemButton, { backgroundColor: colors.accentTint }]} onPress={handleAddChecklistItem} accessibilityRole="button" testID="travel-add-item">
-              <Text style={[styles.addItemButtonText, { color: colors.gold }]}>Add to checklist</Text>
-            </TouchableOpacity>
-          </PickerRow>
-        </FormGroup>
-        <Footnote>Blue is planned. Tick an item once it's paid and choose the account it came from (or just mark it paid).</Footnote>
-
-        <FormGroup>
-          <SwitchRow label="Save for this in Savings" value={trackInSavings} onChange={setTrackInSavings} />
+          <SwitchRow label="Save for this trip in Savings?" value={trackInSavings} onChange={setTrackInSavings} />
         </FormGroup>
         <Footnote>{trackInSavings ? 'Makes a pot for this trip that fills up before you go.' : 'Turn on to make a savings pot for this trip.'}</Footnote>
-        </>
-        )}
-        </View>
-        </SwipeTabs>
-
-        <ErrorNote text={errorMsg} />
-        {editingId && <Button label="Delete trip" variant="destructive" onPress={confirmDeleteTrip} />}
-        {/* Version 2.2 (canvas P1-P2): ticking an item inside the trip form asks here. */}
-        {paySheet(!!payAsk && payAsk.tripId === null, checklist)}
       </BottomSheet>
       {/* Version 2.2 (canvas P1-P2): ticking an item on the trip page asks here. */}
       {paySheet(!!payAsk && payAsk.tripId !== null, (model.travel ?? []).find((x) => x.id === payAsk?.tripId)?.checklist ?? [])}
@@ -1251,7 +911,6 @@ function makeStyles(colors: any) {
     trioCell: { flex: 1, paddingLeft: 12, borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: colors.navy4 },
     trioVal: { fontSize: 17, fontWeight: '600', marginTop: 2 },
     saveLine: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: -2, marginBottom: 6 },
-    costInput: { width: 92, paddingVertical: 4, textAlign: 'right' },
     groupHeader: { fontSize: 13, fontWeight: '600', color: colors.inkDim, textTransform: 'uppercase', letterSpacing: 0.3, marginTop: 12, marginBottom: 6, marginHorizontal: 16 },
     groupFooter: { fontSize: 13, color: colors.inkDim, marginTop: -6, marginBottom: 12, marginHorizontal: 16 },
     checkRow: { flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingHorizontal: 16, paddingVertical: 10 },
@@ -1270,19 +929,5 @@ function makeStyles(colors: any) {
     tripSub: { fontSize: 13, color: colors.inkDim, marginTop: 1 },
     tripAmount: { fontSize: 17, fontWeight: '600', color: colors.planned },
     itemReceipt: { width: 30, height: 38, borderRadius: 5, backgroundColor: colors.navy2, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.navy4 },
-    formItemRow: { flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingHorizontal: 16, paddingVertical: 8 },
-    formItemTitle: { fontSize: 17, color: colors.ink },
-    formItemTitleInput: { paddingVertical: 0, paddingHorizontal: 0 },
-    formItemCost: { fontSize: 16, fontWeight: '600' },
-    checklistNoteInput: { fontSize: 12, color: colors.inkDim, paddingVertical: 2, paddingHorizontal: 0, marginTop: 1 },
-    addItemButton: {
-      backgroundColor: colors.navy2,
-      borderRadius: 999,
-      paddingVertical: 10,
-      alignItems: 'center',
-      marginBottom: 16,
-    },
-    addItemButtonText: { fontSize: 12.5, fontWeight: '600', color: colors.gold },
-    errorText: { fontSize: 12, color: colors.error, marginBottom: 10 },
   });
 }

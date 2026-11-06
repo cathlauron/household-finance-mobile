@@ -145,3 +145,9 @@ Could not be checked here (stays "Needs your phone"):
   Motion (the welcome doesn't play by itself). The sunset fade and the welcome's night preview
   use one shared soft fade (veil to 85%, never a blank screen). Tapping a look stays instant.
 - Needs your phone: the feel of the sun arc, the sky fading between times, the sunset fade.
+
+## Sweep 2026-11-06 (Beta)
+- Drop-downs open with animateNextLayout (the house row motion); no new speed or curve.
+- The Calendar's greyed days move months with the same list scroll as Today; instant with Reduce
+  Motion (B-095). Trip name uses the shared BottomSheet and SheetBar.
+- test:motion passes (21). Needs your phone: the feel of the row opening and of the month slide.

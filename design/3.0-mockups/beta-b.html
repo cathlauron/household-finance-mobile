@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finance Flow Beta Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Plan: the app's own colours and font, five phones playing the real taps, captions in plain words. */
+:root {
+  --ink: #111111; --dim: #636366; --faint: #6C6C70; --line: #D1D1D6; --bg: #F2F2F7; --card: #FFFFFF;
+  --soft: #E5E5EA; --green: #2E6B47; --tint: #E6F0EA; --on: #F2F2F7; --blue: #1D63B8; --red: #D70015;
+  --orange: #C2510A; --shadow: rgba(0,0,0,.14); --dimmer: rgba(0,0,0,.34);
+  --font: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink: #FFFFFF; --dim: #AEAEB2; --faint: #98989D; --line: #38383A; --bg: #000000; --card: #1C1C1E;
+    --soft: #2C2C2E; --green: #5FC48A; --tint: #15291D; --on: #06140C; --blue: #6FB1F5; --red: #FF6961;
+    --orange: #FFB27A; --shadow: rgba(0,0,0,.6); --dimmer: rgba(0,0,0,.6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ink: #FFFFFF; --dim: #AEAEB2; --faint: #98989D; --line: #38383A; --bg: #000000; --card: #1C1C1E;
+  --soft: #2C2C2E; --green: #5FC48A; --tint: #15291D; --on: #06140C; --blue: #6FB1F5; --red: #FF6961;
+  --orange: #FFB27A; --shadow: rgba(0,0,0,.6); --dimmer: rgba(0,0,0,.6);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); line-height: 1.45; }
+main { max-width: 1040px; margin: 0 auto; padding: 28px 16px 56px; }
+h1 { font-size: 30px; line-height: 1.15; margin: 0 0 6px; font-weight: 800; text-wrap: balance; }
+.lead { color: var(--dim); font-size: 16px; margin: 0 0 22px; max-width: 62ch; }
+h2 { font-size: 20px; margin: 0 0 4px; font-weight: 800; text-wrap: balance; }
+.scenes { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 30px 22px; }
+.scene { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.scene .cap { color: var(--dim); font-size: 14.5px; margin: 0; max-width: 60ch; }
+.replay { align-self: flex-start; font: 700 13.5px var(--font); color: var(--green); background: var(--tint); border: 0; border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.replay:focus-visible, .chip:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
+/* The phone */
+.phone { position: relative; width: 300px; height: 630px; max-width: 100%; margin: 0 auto; border-radius: 34px; background: var(--bg); border: 7px solid var(--ink); overflow: hidden; box-shadow: 0 10px 28px var(--shadow); }
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--bg); }
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 2px; min-height: 40px; font-size: 16px; font-weight: 600; color: var(--green); }
+.topbar .back { display: flex; align-items: center; gap: 2px; }
+.ptitle { display: flex; align-items: center; gap: 8px; padding: 2px 16px 6px; font-size: 28px; font-weight: 800; line-height: 1.15; }
+.ptitle svg { flex: none; color: var(--dim); }
+.scroll { flex: 1; overflow: hidden; padding: 0 12px 16px; position: relative; }
+.card { background: var(--card); border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+.sub { font-size: 12.5px; color: var(--dim); }
+.feature { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--dim); margin: 0 4px 8px; }
+.badge { margin-left: auto; font-size: 11.5px; font-weight: 600; color: var(--green); background: var(--tint); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+.seg { display: flex; background: var(--soft); border-radius: 9px; padding: 2px; margin-bottom: 8px; font-size: 13.5px; font-weight: 600; }
+.seg span { flex: 1; text-align: center; padding: 5px 0; border-radius: 7px; color: var(--dim); }
+.seg span.on { background: var(--card); color: var(--ink); }
+.trio { display: flex; padding: 11px 12px; gap: 6px; }
+.trio div { flex: 1; min-width: 0; }
+.trio b { display: block; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.saveline { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--dim); padding: 0 8px 6px; }
+.ghead { font-size: 12px; font-weight: 700; color: var(--dim); letter-spacing: .3px; text-transform: uppercase; margin: 6px 8px 5px; }
+.row { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 12px; position: relative; }
+.row + .drop + .row, .row + .row, .divide { border-top: 1px solid var(--line); }
+.tick { flex: none; width: 23px; height: 23px; border-radius: 50%; border: 2px solid var(--dim); display: grid; place-items: center; color: var(--on); }
+.tick.on { background: var(--green); border-color: var(--green); }
+.rmain { flex: 1; min-width: 0; }
+.rname { font-size: 15.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.amt { font-size: 15px; font-weight: 700; color: var(--blue); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.paid { opacity: .5; }
+.paid .amt { color: var(--red); }
+.paid::after { content: ''; position: absolute; left: 45px; right: 12px; top: 50%; height: 1px; background: var(--dim); }
+.plus { color: var(--green); font-size: 15.5px; font-weight: 600; }
+.plus i { font-style: normal; font-size: 21px; line-height: 1; margin-right: 8px; vertical-align: -2px; }
+
+/* The drop-down: same house curve and speed as the app's sheets */
+.drop { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 280ms cubic-bezier(.32,.72,0,1); background: var(--card); }
+.drop.open { grid-template-rows: 1fr; }
+.drop > div { overflow: hidden; min-height: 0; }
+.fields { padding: 0 12px 10px; display: flex; flex-direction: column; gap: 6px; }
+.field { display: flex; align-items: center; gap: 8px; background: var(--bg); border-radius: 9px; padding: 8px 10px; font-size: 14px; min-height: 37px; border: 1.5px solid transparent; }
+.field.focus { border-color: var(--green); }
+.field label { flex: none; width: 58px; color: var(--dim); font-weight: 600; font-size: 13px; }
+.field span { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.field span.ph { color: var(--faint); font-weight: 500; }
+.actions { display: flex; gap: 8px; align-items: center; margin-top: 2px; }
+.btn { flex: 1; text-align: center; font-weight: 700; font-size: 14px; color: var(--on); background: var(--green); border-radius: 9px; padding: 8px 0; }
+.btn.quiet { flex: none; padding: 8px 12px; background: transparent; color: var(--dim); }
+.btn.bad { flex: none; padding: 8px 4px; background: transparent; color: var(--red); }
+
+/* Sheets */
+.dim { position: absolute; inset: 0; background: var(--dimmer); opacity: 0; pointer-events: none; transition: opacity 220ms ease; }
+.dim.on { opacity: 1; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--bg); border-radius: 16px 16px 0 0; padding: 0 12px 18px; transform: translateY(102%); transition: transform 240ms cubic-bezier(.32,.72,0,1); }
+.sheet.on { transform: none; transition-duration: 280ms; }
+.sbar { display: flex; align-items: center; justify-content: space-between; font-size: 15.5px; font-weight: 600; color: var(--green); padding: 15px 2px 12px; }
+.sbar b { color: var(--ink); font-weight: 800; }
+.frow { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; padding: 0 12px; font-size: 15px; font-weight: 600; }
+.frow + .frow, .frow + .drop + .frow, .divide { border-top: 1px solid var(--line); }
+.frow .val { color: var(--dim); font-weight: 500; white-space: nowrap; }
+.frow .val.typed { color: var(--ink); font-weight: 600; }
+.switch { flex: none; width: 42px; height: 25px; border-radius: 13px; background: var(--soft); position: relative; transition: background 220ms; }
+.switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 21px; height: 21px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform 220ms cubic-bezier(.32,.72,0,1); }
+.switch.on { background: var(--green); }
+.switch.on::after { transform: translateX(17px); }
+.toast { position: absolute; left: 50%; top: 46%; transform: translate(-50%, 8px); background: var(--green); color: var(--on); font-weight: 700; font-size: 14px; padding: 8px 18px; border-radius: 999px; opacity: 0; transition: opacity 220ms, transform 220ms; pointer-events: none; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+/* The new row glows when it arrives */
+@keyframes glow { 0% { background: var(--tint); } 100% { background: transparent; } }
+.arrive { animation: glow 1.4s ease-out; }
+
+/* Finger */
+.finger { position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: rgba(120,120,128,.38); border: 2px solid rgba(255,255,255,.75); opacity: 0; left: 150px; top: 340px; transition: left 420ms cubic-bezier(.32,.72,0,1), top 420ms cubic-bezier(.32,.72,0,1), opacity 180ms, transform 120ms; pointer-events: none; z-index: 20; }
+.finger.on { opacity: 1; }
+.finger.press { transform: scale(.72); }
+
+/* Calendar */
+.calbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 14px 4px; color: var(--green); font-weight: 600; font-size: 16px; }
+.mtitle { font-size: 27px; font-weight: 700; padding: 2px 16px 6px; }
+.dow { display: flex; font-size: 11.5px; font-weight: 700; color: var(--dim); text-align: center; padding: 4px 0 5px; border-bottom: 1px solid var(--faint); }
+.dow span, .week > div { flex: 1; min-width: 0; }
+.viewport { overflow: hidden; }
+.track { display: flex; width: 200%; transition: transform 240ms cubic-bezier(.32,.72,0,1); }
+.track.next { transform: translateX(-50%); }
+.month { width: 50%; }
+.week { display: flex; height: 70px; border-top: 1px solid var(--line); }
+.week:first-child { border-top: 0; }
+.day { display: flex; flex-direction: column; align-items: center; padding-top: 5px; }
+.num { width: 31px; height: 31px; border-radius: 50%; display: grid; place-items: center; font-size: 17px; font-weight: 600; }
+.wk .num { color: var(--dim); }
+.grey .num { color: var(--dim); opacity: .36; font-weight: 500; }
+.today .num { color: var(--green); background: color-mix(in srgb, var(--green) 18%, transparent); font-weight: 800; }
+.sel .num { color: var(--ink); background: color-mix(in srgb, var(--ink) 11%, transparent); font-weight: 800; opacity: 1; }
+.dots { display: flex; gap: 3px; height: 6px; margin-top: 4px; }
+.dots i { width: 6px; height: 6px; border-radius: 50%; }
+.foot { margin-top: auto; padding: 10px 16px 14px; font-size: 13px; color: var(--dim); text-align: right; font-weight: 600; }
+.pulse .num { animation: pulse 1.1s ease-in-out 2; }
+@keyframes pulse { 50% { background: color-mix(in srgb, var(--green) 20%, transparent); opacity: 1; } }
+
+/* Under the phones */
+.lower { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 34px; }
+.note { background: var(--card); border-radius: 14px; padding: 16px 18px; }
+.note ul, .note ol { margin: 8px 0 0; padding-left: 20px; font-size: 15px; }
+.note li { margin-bottom: 7px; }
+.note li b { font-weight: 800; }
+.beta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+.chip { flex: 1 1 130px; background: var(--bg); border-radius: 10px; padding: 12px; text-align: center; font-size: 13px; color: var(--dim); }
+.chip b { display: block; font-size: 16px; color: var(--ink); margin-bottom: 2px; }
+.tag { display: inline-block; vertical-align: 2px; font-size: 10.5px; font-weight: 800; color: var(--green); background: var(--tint); border-radius: 999px; padding: 1px 7px; margin-left: 4px; letter-spacing: .3px; }
+@media (prefers-reduced-motion: reduce) {
+  .drop, .sheet, .track, .finger, .dim, .toast, .switch, .switch::after { transition: none; }
+  .arrive, .pulse .num { animation: none; }
+}
+</style>
+</head>
+<body>
+<main>
+  <h1>Finance Flow Beta: what changes</h1>
+  <p class="lead">Each phone plays the real taps by itself, then starts again. Nothing is built yet. Tell me what to change, or say approved.</p>
+
+  <div class="scenes">
+    <section class="scene">
+      <h2>1. Adding a trip</h2>
+      <p class="cap">Only the name, the dates and the Savings switch. The budget and to-do are gone from this form. After Add, the new trip opens by itself, ready for its lists.</p>
+      <div class="phone" id="p1"></div>
+      <button class="replay" data-p="p1" type="button">Play again</button>
+    </section>
+    <section class="scene">
+      <h2>2. No Edit button</h2>
+      <p class="cap">The top right of a trip is now empty. Tap the trip name to change it, the same way the calendar icon changes the dates.</p>
+      <div class="phone" id="p2"></div>
+      <button class="replay" data-p="p2" type="button">Play again</button>
+    </section>
+    <section class="scene">
+      <h2>3. Budget list</h2>
+      <p class="cap">Tap an item and it opens right there in the list. + Add an item opens the same drop-down: item, cost, note and date. The circle on the left still ticks it as paid.</p>
+      <div class="phone" id="p3"></div>
+      <button class="replay" data-p="p3" type="button">Play again</button>
+    </section>
+    <section class="scene">
+      <h2>4. To-do list</h2>
+      <p class="cap">Works the same as the Budget list, with the same four boxes. Remove now sits inside the drop-down, so the list stays clean.</p>
+      <div class="phone" id="p4"></div>
+      <button class="replay" data-p="p4" type="button">Play again</button>
+    </section>
+    <section class="scene">
+      <h2>5. Calendar</h2>
+      <p class="cap">November ends on a Monday, so December 1 to 5 fill the last row, greyed out. Tapping one moves to December. Tapping a greyed November day moves back.</p>
+      <div class="phone" id="p5"></div>
+      <button class="replay" data-p="p5" type="button">Play again</button>
+    </section>
+  </div>
+
+  <div class="lower">
+    <div class="note">
+      <h2>My suggestions (say no to any)</h2>
+      <ul>
+        <li><b>The new trip opens after Add</b>, so you land on its Budget instead of the list.</li>
+        <li><b>A small pencil beside the trip name</b>, so people can tell it can be tapped.</li>
+        <li><b>Remove inside the drop-down</b> on both lists. It still asks before removing.</li>
+        <li><b>One drop-down open at a time.</b> Opening another closes the first without saving it.</li>
+      </ul>
+    </div>
+    <div class="note">
+      <h2>What stays the same</h2>
+      <ul>
+        <li>Delete trip stays at the bottom of the trip, and swiping still deletes from the list.</li>
+        <li>Editing a paid item's cost still updates its payment and your balance.</li>
+        <li>Greyed days show in Compact, Details and List views, with no dots. The small months in the year view don't change.</li>
+      </ul>
+    </div>
+    <div class="note">
+      <h2>Two questions for you</h2>
+      <ol>
+        <li><b>A cost on a to-do:</b> should it add to the trip's Budget? I suggest no. It stays a reminder, so the Budget list is the only place that counts money.</li>
+        <li><b>Where should Beta show?</b> I suggest both places below.</li>
+      </ol>
+      <div class="beta">
+        <div class="chip"><b>Version 3.6.0 Beta</b>Settings, under the logo</div>
+        <div class="chip"><b>Finance Flow<span class="tag">BETA</span></b>Welcome screen</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  var I = {
+    chev: '<svg width="11" height="18" viewBox="0 0 11 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2 2 9l7 7"/></svg>',
+    cal: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+    pen: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 20l1-5L16 4l4 4L9 19l-5 1Z"/></svg>',
+    check: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg>'
+  };
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function field(label, id, value, ph) {
+    return '<div class="field" data-f="' + id + '"><label>' + label + '</label><span class="' + (value ? '' : 'ph') + '">' + (value || ph || 'Optional') + '</span></div>';
+  }
+  function drop(id, title, vals, okLabel, withRemove, dateLabel) {
+    return '<div class="drop" id="' + id + '"><div><div class="fields">' +
+      field('Item', 'item', vals.item, 'Required') + field('Cost', 'cost', vals.cost, '₱ Optional') +
+      field('Note', 'note', vals.note, 'Optional') + field(dateLabel || 'Date', 'date', vals.date, 'Pick a date') +
+      '<div class="actions">' + (withRemove ? '<div class="btn bad">Remove</div>' : '') + '<div class="btn quiet" data-a="cancel">Cancel</div><div class="btn" data-a="ok">' + okLabel + '</div></div>' +
+      '</div></div></div>';
+  }
+  function tripTop(name, pencil) {
+    return '<div class="topbar"><div class="back">' + I.chev + ' Travel</div><div></div></div>' +
+      '<div class="ptitle" data-t="title"><span data-t="name">' + name + '</span>' + (pencil ? I.pen : '') + '</div>';
+  }
+  function dates(text, badge) {
+    return '<div class="feature"><span>' + text + '</span>' + I.cal + '<span class="badge">' + badge + '</span></div>';
+  }
+  function chrome() {
+    return '<div class="dim"></div><div class="toast"></div><div class="finger"></div>';
+  }
+
+  /* Player: each phone runs its own little script, then waits and starts again. */
+  function Player(id, build, script) {
+    this.el = document.getElementById(id); this.build = build; this.script = script; this.run = 0;
+  }
+  Player.prototype.$ = function (s) { return this.el.querySelector(s); };
+  Player.prototype.wait = function (ms, run) {
+    var self = this;
+    return new Promise(function (ok, no) { setTimeout(function () { self.run === run ? ok() : no('stop'); }, ms); });
+  };
+  Player.prototype.tap = async function (target, run, hold) {
+    var t = typeof target === 'string' ? this.$(target) : target;
+    var finger = this.$('.finger');
+    var sc = t.closest('.scroll');
+    if (sc && !t.closest('.sheet')) {
+      var tr = t.getBoundingClientRect(), sr = sc.getBoundingClientRect();
+      if (tr.bottom > sr.bottom - 8) { sc.scrollTo({ top: sc.scrollTop + tr.bottom - sr.bottom + 24, behavior: reduce ? 'auto' : 'smooth' }); await this.wait(420, run); }
+      else if (tr.top < sr.top + 4) { sc.scrollTo({ top: sc.scrollTop + tr.top - sr.top - 24, behavior: reduce ? 'auto' : 'smooth' }); await this.wait(420, run); }
+    }
+    var r = t.getBoundingClientRect(), p = this.$('.screen').parentElement.getBoundingClientRect();
+    finger.style.left = (r.left - p.left + r.width / 2 - 7) + 'px';
+    finger.style.top = (r.top - p.top + r.height / 2 - 7) + 'px';
+    finger.classList.add('on');
+    await this.wait(hold || 620, run);
+    finger.classList.add('press');
+    await this.wait(150, run);
+    finger.classList.remove('press');
+  };
+  Player.prototype.lift = function () { this.$('.finger').classList.remove('on'); };
+  Player.prototype.type = async function (sel, text, run, keep) {
+    var f = this.$(sel), s = f.querySelector('span') || f;
+    f.classList.add('focus');
+    s.classList.remove('ph');
+    var base = keep ? s.textContent : '';
+    s.textContent = base;
+    for (var i = 0; i < text.length; i++) { s.textContent = base + text.slice(0, i + 1); await this.wait(62, run); }
+    await this.wait(200, run);
+    f.classList.remove('focus');
+  };
+  Player.prototype.toast = async function (text, run) {
+    var t = this.$('.toast'); t.textContent = text; t.classList.add('on');
+    await this.wait(950, run); t.classList.remove('on');
+  };
+  Player.prototype.sheet = function (sel, on) {
+    this.$(sel).classList.toggle('on', on); this.$('.dim').classList.toggle('on', on);
+  };
+  Player.prototype.play = async function () {
+    var run = ++this.run;
+    this.el.innerHTML = this.build();
+    if (reduce) return;
+    try {
+      await this.wait(1100, run);
+      await this.script(this, run);
+      this.lift();
+      await this.wait(3000, run);
+      this.play();
+    } catch (e) { if (e !== 'stop') throw e; }
+  };
+
+  /* 1. New trip */
+  var p1 = new Player('p1', function () {
+    return '<div class="screen"><div class="topbar"><div class="back">' + I.chev + ' Plan</div><div data-t="add">Add</div></div>' +
+      '<div class="ptitle">Travel</div><div class="scroll">' +
+      '<div class="ghead">Coming up</div><div class="card"><div class="row"><div class="rmain"><div class="rname">Baguio weekend</div><div class="sub">Nov 28 – 30 · 3 days</div></div><span class="badge">In 22 days</span></div></div>' +
+      '</div></div>' +
+      '<div class="screen" data-t="trip" style="opacity:0;pointer-events:none;transition:opacity 240ms">' + tripTop('Bangkok', true) + '<div class="scroll">' + dates('Dec 13 – 20 · 8 days', 'In 37 days') +
+      '<div class="seg"><span class="on">Budget</span><span>To-do</span></div>' +
+      '<div class="card"><div class="trio"><div><span class="sub">Budget</span><b>₱0.00</b></div><div><span class="sub">Left</span><b>₱0.00</b></div><div><span class="sub">Paid</span><b>₱0.00</b></div></div></div>' +
+      '<div class="ghead">Checklist</div><div class="card"><div class="row"><div class="sub">What will it cost? Flights, hotel, food…</div></div><div class="row divide"><div class="plus"><i>+</i>Add an item</div></div></div></div></div>' +
+      chrome() +
+      '<div class="sheet" id="s1"><div class="sbar"><span>Cancel</span><b>New trip</b><span data-t="ok">Add</span></div>' +
+      '<div class="card" style="margin:0"><div class="frow" data-f="name"><span>Trip name</span><span class="val">e.g. Baguio weekend</span></div>' +
+      '<div class="frow" data-t="dates"><span>Dates</span><span class="val" data-t="dv">Optional</span></div>' +
+      '<div class="drop" id="d1"><div><div class="fields"><div class="field"><label>Start</label><span>Dec 13, 2026</span></div><div class="field"><label>End</label><span>Dec 20, 2026</span></div></div></div></div>' +
+      '<div class="frow divide"><span style="font-size:14px">Save for this trip in Savings?</span><div class="switch" data-t="sw"></div></div></div></div>';
+  }, async function (p, r) {
+    await p.tap('[data-t=add]', r); p.lift(); p.sheet('#s1', true);
+    await p.wait(650, r);
+    var nm = p.$('[data-f=name] .val'); nm.classList.add('typed'); nm.textContent = '';
+    var w = 'Bangkok';
+    for (var i = 0; i < w.length; i++) { nm.textContent = w.slice(0, i + 1); await p.wait(70, r); }
+    await p.wait(300, r);
+    await p.tap('[data-t=dates]', r); p.$('#d1').classList.add('open');
+    await p.wait(600, r);
+    var dv = p.$('[data-t=dv]'); dv.textContent = 'Dec 13 – 20 · 8 days'; dv.classList.add('typed');
+    await p.tap('[data-t=sw]', r); p.$('[data-t=sw]').classList.add('on');
+    await p.wait(500, r);
+    await p.tap('[data-t=ok]', r); p.lift(); p.sheet('#s1', false);
+    p.$('[data-t=trip]').style.opacity = 1;
+    await p.wait(300, r);
+    await p.toast('Added', r);
+  });
+
+  /* 2. Trip name */
+  var p2 = new Player('p2', function () {
+    return '<div class="screen">' + tripTop('Bangkok', true) + '<div class="scroll">' + dates('Dec 13 – 20 · 8 days', 'In 37 days') +
+      '<div class="seg"><span class="on">Budget</span><span>To-do (3)</span></div>' +
+      '<div class="card"><div class="trio"><div><span class="sub">Budget</span><b style="color:var(--blue)">₱36,500</b></div><div><span class="sub">Left</span><b style="color:var(--orange)">₱18,000</b></div><div><span class="sub">Paid</span><b style="color:var(--red)">₱18,500</b></div></div></div>' +
+      '<div class="saveline"><span>Save for this trip in Savings?</span><div class="switch on"></div></div>' +
+      '<div class="ghead">Checklist</div><div class="card">' +
+      '<div class="row paid"><div class="tick on">' + I.check + '</div><div class="rmain"><div class="rname">Flights</div><div class="sub">Paid from GCash · Oct 2</div></div><div class="amt">₱18,500</div></div>' +
+      '<div class="row"><div class="tick"></div><div class="rmain"><div class="rname">Hotel</div><div class="sub">Due Nov 20 · on To-Pay</div></div><div class="amt">₱12,000</div></div>' +
+      '<div class="row"><div class="tick"></div><div class="rmain"><div class="rname">Food</div><div class="sub">Not paid yet</div></div><div class="amt">₱6,000</div></div>' +
+      '</div></div></div>' + chrome() +
+      '<div class="sheet" id="s2"><div class="sbar"><span>Cancel</span><b>Trip name</b><span data-t="ok">Save</span></div>' +
+      '<div class="card" style="margin:0 0 180px"><div class="frow"><span>Trip name</span><span class="val typed" data-t="in">Bangkok</span></div></div></div>';
+  }, async function (p, r) {
+    await p.tap('[data-t=title]', r, 900); p.lift(); p.sheet('#s2', true);
+    await p.wait(800, r);
+    var s = p.$('[data-t=in]'), base = 'Bangkok', add = ' + Phuket';
+    for (var i = 0; i < add.length; i++) { s.textContent = base + add.slice(0, i + 1); await p.wait(80, r); }
+    await p.wait(400, r);
+    await p.tap('[data-t=ok]', r); p.lift(); p.sheet('#s2', false);
+    p.$('[data-t=name]').textContent = 'Bangkok + Phuket'; p.$('[data-t=name]').style.fontSize = '23px';
+    await p.wait(300, r);
+    await p.toast('Saved', r);
+  });
+
+  /* 3. Budget list */
+  function budgetRows() {
+    return '<div class="row paid"><div class="tick on">' + I.check + '</div><div class="rmain"><div class="rname">Flights</div><div class="sub">Paid from GCash · Oct 2</div></div><div class="amt">₱18,500</div></div>' +
+      '<div class="row" data-t="hotel"><div class="tick"></div><div class="rmain"><div class="rname">Hotel</div><div class="sub">Due Nov 20 · on To-Pay</div></div><div class="amt" data-t="hamt">₱12,000</div></div>' +
+      drop('dh', 'Hotel', { item: 'Hotel', cost: '₱12,000', note: '', date: 'Nov 20, 2026' }, 'Save', true, 'Due') +
+      '<div class="row"><div class="tick"></div><div class="rmain"><div class="rname">Food</div><div class="sub">Not paid yet</div></div><div class="amt">₱6,000</div></div>' +
+      '<div data-t="newrow"></div>' +
+      '<div class="row divide" data-t="addrow"><div class="plus"><i>+</i>Add an item</div></div>' +
+      drop('dn', 'New', { item: '', cost: '', note: '', date: '' }, 'Add', false, 'Due');
+  }
+  var p3 = new Player('p3', function () {
+    return '<div class="screen">' + tripTop('Bangkok', true) + '<div class="scroll">' + dates('Dec 13 – 20 · 8 days', 'In 37 days') +
+      '<div class="seg"><span class="on">Budget</span><span>To-do (3)</span></div>' +
+      '<div class="card"><div class="trio"><div><span class="sub">Budget</span><b style="color:var(--blue)" data-t="b">₱36,500</b></div><div><span class="sub">Left</span><b style="color:var(--orange)" data-t="l">₱18,000</b></div><div><span class="sub">Paid</span><b style="color:var(--red)">₱18,500</b></div></div></div>' +
+      '<div class="ghead">Checklist</div><div class="card">' + budgetRows() + '</div></div></div>' + chrome();
+  }, async function (p, r) {
+    await p.tap('[data-t=hotel] .rmain', r); p.lift(); p.$('#dh').classList.add('open');
+    await p.wait(800, r);
+    await p.tap('#dh [data-f=cost]', r); p.lift();
+    await p.type('#dh [data-f=cost]', '₱14,500', r);
+    await p.type('#dh [data-f=note]', 'Check-in 2 PM', r);
+    await p.tap('#dh [data-a=ok]', r); p.lift(); p.$('#dh').classList.remove('open');
+    p.$('[data-t=hamt]').textContent = '₱14,500'; p.$('[data-t=b]').textContent = '₱39,000'; p.$('[data-t=l]').textContent = '₱20,500';
+    p.$('[data-t=hotel] .sub').textContent = 'Due Nov 20 · on To-Pay · Check-in 2 PM';
+    await p.wait(1100, r);
+    await p.tap('[data-t=addrow]', r); p.lift(); p.$('#dn').classList.add('open');
+    await p.wait(450, r);
+    p.$('.scroll').scrollTo({ top: 400, behavior: 'smooth' });
+    await p.wait(500, r);
+    await p.type('#dn [data-f=item]', 'Pocket Wi-Fi', r);
+    await p.type('#dn [data-f=cost]', '₱900', r);
+    await p.type('#dn [data-f=note]', 'Pick up at the airport', r);
+    await p.type('#dn [data-f=date]', 'Dec 13, 2026', r);
+    await p.tap('#dn [data-a=ok]', r); p.lift(); p.$('#dn').classList.remove('open');
+    p.$('[data-t=newrow]').innerHTML = '<div class="row divide arrive"><div class="tick"></div><div class="rmain"><div class="rname">Pocket Wi-Fi</div><div class="sub">Due Dec 13 · on To-Pay</div></div><div class="amt">₱900</div></div>';
+    p.$('[data-t=b]').textContent = '₱39,900'; p.$('[data-t=l]').textContent = '₱21,400';
+  });
+
+  /* 4. To-do list */
+  var p4 = new Player('p4', function () {
+    return '<div class="screen">' + tripTop('Bangkok', true) + '<div class="scroll">' + dates('Dec 13 – 20 · 8 days', 'In 37 days') +
+      '<div class="seg"><span>Budget</span><span class="on">To-do (3)</span></div>' +
+      '<div class="ghead">To-do</div><div class="card">' +
+      '<div class="row"><div class="tick"></div><div class="rmain"><div class="rname">Pack jackets</div></div></div>' +
+      '<div class="row" data-t="td"><div class="tick"></div><div class="rmain"><div class="rname">Book airport transfer</div><div class="sub" data-t="tdsub">Nov 28</div></div></div>' +
+      drop('dt', 'td', { item: 'Book airport transfer', cost: '', note: '', date: 'Nov 28, 2026' }, 'Save', true) +
+      '<div class="row"><div class="tick"></div><div class="rmain"><div class="rname">Exchange pesos</div></div></div>' +
+      '<div data-t="newrow"></div>' +
+      '<div class="row divide" data-t="addrow"><div class="plus"><i>+</i>Add to the list</div></div>' +
+      drop('dn', 'New', { item: '', cost: '', note: '', date: '' }, 'Add', false) +
+      '</div></div></div>' + chrome();
+  }, async function (p, r) {
+    await p.tap('[data-t=td] .rmain', r); p.lift(); p.$('#dt').classList.add('open');
+    await p.wait(800, r);
+    await p.type('#dt [data-f=cost]', '₱1,200', r);
+    await p.type('#dt [data-f=note]', 'Klook, pay on arrival', r);
+    await p.tap('#dt [data-a=ok]', r); p.lift(); p.$('#dt').classList.remove('open');
+    p.$('[data-t=tdsub]').textContent = 'Nov 28 · ₱1,200 · Klook, pay on arrival';
+    await p.wait(1100, r);
+    await p.tap('[data-t=addrow]', r); p.lift(); p.$('#dn').classList.add('open');
+    await p.wait(700, r);
+    await p.type('#dn [data-f=item]', 'Print hotel booking', r);
+    await p.type('#dn [data-f=date]', 'Dec 12, 2026', r);
+    await p.tap('#dn [data-a=ok]', r); p.lift(); p.$('#dn').classList.remove('open');
+    p.$('[data-t=newrow]').innerHTML = '<div class="row divide arrive"><div class="tick"></div><div class="rmain"><div class="rname">Print hotel booking</div><div class="sub">Dec 12</div></div></div>';
+    p.$('.seg .on').textContent = 'To-do (4)';
+  });
+
+  /* 5. Calendar */
+  var marks = { '10-6': ['--red'], '10-10': ['--green', '--blue'], '10-15': ['--red', '--orange'], '10-20': ['--blue'], '10-25': ['--green'], '11-5': ['--red'], '11-13': ['--blue'], '11-20': ['--green'], '11-25': ['--orange'] };
+  function monthHtml(y, m, tag) {
+    var first = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate();
+    var weeks = Math.ceil((first + days) / 7), out = '';
+    for (var w = 0; w < weeks; w++) {
+      out += '<div class="week">';
+      for (var c = 0; c < 7; c++) {
+        var dt = new Date(y, m, w * 7 + c - first + 1), inside = dt.getMonth() === m;
+        var cls = 'day' + (inside ? '' : ' grey') + ((c === 0 || c === 6) && inside ? ' wk' : '') + (inside && m === 10 && dt.getDate() === 6 ? ' today' : '');
+        var dots = inside ? (marks[m + '-' + dt.getDate()] || []).map(function (k) { return '<i style="background:var(' + k + ')"></i>'; }).join('') : '';
+        out += '<div class="' + cls + '" data-d="' + tag + (inside ? '' : 'x') + dt.getDate() + '"><div class="num">' + dt.getDate() + '</div><div class="dots">' + dots + '</div></div>';
+      }
+      out += '</div>';
+    }
+    return '<div class="month">' + out + '</div>';
+  }
+  var p5 = new Player('p5', function () {
+    return '<div class="screen"><div class="calbar"><div class="back" style="display:flex;align-items:center;gap:2px">' + I.chev + ' 2026</div><div>Done</div></div>' +
+      '<div class="mtitle" data-t="m">November</div><div class="dow"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>' +
+      '<div class="viewport"><div class="track">' + monthHtml(2026, 10, 'n') + monthHtml(2026, 11, 'd') + '</div></div>' +
+      '<div class="foot" data-t="foot">Nov 6 · ₱42,300.00</div></div>' + chrome();
+  }, async function (p, r) {
+    ['1', '2', '3', '4', '5'].forEach(function (d) { p.$('[data-d=nx' + d + ']').classList.add('pulse'); });
+    await p.wait(2300, r);
+    await p.tap('[data-d=nx3]', r); p.lift();
+    p.$('.track').classList.add('next');
+    p.$('[data-t=m]').textContent = 'December';
+    p.$('[data-d=d3]').classList.add('sel');
+    p.$('[data-t=foot]').textContent = 'Dec 3 · ₱38,150.00';
+    await p.wait(2000, r);
+    await p.tap('[data-d=dx30]', r); p.lift();
+    p.$('.track').classList.remove('next');
+    p.$('[data-t=m]').textContent = 'November';
+    p.$('[data-d=n30]').classList.add('sel');
+    p.$('[data-t=foot]').textContent = 'Nov 30 · ₱39,780.00';
+    await p.wait(600, r);
+  });
+
+  var players = { p1: p1, p2: p2, p3: p3, p4: p4, p5: p5 };
+  Object.keys(players).forEach(function (k, i) { setTimeout(function () { players[k].play(); }, reduce ? 0 : i * 350); });
+  document.querySelectorAll('.replay').forEach(function (b) {
+    b.addEventListener('click', function () { players[b.getAttribute('data-p')].play(); });
+  });
+  if (reduce) document.querySelectorAll('.replay').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var p = players[b.getAttribute('data-p')], r = ++p.run;
+      p.el.innerHTML = p.build();
+      p.script(p, r).catch(function () {});
+    });
+  });
+})();
+</script>
+</body>
+</html>

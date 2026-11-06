@@ -1,6 +1,6 @@
 import { hapticSelection } from '../haptics';
 import { animateNextLayout } from '../animateLayout';
-import { APP_VERSION } from '../appVersion';
+import { APP_STAGE, APP_VERSION } from '../appVersion';
 import { canPinWidgets } from '../widgets/pinWidget';
 import { useHelpSeen, markHelpSeen } from '../helpSeen';
 import EmailCheckNote, { EmailRow } from '../components/EmailCheckNote';
@@ -1913,7 +1913,7 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
         <>
         <View style={{ alignItems: 'center', paddingVertical: 12, marginBottom: 12 }}>
           <LogoMark width={96} />
-          <Text style={{ fontSize: 15, color: colors.inkDim, marginTop: 8 }}>Version {APP_VERSION}</Text>
+          <Text style={{ fontSize: 15, color: colors.inkDim, marginTop: 8 }}>Version {APP_VERSION} {APP_STAGE}</Text>
         </View>
         {/* Mockup H1 (Cath, 2026-10-29, built to match it exactly 2026-10-30): Help & FAQ (new)
             and Contact support with icon tiles, Copy email address; then "Your data" with the

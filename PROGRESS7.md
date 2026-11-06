@@ -1555,3 +1555,10 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
   Checks: tests/noVoice.test.mjs (red before), voicePermission.test.mjs now checks NO microphone
   (rule reversed by Cath; B-087 history kept in it); voice-only checks removed with their code;
   B-085's amount-box check kept (AmountOutsideFill). Release 3.5.0 (versionCode 10). TEST-3 s29.
+- 2026-11-06: Cath: "call this the beta version". Mockup design/3.0-mockups/beta-b.html (5 phones),
+  she agreed to 1-5 and added: the Calendar shows everything with a date, events always. Taken as
+  yes: my suggestions; a to-do's cost stays a reminder, out of the budget; Beta in Settings and on
+  the welcome. DONE on v3: New trip is name, dates, Savings; trip opens after Add; no Edit, tap the
+  name; TripItemDrop on both lists (item, cost, note, date); greyed days; calendarAll.ts. Reminders
+  never count in a balance. Paid trip items show as "paid", finished to-dos as "done".
+  Release 3.6.0 (versionCode 11). TEST-3 s30. Sweep in BUG-HUNT.md and SMOOTH-HUNT.md.

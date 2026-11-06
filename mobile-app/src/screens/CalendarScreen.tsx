@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { buildPages, todayIndex, YEARS_EACH_SIDE, type Page } from '../calendarPages';
+import { buildPages, monthCells, todayIndex, YEARS_EACH_SIDE, type Page } from '../calendarPages';
 import { goToMain } from '../navigation/goToMain';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { View, StyleSheet, Modal, Pressable, ActivityIndicator, ScrollView, FlatList, useWindowDimensions } from 'react-native';
@@ -10,7 +10,7 @@ import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../DataContext';
 import { computeRunningBalances, formatPeso, computeMonthEvents, CalendarEvent } from '../balanceProjection';
-import { withTripItems } from '../tripDue';
+import { withEverythingDated } from '../calendarAll';
 import {
   CalendarViewMode,
   CalendarNavMode,
@@ -39,6 +39,7 @@ import { hapticSelection } from '../haptics';
 import { requestToPayTab } from '../openToPayTabRequest';
 import { requestToPayAdd } from '../fabActions';
 import { afterSlide } from '../afterSlide';
+import { reduceMotionNow } from '../reduceMotion';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -60,6 +61,8 @@ function eventColor(ev: CalendarEvent, colors: any): string {
       return colors.positive;
     case 'saving':
       return colors.saving;
+    case 'reminder':
+      return colors.gold;
     default:
       if (ev.direction === 'in') return colors.positive;
       if (ev.direction === 'saving') return colors.saving;
@@ -69,6 +72,7 @@ function eventColor(ev: CalendarEvent, colors: any): string {
 
 // The small grey second line under each item in the day panel.
 function eventKind(ev: CalendarEvent): string {
+  if (ev.sub) return ev.sub;
   if (ev.tripId) return `${ev.tripName || 'Trip'} trip · due`;
   switch (ev.type) {
     case 'bill':
@@ -91,6 +95,8 @@ function eventKind(ev: CalendarEvent): string {
 // The amount on the right of each row: + for money in, − for money out, no sign for
 // money set aside (shown in the saving colour).
 function eventAmount(ev: CalendarEvent, colors: any): { text: string; color: string } {
+  // A reminder shows its amount plainly, or nothing when it has none.
+  if (ev.type === 'reminder') return { text: ev.amount > 0 ? formatPeso(ev.amount) : '', color: colors.inkDim };
   const abs = formatPeso(Math.abs(ev.amount));
   const isSaving = ev.type === 'saving' || (ev.type === 'manual' && ev.direction === 'saving');
   if (isSaving) return { text: abs, color: colors.saving };
@@ -145,8 +151,8 @@ function monthEventsFor(model: any, year: number, month: number): Record<number,
   let ev = byMonth.get(key);
   if (!ev) {
     ev = computeMonthEvents(model, year, month);
-    // H-63 (Cath, 2026-11-03): trip items with a due date show on their day too (planned, blue).
-    ev = withTripItems(ev, model, year, month);
+    // Cath, 2026-11-06: this is her main calendar, so everything with a date shows (calendarAll.ts).
+    ev = withEverythingDated(ev, model, year, month);
     byMonth.set(key, ev);
   }
   return ev;
@@ -159,6 +165,8 @@ type GridProps = {
   rowHeight: number;
   selectedDay: number | null;
   onDayPress: (y: number, m: number, d: number) => void;
+  // Cath, 2026-11-06: a greyed day from the month before or after moves to that month.
+  onGreyPress: (y: number, m: number, d: number) => void;
 };
 
 // One month as week rows with a line above each, iPhone style: days outside the month are
@@ -167,31 +175,32 @@ type GridProps = {
 // See-through levels added to a colour code for the soft day circles (hex alpha).
 const TODAY_TINT = '2E'; // about 18%
 const SELECTED_TINT = '1A'; // about 10%
+const GREY_DAY_OPACITY = 0.36; // the days of the month before or after
 
-const MonthGrid = React.memo(function MonthGrid({ year, month, mode, rowHeight, selectedDay, onDayPress }: GridProps) {
+const MonthGrid = React.memo(function MonthGrid({ year, month, mode, rowHeight, selectedDay, onDayPress, onGreyPress }: GridProps) {
   const { colors } = useTheme();
   const { model } = useData();
   const s = useMemo(() => makeStyles(colors), [colors]);
   const events = model ? monthEventsFor(model, year, month) : ({} as Record<number, CalendarEvent[]>);
   const now = new Date();
-  const first = new Date(year, month, 1).getDay();
-  const days = new Date(year, month + 1, 0).getDate();
-  const weeks = weeksIn(year, month);
-  const rows: (number | null)[][] = [];
-  for (let w = 0; w < weeks; w++) {
-    const row: (number | null)[] = [];
-    for (let c = 0; c < 7; c++) {
-      const d = w * 7 + c - first + 1;
-      row.push(d >= 1 && d <= days ? d : null);
-    }
-    rows.push(row);
-  }
+  const rows = monthCells(year, month);
   return (
     <View>
       {rows.map((row, ri) => (
         <View key={ri} style={[s.weekRow, { height: rowHeight }]}>
-          {row.map((d, ci) => {
-            if (d === null) return <View key={ci} style={s.cell} />;
+          {row.map((cell, ci) => {
+            if (cell === null) return <View key={ci} style={s.cell} />;
+            if (cell.outside) {
+              // Greyed, with no dots, like a phone calendar.
+              return (
+                <Pressable key={ci} style={s.cell} onPress={() => onGreyPress(cell.year, cell.month, cell.day)} accessibilityRole="button" accessibilityLabel={`${MONTHS[cell.month]} ${cell.day}, go to ${MONTHS[cell.month]}`}>
+                  <View style={s.num}>
+                    <Text style={[s.numText, { color: colors.inkDim, opacity: GREY_DAY_OPACITY, fontWeight: '500' }]}>{cell.day}</Text>
+                  </View>
+                </Pressable>
+              );
+            }
+            const d = cell.day;
             const isToday = year === now.getFullYear() && month === now.getMonth() && d === now.getDate();
             const isSel = selectedDay === d;
             const evs = events[d] || [];
@@ -405,11 +414,25 @@ export default function CalendarScreen() {
     [pages]
   );
 
+  // Cath, 2026-11-06: a greyed day moves to its month with that day picked (no day list).
+  const scrollRef = useRef<(i: number) => void>(() => {});
+  const onGreyPress = useCallback(
+    (y: number, m: number, d: number) => {
+      const i = pages.findIndex((p) => p.year === y && p.month === m);
+      if (i < 0) return;
+      hapticSelection();
+      setSelected({ year: y, month: m, day: d });
+      setIndex(i);
+      scrollRef.current(i);
+    },
+    [pages]
+  );
+
   // List view: the month on top changes one at a time (up/down or sideways).
   const LIST_ROW = 46;
   const listPageH = 6 * LIST_ROW;
 
-  function scrollToPage(i: number, animated = true) {
+  function scrollToPage(i: number, animated = !reduceMotionNow()) {
     requestAnimationFrame(() => {
       if (listLayout) {
         if (navMode === 'scroll') hRef.current?.scrollToOffset({ offset: i * listPageH, animated });
@@ -418,6 +441,8 @@ export default function CalendarScreen() {
       else hRef.current?.scrollToOffset({ offset: i * width, animated });
     });
   }
+
+  scrollRef.current = scrollToPage;
 
   // ---------- year view ----------
   const miniW = Math.floor((width - 40 - 20) / 3);
@@ -518,6 +543,9 @@ export default function CalendarScreen() {
   }
 
   const selectedForList = listLayout ? { y: page.year, m: page.month, d: selDay } : null;
+  const pickY = selected?.year;
+  const pickM = selected?.month;
+  const pickD = selected?.day;
   const renderHorizontal = useCallback(
     ({ item }: { item: Page }) => (
       <View style={{ width }}>
@@ -526,21 +554,22 @@ export default function CalendarScreen() {
           month={item.month}
           mode={gridMode}
           rowHeight={gridMode === 'details' ? 96 : 70}
-          selectedDay={null}
+          selectedDay={item.year === pickY && item.month === pickM ? (pickD as number) : null}
           onDayPress={onDayPress}
+          onGreyPress={onGreyPress}
         />
       </View>
     ),
-    [width, gridMode, onDayPress]
+    [width, gridMode, onDayPress, onGreyPress, pickY, pickM, pickD]
   );
   const renderVertical = useCallback(
     ({ item }: { item: Page }) => (
       <View>
         <Text style={s.inlineMonth}>{item.month === 0 ? `${MONTHS[item.month]} ${item.year}` : MONTHS[item.month]}</Text>
-        <MonthGrid year={item.year} month={item.month} mode={gridMode} rowHeight={ROW_SCROLL} selectedDay={null} onDayPress={onDayPress} />
+        <MonthGrid year={item.year} month={item.month} mode={gridMode} rowHeight={ROW_SCROLL} selectedDay={item.year === pickY && item.month === pickM ? (pickD as number) : null} onDayPress={onDayPress} onGreyPress={onGreyPress} />
       </View>
     ),
-    [gridMode, ROW_SCROLL, onDayPress, s]
+    [gridMode, ROW_SCROLL, onDayPress, onGreyPress, pickY, pickM, pickD, s]
   );
   const selY = selectedForList?.y;
   const selM = selectedForList?.m;
@@ -555,10 +584,11 @@ export default function CalendarScreen() {
           rowHeight={LIST_ROW}
           selectedDay={item.year === selY && item.month === selM ? (selD as number) : null}
           onDayPress={onDayPress}
+          onGreyPress={onGreyPress}
         />
       </View>
     ),
-    [navMode, listPageH, width, selY, selM, selD, onDayPress]
+    [navMode, listPageH, width, selY, selM, selD, onDayPress, onGreyPress]
   );
   const renderYear = useCallback(
     ({ item }: { item: number }) => <YearBlock year={item} pages={pages} miniW={miniW} onOpen={openMonthFromYear} />,
@@ -708,7 +738,10 @@ export default function CalendarScreen() {
             ) : (
               evs.map((ev, i) => {
                 const amt = eventAmount(ev, colors);
-                const open = ev.tripId
+                const target = ev.open;
+                const open = target
+                  ? () => navigation.navigate(target.page, target.params)
+                  : ev.tripId
                   ? () => navigation.navigate('Travel', { tripId: ev.tripId })
                   : ev.id && (ev.type === 'bill' || ev.type === 'debt' || ev.type === 'loan')
                     ? () => navigation.navigate('PayDetail', { kind: ev.type, id: ev.id, backTitle: 'Calendar' })

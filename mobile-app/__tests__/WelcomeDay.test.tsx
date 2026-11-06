@@ -26,6 +26,7 @@ test('the day plays by itself: morning widgets, then a quick add at lunch', asyn
   await act(async () => {});
   expect(screen.getByText('One glance from your home screen')).toBeTruthy();
   expect(screen.getByText('Plus Month at a glance and Trip')).toBeTruthy();
+  expect(screen.getByText('BETA')).toBeTruthy(); // Cath, 2026-11-06
   await act(async () => {
     jest.advanceTimersByTime(4300);
   });

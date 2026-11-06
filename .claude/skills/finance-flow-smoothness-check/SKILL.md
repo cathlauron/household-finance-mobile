@@ -137,6 +137,8 @@ How to check (besides reading the code):
   of day stays `WELCOME_MOMENT_MS`, a tap holds it `WELCOME_HOLD_MS`; the sky fades between
   times; "You're all set" shows `FINALE_MS` before Home. With Reduce Motion the welcome does
   not play by itself (tap the times).
+- 2026-11-06: trip drop-downs open with the shared row motion (animateNextLayout); a greyed day
+  moves the month with the same scroll as Today, instant with Reduce Motion.
 
 ## Part of the full sweep (Cath, 2026-10-29)
 

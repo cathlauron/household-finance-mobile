@@ -6,6 +6,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { TouchableOpacity } from '../components/Tap';
 import { Text } from '../components/AppText';
 import DrawingLogo from '../components/DrawingLogo';
+import { APP_STAGE } from '../appVersion';
 import SkyFade from '../components/SkyFade';
 import SunArc, { SunLook } from '../components/SunArc';
 import { useTheme } from '../ThemeContext';
@@ -68,6 +69,10 @@ export default function WelcomeScreen({ onStart, onSignIn }: Props) {
       <SkyFade phase={m.sky} />
       <View style={{ alignItems: 'center' }}>
         <DrawingLogo width={64} drawing={false} once />
+        {/* Cath, 2026-11-06: this version is the beta. */}
+        <View style={[s0.betaTag, { backgroundColor: colors.accentTint }]}>
+          <Text style={[s0.betaText, { color: colors.gold }]}>{APP_STAGE.toUpperCase()}</Text>
+        </View>
       </View>
 
       <Rise key={`t${k}`} style={{ paddingHorizontal: 8, marginTop: 18 }}>
@@ -336,6 +341,8 @@ function NightMoment() {
 }
 
 const s0 = StyleSheet.create({
+    betaTag: { marginTop: 6, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 1 },
+    betaText: { fontSize: 10.5, fontWeight: '800', letterSpacing: 0.4 },
   primary: { minHeight: 53, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
 });
 

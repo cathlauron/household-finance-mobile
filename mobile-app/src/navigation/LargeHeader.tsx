@@ -34,6 +34,8 @@ type Props = {
     // Version 2.1: icons that sit on the big title's line (Transactions: Recurring, Search)
     // instead of the short row above it.
     headerTitleRight?: () => React.ReactNode;
+    // Cath, 2026-11-06: tapping the title changes it (a trip's name); a small pencil shows that.
+    headerTitlePress?: () => void;
   };
   back?: { title?: string } | undefined;
 };
@@ -76,7 +78,14 @@ export default function LargeHeader({ navigation, route, options, back }: Props)
       {/* An empty title (detail pages that show their own big heading) hides the line. */}
       {title !== '' && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <FadeInTitle title={title} style={[styles.title, { color: colors.ink, flexShrink: 1 }]} />
+          {options.headerTitlePress ? (
+            <TouchableOpacity onPress={options.headerTitlePress} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 }} accessibilityRole="button" accessibilityLabel={`${title}. Change the name`} testID="header-title-edit">
+              <FadeInTitle title={title} style={[styles.title, { color: colors.ink, flexShrink: 1 }]} />
+              <Ionicons name="pencil-outline" size={18} color={colors.inkDim} />
+            </TouchableOpacity>
+          ) : (
+            <FadeInTitle title={title} style={[styles.title, { color: colors.ink, flexShrink: 1 }]} />
+          )}
           {!!options.headerTitleRight && <View style={{ marginLeft: 'auto' }}>{options.headerTitleRight()}</View>}
         </View>
       )}

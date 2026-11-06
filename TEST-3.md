@@ -403,3 +403,20 @@ widget list (hold the home screen › Widgets › Finance Flow) the previews are
    which opens a new transaction. An old Say it widget still on your home screen: remove it.
 4. Welcome (log out or a new guest): midday shows "Log it in seconds" (a typed add), no Say it.
 5. Settings › Widgets lists 5.
+
+## 30. Finance Flow Beta, release 3.6.0 (2026-11-06). Installed app. NOT YET TESTED.
+1. Settings says "Version 3.6.0 Beta"; the welcome has a small BETA tag under the logo.
+2. Travel › Add: only Trip name, Dates and the Savings switch. Add opens the new trip on Budget.
+3. Inside a trip there is no Edit. Tap the name (with the small pencil): a Trip name sheet opens.
+   Save changes the title. The calendar icon still changes the dates.
+4. Budget: tap an item; it opens in the list with Item, Cost, Note, Due date. Change the cost and
+   Save: Budget and Left update. Cancel changes nothing. Tapping another item closes the first.
+5. + Add an item opens the same boxes, ready to type, and the keyboard never covers them.
+6. A paid item opens too. It says changing the cost updates its payment. The circle still ticks.
+7. To-do: the same, with Remove inside (it asks first). A to-do's cost is not in the Budget.
+8. Calendar: November's last row shows December 1 to 5 greyed. Tapping one moves to December with
+   that day picked; a greyed November day moves back. Try Compact, Details, List, Scroll, Swipe.
+9. Calendar shows everything with a date: an event with no amount, a birthday every year, a trip's
+   start and end, a to-do's date, an item with a date and no cost, a savings or yearly goal's date,
+   a subscription's cancel-by, moves, shared expenses, investments, repeats, money lent. Tapping
+   one opens its page. Your projected balance does not change.

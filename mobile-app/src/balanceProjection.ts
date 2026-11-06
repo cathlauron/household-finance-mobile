@@ -31,7 +31,7 @@ import { computeNextPayDate } from './income';
 import { leftToSpendAmount } from './leftToSpendExtras';
 
 export type CalendarEvent = {
-  type: 'income' | 'bill' | 'debt' | 'loan' | 'manual' | 'saving';
+  type: 'income' | 'bill' | 'debt' | 'loan' | 'manual' | 'saving' | 'reminder';
   label: string;
   amount: number;
   direction?: 'in' | 'out' | 'saving'; // only set for manual transactions
@@ -41,6 +41,10 @@ export type CalendarEvent = {
   // computeMonthEvents (Left to Spend counts trip items itself).
   tripId?: string;
   tripName?: string;
+  // Cath, 2026-11-06: a dated thing that is only a reminder on the Calendar (calendarAll.ts):
+  // its second line, and the page a tap opens. Never counted in any balance.
+  sub?: string;
+  open?: { page: string; params?: object };
 };
 
 function toNumber(v: number | '' | undefined): number {
@@ -325,7 +329,7 @@ function nextOccurrenceInMonth(record: Bill | Debt, year: number, monthIndex: nu
 // fields exist on the Loan type, and the Loans screen's own recurrence picker
 // doesn't offer "Custom" as a choice. So Custom loans simply produce no
 // occurrences here for now, same as they already do everywhere else in the app.
-function loanOccurrenceInMonth(loan: Loan, year: number, monthIndex: number): number[] {
+export function loanOccurrenceInMonth(loan: Loan, year: number, monthIndex: number): number[] {
   const d = loan.dueDate || {};
   const daysInMonth = lastDayOfMonth(year, monthIndex);
   const recurringType = loan.recurringType || 'onetime';
@@ -559,6 +563,7 @@ function computeMonthEventsNow(
 
 // How much one event moves the liquid balance: income adds, everything else subtracts.
 export function eventDelta(event: CalendarEvent): number {
+  if (event.type === 'reminder') return 0;
   if (event.type === 'income') return event.amount;
   if (event.type === 'manual') return event.direction === 'in' ? event.amount : -event.amount;
   return -event.amount; // bill, debt, loan, saving

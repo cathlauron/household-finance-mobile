@@ -175,6 +175,14 @@ until she picks.
   microphone permission; the Say it widget is gone (the others keep + Add). The 2026-11-03 Say it
   rule above no longer applies. tests/noVoice.test.mjs keeps it out.
 
+- 2026-11-06: **The Calendar is the main calendar.** Everything added with a date shows on it, a
+  due date or just a reminder, with or without an amount or a Savings pot. Any new dated field
+  must be added to src/calendarAll.ts. Reminders never count in a balance.
+- 2026-11-06: **On a trip, tap it to edit it.** No Edit button: items and to-dos open in the list
+  (TripItemDrop), the name and dates open their small sheets.
+- 2026-11-06: **Greyed days.** The Calendar fills first and last rows with the next or previous
+  month's days, greyed, with no dots; tapping one moves to that month.
+
 ## Same kind of thing, same behaviour
 
 Many of Cath's bugs were one sibling getting a fix the others didn't. When you check or fix

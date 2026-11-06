@@ -398,7 +398,8 @@ export type MealIdea = {
 // Version 2.1 (Cath, canvas T1): a trip's to-do list, next to its budget. Plain notes with
 // tick boxes and an optional date; nothing here touches money.
 // H-43 (Cath, 2026-10-29): who added it (createdAt / addedBy / changedBy / changedAt).
-export type TravelTodo = { id: string; text: string; done: boolean; date?: string; createdAt?: number; addedBy?: string; changedBy?: string; changedAt?: number };
+// Cath, 2026-11-06: cost and note are reminders only; a to-do's cost is never in the budget.
+export type TravelTodo = { id: string; text: string; done: boolean; date?: string; cost?: number; note?: string; createdAt?: number; addedBy?: string; changedBy?: string; changedAt?: number };
 
 export type TravelChecklistItem = {
   id: string;

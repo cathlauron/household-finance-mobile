@@ -282,3 +282,19 @@ Areas: Day & night (theme, Home menu, Appearance), welcome O3a, set-up S1-S4, wi
   uses the shared SettingsGroup rows; nothing new animates on its own.
 - Safety: nothing new writes to Firestore except the trip save (same path as before, with
   withTimeout); the widget library is still never loaded in Expo Go (Widgets check extended).
+
+## Bug + smoothness sweep 2026-11-06 (Beta: Travel drop-downs, Calendar shows everything)
+- Data: trip item changes now save with the trip's budget and pot in one place (commitChecklist).
+  A pot is never removed when the budget reaches nothing: only the switch or Delete trip removes
+  it, because it can hold money (checked). Calendar reminders never change a balance (checked:
+  projected balances identical; computeMonthEvents never returns them).
+- Consistency: Remove asks first (H-49 check caught the first version; the question now lives in
+  TripItemDrop); to-dos and items open the same way; who-added stays on the rows.
+- Found and fixed: B-094 (cost of 0), B-095 (Reduce Motion on month moves).
+- Safety: encryption, sync and Firestore rules untouched. Trips still save through saveModel.
+  New optional to-do fields (cost, note) travel inside the trip like every other field.
+- Hidden browser: set-up, trip, both drop-downs, Add, Cancel, To-do, Calendar greyed days both
+  ways, in dark and light. Not walked: a new trip through the sheet's Add (screen check covers it).
+- Could not run tools/flicker-check.py (no Python on this computer); 111 recorded frames were
+  looked at by hand instead (no flash, no blank frame). The web build has no row animation, so
+  the row opening itself stays "Needs your phone".
