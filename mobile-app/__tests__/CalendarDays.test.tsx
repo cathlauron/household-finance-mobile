@@ -155,7 +155,7 @@ test('adding an event from the Calendar stays there, and the day gets its ribbon
   expect(mockSaved.slice(-1)[0].events.slice(-1)[0].name).toBe('Party');
   expect(mockNavigate.mock.calls.filter((c) => c[0] === 'Main')).toHaveLength(0);
   expect(screen.getByText('November')).toBeTruthy();
-  expect(screen.getAllByText('Party', { includeHiddenElements: true }).length).toBeGreaterThan(0);
+  // (2026-11-07: Compact's thin line has no name; the ribbon's name is on List, see CalendarDatePage.test.)
   expect(screen.getAllByTestId('calendar-day-pop', { includeHiddenElements: true }).length).toBeGreaterThan(0);
 }, 30000);
 

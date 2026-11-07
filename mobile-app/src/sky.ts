@@ -114,18 +114,48 @@ export async function setLiveWeatherOn(on: boolean): Promise<boolean> {
   } catch {
     return false;
   }
+  forgetPlaceAndWeather();
   savePrefs({ ...prefs, liveWeatherOn: true });
   refreshPlace();
   return true;
 }
 
+// Cath, 2026-11-06: an old reading or place is never shown as if it were now. The sky stays clear
+// until the phone's location gives a fresh one.
+function forgetPlaceAndWeather() {
+  place = null;
+  weather = null;
+  emit();
+  Promise.resolve().then(() => AsyncStorage.multiRemove([PLACE_KEY, WEATHER_KEY])).catch(() => {});
+}
+
+// Location was taken away in the phone's settings: goes back to Off, as when the person says no.
+async function stillAllowed(): Promise<boolean> {
+  try {
+    const perm = await Location.getForegroundPermissionsAsync();
+    if (perm.status === 'granted') return true;
+  } catch {
+    return true; // Couldn't check: leave it as it is.
+  }
+  forgetPlaceAndWeather();
+  savePrefs({ ...prefs, liveWeatherOn: false });
+  return false;
+}
+
 // ---- Weather (Open-Meteo: free, no account or key; only the rounded location is sent) ----
 // WMO weather codes: 0-1 clear, 2 partly cloudy (still shown as clear), 3 overcast and
-// 45/48 fog = cloudy, drizzle/rain/showers/thunderstorms = rain. Snow shows as cloudy.
-export function weatherFromCode(code: number): SkyWeather {
+// 45/48 fog = cloudy, drizzle/rain/showers/thunderstorms can be rain (see below). Snow shows as cloudy.
+// Cath, 2026-11-06 ("real rain only"): the rain codes also come with tiny amounts on dry days, so
+// rain needs at least RAIN_MM in the last 15 minutes. Less than that is cloudy, or clear if most
+// of the sky is clear. A reading with no amount is never called rain.
+const RAIN_MM = 0.5;
+const CLOUDY_FROM = 50; // percent of the sky
+export function weatherFromReading({ code, precipitation, cloudCover }: { code: number; precipitation?: number; cloudCover?: number }): SkyWeather {
   if (code <= 2) return 'clear';
-  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95) return 'rain';
-  return 'cloudy';
+  const rainCode = (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95;
+  if (!rainCode) return 'cloudy';
+  if (typeof precipitation === 'number' && precipitation >= RAIN_MM) return 'rain';
+  return typeof cloudCover === 'number' && cloudCover < CLOUDY_FROM ? 'clear' : 'cloudy';
 }
 
 const HOUR = 60 * 60 * 1000;
@@ -134,13 +164,13 @@ async function refreshWeather(force = false): Promise<void> {
   if (!force && weather && Date.now() - weather.at < HOUR) return;
   weatherBusy = true;
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${place.lat}&longitude=${place.lon}&current=weather_code&timezone=auto&forecast_days=1`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${place.lat}&longitude=${place.lon}&current=weather_code,precipitation,cloud_cover&timezone=auto&forecast_days=1`;
     const res = await fetch(url);
     if (!res.ok) return;
     const json = await res.json();
     const code = json?.current?.weather_code;
     if (typeof code !== 'number') return;
-    weather = { kind: weatherFromCode(code), at: Date.now() };
+    weather = { kind: weatherFromReading({ code, precipitation: json.current.precipitation, cloudCover: json.current.cloud_cover }), at: Date.now() };
     emit();
     AsyncStorage.setItem(WEATHER_KEY, JSON.stringify(weather)).catch(() => {});
   } catch {
@@ -194,6 +224,11 @@ export function useSkyPhase(): SkyPhase {
 
   useEffect(() => {
     setPhase(compute());
+    const refresh = async () => {
+      if (!liveWeatherOn || !(await stillAllowed())) return;
+      if (!place || Date.now() - place.at > 3 * 60 * MIN) refreshPlace();
+      else refreshWeather();
+    };
     const tick = setInterval(() => {
       setPhase(compute());
       if (liveWeatherOn) refreshWeather();
@@ -201,11 +236,9 @@ export function useSkyPhase(): SkyPhase {
     const sub = AppState.addEventListener('change', (s) => {
       if (s !== 'active') return;
       setPhase(compute());
-      if (liveWeatherOn && (!place || Date.now() - place.at > 3 * 60 * MIN)) refreshPlace();
-      else if (liveWeatherOn) refreshWeather();
+      refresh();
     });
-    if (liveWeatherOn && (!place || Date.now() - place.at > 3 * 60 * MIN)) refreshPlace();
-    else if (liveWeatherOn) refreshWeather();
+    refresh();
     return () => {
       clearInterval(tick);
       sub.remove();

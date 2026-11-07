@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calendar Views Swap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Plan: her own November, three phones: Compact, Compact after a tap, List. Same colours as the app. */
+:root {
+  --ink:#111111; --dim:#636366; --faint:#C7C7CC; --line:#D1D1D6; --bg:#F2F2F7; --card:#FFFFFF; --page:#E9E9EE;
+  --gold:#B0234F; --tint:#E9CFD8; --blue:#1D63B8; --blueband:#C7D6EC; --pink:#E7C9D4; --red:#D70015; --green:#1F7A3D; --indigo:#4F46E5; --orange:#C2410C; --rose:#B0234F;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink:#FFFFFF; --dim:#AEAEB2; --faint:#48484A; --line:#38383A; --bg:#000000; --card:#1C1C1E; --page:#111113;
+    --gold:#F0668F; --tint:#4A1F2E; --blue:#6FB1F5; --blueband:#1F3550; --pink:#4A2533; --red:#FF6961; --green:#5FC48A; --indigo:#818CF8; --orange:#FF9F5A; --rose:#F0668F;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ink:#FFFFFF; --dim:#AEAEB2; --faint:#48484A; --line:#38383A; --bg:#000000; --card:#1C1C1E; --page:#111113;
+  --gold:#F0668F; --tint:#4A1F2E; --blue:#6FB1F5; --blueband:#1F3550; --pink:#4A2533; --red:#FF6961; --green:#5FC48A; --indigo:#818CF8; --orange:#FF9F5A; --rose:#F0668F;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--ink); font-family: 'Nunito','Segoe UI',system-ui,sans-serif; line-height: 1.45; }
+main { max-width: 1160px; margin: 0 auto; padding: 28px 16px 56px; }
+h1 { font-size: 30px; line-height: 1.15; margin: 0 0 6px; font-weight: 800; text-wrap: balance; }
+.lead { color: var(--dim); font-size: 16px; margin: 0 0 24px; max-width: 66ch; }
+.scenes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px 22px; }
+.scene { min-width: 0; }
+.scene h2 { font-size: 19px; margin: 0 0 2px; font-weight: 800; }
+.scene p { color: var(--dim); margin: 0 0 12px; font-size: 15px; min-height: 66px; }
+.phone { width: 100%; max-width: 340px; height: 680px; margin: 0 auto; background: var(--bg); border-radius: 28px; overflow: hidden; border: 1px solid var(--line); display: flex; flex-direction: column; }
+.bar { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 2px; color: var(--gold); font-weight: 600; font-size: 16px; }
+.month { font-size: 25px; font-weight: 600; padding: 2px 18px 8px; }
+.dow, .wk { display: grid; grid-template-columns: repeat(7, 1fr); }
+.dow { color: var(--dim); font-size: 11.5px; text-align: center; padding-bottom: 5px; border-bottom: 1px solid var(--line); }
+.wk { position: relative; border-bottom: 1px solid var(--line); }
+.cell { position: relative; display: flex; flex-direction: column; align-items: center; padding-top: 5px; min-width: 0; }
+.n { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 15px; }
+.we { color: var(--dim); }
+.out { color: var(--faint); }
+.today { background: var(--tint); color: var(--gold); font-weight: 800; }
+.dots { position: relative; display: flex; gap: 2.5px; height: 6px; margin-top: 3px; }
+.dots i { width: 5px; height: 5px; border-radius: 50%; display: block; }
+.band { position: absolute; }
+.short .wk { height: 44px; }
+.short .band { height: 4px; top: 36px; border-radius: 3px; }
+.short .dots { margin-top: 1px; }
+.short .n { width: 26px; height: 26px; }
+.tall .wk { height: 64px; }
+.tall .band { height: 13px; top: 35px; border-radius: 5px; font-size: 10.5px; line-height: 13px; font-weight: 800; padding: 0 5px; overflow: hidden; white-space: nowrap; }
+.tall .gap { height: 14px; }
+.blue { background: var(--blueband); color: var(--blue); }
+.pink { background: var(--pink); color: var(--rose); }
+.sq-l { border-top-left-radius: 0 !important; border-bottom-left-radius: 0 !important; }
+.sq-r { border-top-right-radius: 0 !important; border-bottom-right-radius: 0 !important; }
+.head { padding: 10px 18px 6px; font-weight: 700; font-size: 14px; color: var(--dim); }
+.card { margin: 0 14px; background: var(--card); border-radius: 12px; }
+.row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
+.row + .row { border-top: 1px solid var(--line); }
+.row b { display: block; font-size: 14px; font-weight: 700; }
+.row small { display: block; color: var(--dim); font-size: 12px; }
+.row span { margin-left: auto; font-size: 13.5px; font-weight: 700; }
+.row i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.blank { flex: 1; }
+.note { margin: 28px 0 0; padding: 14px 16px; background: var(--card); border-radius: 12px; max-width: 72ch; font-size: 15px; }
+.note b { font-weight: 800; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Calendar views swapped</h1>
+  <p class="lead">Your November. The rows from your first picture move to List, with the day's details underneath. The short rows from your second picture become Compact. Amounts and row names here are samples.</p>
+  <div class="scenes">
+    <section class="scene">
+      <h2>Compact</h2>
+      <p>Short rows, dots and thin lines, no names. Nothing underneath until you tap a day.</p>
+      <div class="phone short" id="p1"></div>
+    </section>
+    <section class="scene">
+      <h2>Compact, after tapping a day</h2>
+      <p>The month stays exactly where it is, and that day's details appear in the free space.</p>
+      <div class="phone short" id="p2"></div>
+    </section>
+    <section class="scene">
+      <h2>List</h2>
+      <p>Taller rows with BKK and Bebi written on their ribbons. The picked day's details are always underneath and scroll.</p>
+      <div class="phone tall" id="p3"></div>
+    </section>
+  </div>
+  <p class="note"><b>Good to know:</b> the taller rows leave less room in List, so you'd see about 2 or 3 of a day's items before scrolling. On a month with 6 rows, it's about 1 or 2. Details stays as it is.</p>
+</main>
+<script>
+var C = { b:'--blue', g:'--green', r:'--red', o:'--orange', p:'--rose', i:'--indigo' };
+var marks = { 1:'bbb', 4:'ggb', 5:'obb', 6:'rgb', 7:'rrg', 9:'p', 11:'rb', 12:'rpp', 13:'ooo', 15:'og', 16:'ii', 26:'r', 27:'og', 30:'rg' };
+var weeks = [[1,2,3,4,5,6,7],[8,9,10,11,12,13,14],[15,16,17,18,19,20,21],[22,23,24,25,26,27,28],[29,30,-1,-2,-3,-4,-5]];
+var bands = { 1:[[5,6,'BKK','blue',false,true]], 2:[[0,5,'BKK','blue',true,false]], 3:[[4,4,'Bebi','pink',false,false]] };
+var pct = 100 / 7;
+function grid(tall) {
+  return weeks.map(function (w, wi) {
+    var b = (bands[wi] || []).map(function (x) {
+      return '<div class="band ' + x[3] + (x[4] ? ' sq-l' : '') + (x[5] ? ' sq-r' : '') + '" style="left:' + (x[0] * pct) + '%;width:' + ((x[1] - x[0] + 1) * pct) + '%">' + (tall ? x[2] : '') + '</div>';
+    }).join('');
+    var c = w.map(function (d, i) {
+      var day = d > 0 ? d : -d;
+      var cls = d < 0 ? 'out' : d === 7 ? 'today' : (i === 0 || i === 6) ? 'we' : '';
+      var dots = (d > 0 && marks[d] || '').split('').filter(Boolean).map(function (k) { return '<i style="background:var(' + C[k] + ')"></i>'; }).join('');
+      var banded = (bands[wi] || []).some(function (x) { return i >= x[0] && i <= x[1]; });
+      return '<div class="cell"><div class="n ' + cls + '">' + day + '</div>' + (tall && banded ? '<div class="gap"></div>' : '') + '<div class="dots">' + dots + '</div></div>';
+    }).join('');
+    return '<div class="wk">' + b + c + '</div>';
+  }).join('');
+}
+function header(icon) {
+  return '<div class="bar"><span>&lsaquo; 2026</span><span>' + icon + ' &nbsp; + &nbsp; Done</span></div><div class="month">November</div>' +
+    '<div class="dow"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>';
+}
+var details = '<div class="head">Today · Saturday, Nov 7</div><div class="card">' +
+  '<div class="row"><i style="background:var(--red)"></i><div><b>Sample bill</b><small>Bill</small></div><span>-₱1,250</span></div>' +
+  '<div class="row"><i style="background:var(--red)"></i><div><b>Sample debt</b><small>Debt</small></div><span>-₱800</span></div>' +
+  '<div class="row"><i style="background:var(--green)"></i><div><b>Sample income</b><small>Income</small></div><span>₱5,000</span></div></div>';
+document.getElementById('p1').innerHTML = header('▦') + grid(false) + '<div class="blank"></div>';
+document.getElementById('p2').innerHTML = header('▦') + grid(false) + details + '<div class="blank"></div>';
+document.getElementById('p3').innerHTML = header('☰') + grid(true) + details + '<div class="blank"></div>';
+</script>
+</body>
+</html>

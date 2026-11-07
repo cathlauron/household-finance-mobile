@@ -145,6 +145,8 @@ How to check (besides reading the code):
 - 2026-11-06: From your Plan and each Plan form take the sheet's place with the same handoff as the
   Calendar's forms. A new ribbon pops with ROW_MS after SHEET_CLOSE_MS, like the day's marks.
 
+- 2026-11-07: The Calendar's date page slides in like a page (PAGE_OPEN_MS), back with PAGE_BACK_MS, instant with Reduce Motion. In List, the details move with the shared row motion when a month has more or fewer rows.
+
 ## Part of the full sweep (Cath, 2026-10-29)
 
 This check is part 3 of the full sweep in `finance-flow-bug-check`, which runs before EVERY

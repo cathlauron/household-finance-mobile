@@ -194,6 +194,13 @@ until she picks.
 - 2026-11-06: Grocery items have an optional Buy by date, which shows on the Calendar. Investment from
   the Calendar is money into one (choose it, or start a new one).
 
+- 2026-11-06: **Live weather shows real rain only.** Rain needs at least 0.5 mm in the last 15 minutes. Less than that is cloudy, or clear if under half the sky is cloud. An old reading or place is never shown when it is turned on, and with location not allowed it goes back to Off.
+
+- 2026-11-07: **The iPhone's date tap, in our own look** (mockup calendar-date-page, from her recording). Tapping a date in Compact or Details opens a page of that date and the dates after it with something on them, into the next months; "‹ Month" or the phone's Back returns. No Single Day or Multi Day, and no view button there. List keeps the month and only changes the details underneath. A date with nothing says "Nothing on this day." then the next dates follow.
+- 2026-11-07: **Compact and List swapped trip views.** REPLACES 2026-11-06 for these two: Compact has the short rows and thin trip lines with no names; List has the taller rows with named ribbons and the day's details. Details is unchanged. Keep our fonts, icons, buttons and ribbons.
+
+- 2026-11-07: **Calendar rows are plain with a line between them** (mockup calendar-list-lines), on List and the date page, with no white card. List's heading matches the date page ("THURSDAY — NOV 5").
+
 ## Same kind of thing, same behaviour
 
 Many of Cath's bugs were one sibling getting a fix the others didn't. When you check or fix

@@ -1578,3 +1578,18 @@ design system "Finance Flow" https://claude.ai/artifact/CHvvSdWHaX5qkmDvSE3BVZ,
 - 2026-11-06: Cath: device test as described (TEST-3 s32, plus s31 items 9 and 10 and the five sweep fixes). Full sweep of this batch next, then her approval to push and build.
 - 2026-11-06: Sweep of the add-from-Plan batch done. B-106 fixed. Waiting on her approval to push and build (suggested 3.7.0 Beta, versionCode 12). Not committed yet.
 - 2026-11-06: Cath approved push and build: release 3.7.0 Beta (versionCode 12).
+- 2026-11-06: 3.7.0 Beta built (versionCode 12, commit 2a03463): https://expo.dev/accounts/cathlauron/projects/mobile-app/builds/d974ce7e-889a-4af7-aed3-ed6858c11aa0. Waiting on her install check.
+- 2026-11-06: Cath: Live weather did not ask and showed rain. B-107 fixed (old reading, old place, back to Off), not committed. Asked her what the phone's Location permission says and whether it was really raining.
+- 2026-11-06: Cath's phone: Location is Allow only while using the app, so Android had no reason to show the pop-up (not a bug). Still to answer: was it really raining; does she want the app to ask too.
+- 2026-11-06: Cath: it was dry when the app showed rain. Phone test of the B-107 fix sent (Expo Go). If rain comes back while dry, the wrong reading is from Open-Meteo: ask her before changing when rain shows.
+- 2026-11-06: Cath: rain still shows while dry with the fix on (H-74). Asked her how much rain should count.
+- 2026-11-06: Cath picked real rain only (H-74). Built, B-108. Not committed. Needs her phone: TEST-3 s33.
+- 2026-11-06: Cath wants the Calendar views changed: List gets the taller rows with named ribbons plus the day's details, Compact gets the short rows with thin lines. Mockup design/3.0-mockups/calendar-views-swap.html sent. Not built. Live weather result still open.
+- 2026-11-06: Cath pointed out a tap on a date in Compact or Details switches to the List look. Mockup design/3.0-mockups/calendar-day-tap.html sent with Options A, B, C. Waiting on her pick. Not built.
+- 2026-11-07: Cath sent an iPhone Calendar recording: wants the Calendar to look just like it. Mockup design/3.0-mockups/calendar-iphone.html sent, replaces the earlier swap and date-tap mockups. Waiting on her yes. Not built.
+- 2026-11-07: Cath: keep our fonts, icons, buttons, ribbons and views; copy only the iPhone's date tap; no Single Day or Multi Day. Mockup design/3.0-mockups/calendar-date-page.html sent. Waiting on her yes. Not built.
+- 2026-11-07: Cath confirmed: Compact and List still swap trip views (Compact short rows and thin lines, List taller rows with named ribbons and the day's details). Mockup updated.
+- 2026-11-07: Cath picked the date page mockup, with Compact and List swapping trip views. Built, not committed. TEST-3 s33 and s34 need her phone.
+- 2026-11-07: Cath tested the date page: wants plain rows with a line between them on both the date page and List, no white card. Mockup design/3.0-mockups/calendar-list-lines.html sent. Not built.
+- 2026-11-07: Cath picked plain rows with lines. Built on List and the date page, not committed. TEST-3 s34 item 8.
+- 2026-11-07: Cath: device test as described (TEST-3 s33, s34). Sweep run, B-109 fixed. She approved push and build: release 3.8.0 Beta (versionCode 13).

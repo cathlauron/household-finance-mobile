@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calendar List Lines</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;padding:16px;background:#E9E9EE">
+<style>
+.ff{--t:#111;--m:#636366;--f:#C7C7CC;--l:#D1D1D6;--s:#F2F2F7;--a:#B0234F;--ti:#E9CFD8;--bl:#1D63B8;--bb:#C7D6EC;--pk:#E7C9D4;--r:#D70015;--g:#1F7A3D;--o:#C2410C;font-family:'Nunito',sans-serif;color:var(--t);display:flex;flex-wrap:wrap;gap:20px;justify-content:center}
+@media (prefers-color-scheme:dark){.ff{--t:#fff;--m:#AEAEB2;--f:#48484A;--l:#38383A;--s:#000;--a:#F0668F;--ti:#4A1F2E;--bl:#6FB1F5;--bb:#1F3550;--pk:#4A2533;--r:#FF6961;--g:#5FC48A;--o:#FF9F5A}}
+.st{width:320px;max-width:100%}.st p{font-size:15px;font-weight:700;margin:0 0 8px}
+.ph{height:690px;background:var(--s);border:0.5px solid var(--l);border-radius:24px;overflow:hidden;display:flex;flex-direction:column}
+.bar{display:flex;justify-content:space-between;padding:14px 16px 4px;color:var(--a);font-size:16px;font-weight:600}
+.mo{font-size:25px;font-weight:600;padding:0 16px 8px}
+.dw,.wk{display:grid;grid-template-columns:repeat(7,1fr)}
+.dw{font-size:11px;color:var(--m);text-align:center;padding-bottom:4px;border-bottom:0.5px solid var(--l)}
+.wk{position:relative;height:56px;border-bottom:0.5px solid var(--l)}
+.cl{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;padding-top:4px;min-width:0}
+.n{width:26px;height:26px;line-height:26px;border-radius:50%;text-align:center;font-size:14px}
+.we{color:var(--m)}.out{color:var(--f)}.tod{background:var(--ti);color:var(--a);font-weight:800}.pick{background:rgba(127,127,127,.2);font-weight:800}
+.dt{display:flex;gap:2px;height:5px;margin-top:2px}.dt i{width:5px;height:5px;border-radius:50%}
+.bd{position:absolute;top:32px;height:12px;line-height:12px;font-size:10px;font-weight:800;padding:0 4px;box-sizing:border-box;overflow:hidden}
+.blu{background:var(--bb);color:var(--bl)}.pnk{background:var(--pk);color:var(--a)}
+.sc{flex:1;overflow:hidden}
+.hd{display:flex;justify-content:space-between;align-items:baseline;padding:14px 16px 4px;font-size:12.5px;font-weight:800;color:var(--m)}
+.hd span{font-size:12px;font-weight:600}
+.rw{display:flex;align-items:center;gap:11px;padding:9px 0;margin:0 16px}
+.rw+.rw{border-top:0.5px solid var(--l)}
+.rw>i{width:9px;height:9px;border-radius:50%;flex:none}.rw div{flex:1;min-width:0}.rw b{display:block;font-size:15px;font-weight:700}.rw small{display:block;font-size:12.5px;color:var(--m)}.rw span{font-size:14.5px;font-weight:700}
+</style>
+<div class="ff">
+  <div class="st"><p>List</p><div class="ph" id="a"></div></div>
+  <div class="st"><p>Date page</p><div class="ph" id="b"></div></div>
+</div>
+<script>
+var c={r:'var(--r)',g:'var(--g)',b:'var(--bl)',o:'var(--o)',t:'var(--t)'};
+function R(n,s,a,d,k){return '<div class="rw"><i style="background:'+c[d]+'"></i><div><b>'+n+'</b><small>'+s+'</small></div><span style="color:'+c[k]+'">'+a+'</span></div>'}
+var nov4=R('Gift','Money in','+₱500.00','g','g')+R('Netflix','Money in','+₱100.00','g','g')+R('Medicine','Spent','−₱250.00','b','r');
+var nov5=R('Atome','Debt payment','−₱3,653.81','o','t')+R('Google payment','Spent','−₱179.00','b','r')+R('Tiktok shop','Spent','−₱146.45','b','r')+R('Credit Increase','Money in','+₱30.00','g','g')+R('Savings interest','Money in','+₱0.31','g','g')+R('Cashback','Money in','+₱1.78','g','g');
+var M={1:'bbb',4:'ggb',5:'obb',6:'rgb',7:'rrg',9:'p',11:'rb',12:'rpp',13:'ooo',15:'og',16:'ii',26:'r',27:'og',30:'rg'},K={b:'var(--bl)',g:'var(--g)',o:'var(--o)',r:'var(--r)',p:'var(--a)',i:'#4F46E5'};
+var W=[[1,2,3,4,5,6,7],[8,9,10,11,12,13,14],[15,16,17,18,19,20,21],[22,23,24,25,26,27,28],[29,30,-1,-2,-3,-4,-5]];
+var B={1:[[5,6,'BKK','blu',0,1]],2:[[0,5,'BKK','blu',1,0]],3:[[4,4,'Bebi','pnk',0,0]]};
+function grid(){var o='';W.forEach(function(w,wi){var bs=B[wi]||[];o+='<div class="wk">';bs.forEach(function(x){o+='<div class="bd '+x[3]+'" style="left:'+x[0]*100/7+'%;width:'+(x[1]-x[0]+1)*100/7+'%;border-radius:'+(x[4]?0:5)+'px '+(x[5]?0:5)+'px '+(x[5]?0:5)+'px '+(x[4]?0:5)+'px">'+x[2]+'</div>'});w.forEach(function(d,i){var on=bs.some(function(x){return i>=x[0]&&i<=x[1]});var cl='n'+(d<0?' out':d==7?' tod':d==5?' pick':(i==0||i==6)?' we':'');o+='<div class="cl"><div class="'+cl+'">'+Math.abs(d)+'</div>'+(on?'<div style="height:12px"></div>':'')+'<div class="dt">'+((d>0&&M[d])||'').split('').filter(Boolean).map(function(k){return '<i style="background:'+K[k]+'"></i>'}).join('')+'</div></div>'});o+='</div>'});return o}
+document.getElementById('a').innerHTML='<div class="bar"><span>‹ 2026</span><span>☰ &nbsp; + &nbsp; Done</span></div><div class="mo">November</div><div class="dw"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>'+grid()+'<div class="sc"><div class="hd">THURSDAY — NOV 5<span>Balance -₱21,989.39</span></div>'+nov5+'</div>';
+document.getElementById('b').innerHTML='<div class="bar"><span>‹ November</span><span>+ &nbsp; Done</span></div><div class="sc"><div class="hd">WEDNESDAY — NOV 4<span>Balance -₱18,085.04</span></div>'+nov4+'<div class="hd">THURSDAY — NOV 5<span>Balance -₱21,989.39</span></div>'+nov5+'</div>';
+</script>
+</body>
+</html>

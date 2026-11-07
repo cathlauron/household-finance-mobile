@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calendar iPhone Style</title>
+</head>
+<body style="margin:0;padding:16px;font-family:system-ui,sans-serif;background:#E9E9EE">
+<style>
+.ff{--t:var(--text-primary,#111);--m:var(--text-secondary,#636366);--f:var(--text-muted,#AEAEB2);--l:var(--border,#D1D1D6);--s:var(--surface-1,#F2F2F7);--c:var(--surface-2,#fff);--a:#B0234F;--tr:#378ADD;width:340px;max-width:100%;margin:0 auto;color:var(--t)}
+@media (prefers-color-scheme:dark){.ff{--a:#F0668F;--t:var(--text-primary,#fff);--m:var(--text-secondary,#AEAEB2);--l:var(--border,#38383A);--s:var(--surface-1,#000);--c:var(--surface-2,#1C1C1E)}}
+.ph{position:relative;height:640px;background:var(--s);border:0.5px solid var(--l);border-radius:24px;overflow:hidden;display:flex;flex-direction:column}
+.bar{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 4px;color:var(--a);font-size:15px}
+.bar button{all:unset;cursor:pointer;color:var(--a);padding:2px 6px}
+.ti{font-size:25px;font-weight:500;padding:0 14px 6px}
+.dw,.wk{display:grid;grid-template-columns:repeat(7,1fr)}
+.dw{font-size:11px;color:var(--m);text-align:center;padding-bottom:3px;border-bottom:0.5px solid var(--l)}
+.wk{border-bottom:0.5px solid var(--l)}
+.cl{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;min-width:0;padding-top:4px}
+.n{width:27px;height:27px;line-height:27px;border-radius:50%;text-align:center;font-size:15px}
+.n.we{color:var(--m)}.n.tod{color:var(--a);font-weight:500}.n.sel{background:var(--a);color:#fff;font-weight:500}.n.pick{background:var(--t);color:var(--s);font-weight:500}
+.mk{height:5px;margin-top:1px;display:flex;align-items:center}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--m)}.dash{width:16px;height:4px;border-radius:2px;background:var(--tr)}
+.sc{flex:1;overflow-y:auto;min-height:0}
+.mn{font-size:15px;font-weight:500;padding:8px 0 0 14%}
+.sh{font-size:12px;font-weight:500;color:var(--m);padding:12px 14px 4px;letter-spacing:.2px}
+.rw{display:flex;align-items:center;gap:9px;padding:7px 14px;font-size:14px}
+.rw i{width:9px;height:9px;border-radius:50%;flex:none}.rw b{font-weight:500;flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.rw span{font-size:12px;color:var(--m);flex:none}
+.pl{width:100%;font-size:9px;line-height:12px;padding:0 2px;overflow:hidden;white-space:nowrap;border-radius:2px;background:rgba(127,127,127,.15);margin-top:1px;box-sizing:border-box}
+.menu{position:absolute;top:44px;right:14px;width:190px;background:var(--c);border:0.5px solid var(--l);border-radius:12px;z-index:5;overflow:hidden}
+.menu button{all:unset;cursor:pointer;display:block;width:100%;box-sizing:border-box;padding:10px 12px;font-size:14px;border-top:0.5px solid var(--l)}.menu button:first-child{border-top:0}
+.hr{display:flex;height:36px;font-size:10px;color:var(--m);border-top:0.5px solid var(--l);padding-left:6px}
+.ad{display:flex;gap:4px;align-items:flex-start;padding:4px 6px;border-bottom:0.5px solid var(--l);font-size:10px;color:var(--m)}
+.ev{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.ev b{font-size:10px;font-weight:500;padding:2px 4px;border-radius:4px;background:rgba(55,138,221,.25);color:var(--t);overflow:hidden;white-space:nowrap}
+.dh{text-align:center;font-size:13px;font-weight:500;padding:6px 0;border-bottom:0.5px solid var(--l)}
+</style>
+<div class="ff"><div class="ph" id="ph"></div></div>
+<script>
+var S={v:'compact',p:'month',dv:'list',d:7,m:0};
+var TRIP=[13,14,15,16,17,18,19,20];
+var X={6:[['Sample bill','-₱950','#E24B4A']],7:[['Sample bill','-₱1,250','#E24B4A'],['Sample debt','-₱800','#E24B4A'],['Sample income','₱5,000','#3B8A4B']],9:[['Sample loan','-₱2,000','#D4537E']],11:[['Sample bill','-₱600','#E24B4A']],12:[['Sample bill','-₱1,100','#E24B4A']],13:[['Sample food','-₱450','#D85A30']],15:[['Sample food','-₱380','#D85A30']],26:[['Bebi','all-day','#D4537E'],['Sample bill','-₱700','#E24B4A']],27:[['Sample income','₱5,000','#3B8A4B']],30:[['Sample bill','-₱1,500','#E24B4A']]};
+var DW=['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
+function items(d){var a=[];if(TRIP.indexOf(d)>=0)a.push(['BKK','all-day','#378ADD']);return a.concat(X[d]||[])}
+function row(i){return '<div class="rw"><i style="background:'+i[2]+'"></i><b>'+i[0]+'</b><span>'+i[1]+'</span></div>'}
+function month(y,tall,sel){var o='';var first=y==0?0:2,len=y==0?30:31,cells=[];for(var i=0;i<first;i++)cells.push(0);for(var d=1;d<=len;d++)cells.push(d);while(cells.length%7)cells.push(0);
+for(var w=0;w<cells.length;w+=7){o+='<div class="wk"'+(tall?' style="min-height:78px"':'')+'>';cells.slice(w,w+7).forEach(function(d,ci){if(!d){o+='<div></div>';return}var it=y==0?items(d):[];var c='n'+(ci==0||ci==6?' we':'');if(y==0&&d==7)c+=' sel';else if(y==0&&d==S.d&&sel)c+=' pick';var m='';if(tall){m=it.slice(0,2).map(function(x){return '<div class="pl">'+x[0]+'</div>'}).join('')}else{var t=y==0&&TRIP.indexOf(d)>=0;m='<div class="mk">'+(t?'<div class="dash"></div>':it.length?'<div class="dot"></div>':'')+'</div>'}o+='<button class="cl" data-d="'+(y==0?d:'')+'"><div class="'+c+'">'+d+'</div>'+m+'</button>'});o+='</div>'}return o}
+function days(from){var o='';for(var d=from;d<=30;d++){var it=items(d);if(!it.length)continue;o+='<div class="sh">'+DW[(d-1)%7]+' — NOV '+d+'</div>'+it.map(row).join('')}return o}
+function dayCol(d){return items(d).map(function(i){return '<b>'+i[0]+'</b>'}).join('')||'&nbsp;'}
+function hours(){var o='';for(var i=0;i<12;i++)o+='<div class="hr">'+(i==0?'12 AM':i+' AM')+'</div>';return o}
+function strip(){var st=S.d-(S.d-1)%7,o='<div class="wk">';for(var i=0;i<7;i++){var d=st+i;o+=d>30?'<div></div>':'<button class="cl" data-d="'+d+'"><div class="n'+(d==7?' sel':d==S.d?' pick':'')+'">'+d+'</div></button>'}return o+'</div>'}
+var DAYV={list:'List',single:'Single Day',multi:'Multi Day'},MONV={compact:'Compact',details:'Details',list:'List'};
+function draw(){var h='';var dw='<div class="dw"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>';
+var back=S.p=='day'?'‹ November':'‹ 2026';h+='<div class="bar"><span>'+back+'</span><span><button data-menu="1">☰</button><button>+</button><button>Done</button></span></div>';
+if(S.p=='month'){h+='<div class="ti">November</div>'+dw;
+if(S.v=='list'){h+=month(0,false,true)+'<div class="sc">'+(items(S.d).map(row).join('')||'<div class="rw"><span>Nothing on this day.</span></div>')+'</div>'}
+else{h+='<div class="sc">'+month(0,S.v=='details',false)+'<div class="mn">Dec</div>'+month(1,S.v=='details',false)+'</div>'}}
+else if(S.dv=='list'){h+='<div class="sc">'+days(S.d)+'</div>'}
+else if(S.dv=='single'){h+=dw+strip()+'<div class="dh">'+DW[(S.d-1)%7].charAt(0)+DW[(S.d-1)%7].slice(1).toLowerCase()+' — Nov '+S.d+', 2026</div><div class="ad">all-day<div class="ev">'+dayCol(S.d)+'</div></div><div class="sc">'+hours()+'</div>'}
+else{var e=Math.min(S.d+1,30);h+=dw+strip()+'<div style="display:flex"><div class="dh" style="flex:1">Nov '+S.d+'</div><div class="dh" style="flex:1">Nov '+e+'</div></div><div class="ad">all-day<div class="ev">'+dayCol(S.d)+'</div><div class="ev">'+dayCol(e)+'</div></div><div class="sc">'+hours()+'</div>'}
+if(S.m){var L=S.p=='day'?DAYV:MONV,cur=S.p=='day'?S.dv:S.v;h+='<div class="menu">'+Object.keys(L).map(function(k){return '<button data-pick="'+k+'">'+(k==cur?'✓ ':'&nbsp;&nbsp;&nbsp;')+L[k]+'</button>'}).join('')+'</div>'}
+var ph=document.getElementById('ph');ph.innerHTML=h}
+document.getElementById('ph').addEventListener('click',function(e){var b=e.target.closest('[data-d],[data-menu],[data-pick]');var bar=e.target.closest('.bar span:first-child');
+if(bar&&S.p=='day'){S.p='month';S.m=0;draw();return}
+if(!b){if(S.m){S.m=0;draw()}return}
+if(b.dataset.menu){S.m=!S.m}
+else if(b.dataset.pick){if(S.p=='day')S.dv=b.dataset.pick;else S.v=b.dataset.pick;S.m=0}
+else if(b.dataset.d){S.d=+b.dataset.d;if(S.p=='month'&&S.v!='list'){S.p='day';S.dv='list'}}
+draw()});
+draw();
+</script>
+</body>
+</html>

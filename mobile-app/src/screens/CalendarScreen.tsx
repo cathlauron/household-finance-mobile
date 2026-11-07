@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { buildPages, monthCells, todayIndex, YEARS_EACH_SIDE, type Page } from '../calendarPages';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
-import { Animated, Easing, View, StyleSheet, Modal, Pressable, ActivityIndicator, ScrollView, FlatList, useWindowDimensions } from 'react-native';
-import { CURVE, ROW_MS, SHEET_CLOSE_MS } from '../motion';
+import { Animated, BackHandler, Easing, View, StyleSheet, Modal, Pressable, ActivityIndicator, ScrollView, FlatList, useWindowDimensions } from 'react-native';
+import { CURVE, PAGE_BACK_MS, PAGE_OPEN_MS, ROW_MS, SHEET_CLOSE_MS } from '../motion';
+import { animateNextLayout } from '../animateLayout';
+import { dateHeading, datesFrom } from '../calendarDates';
 import { TouchableOpacity } from '../components/Tap';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../components/AppText';
@@ -24,7 +26,6 @@ import {
   setCalendarShowBalance,
 } from '../calendarSettings';
 import { useNavigation } from '@react-navigation/native';
-import GradientFill from '../components/GradientFill';
 import BottomSheet, { startSheetHandoff } from '../components/BottomSheet';
 import TransactionsScreen from './TransactionsScreen';
 import BillsScreen from './BillsScreen';
@@ -213,6 +214,12 @@ type GridProps = {
 const TODAY_TINT = '2E'; // about 18%
 const SELECTED_TINT = '1A'; // about 10%
 const ADD_TAP_GAP = 800; // taps on a + row closer than this count as one
+// Cath, 2026-11-07 (mockup calendar-date-page): Compact has the short rows and thin trip lines,
+// List the taller rows with named ribbons.
+const COMPACT_ROW = 46;
+const LIST_ROW = 62;
+const DETAILS_ROW = 96;
+const DATE_MONTHS = 3; // months of dates on the date page at a time
 const ARRIVED_MS = 2000; // how long a just-added day stays marked
 const GREY_DAY_OPACITY = 0.36; // the days of the month before or after
 
@@ -479,9 +486,43 @@ export default function CalendarScreen() {
   // The month on screen (index into pages) and the chosen day.
   const [index, setIndex] = useState(todayIndex);
   const [selected, setSelected] = useState<{ year: number; month: number; day: number } | null>(null);
-  // Tapping a day in Compact or Details shows that day's list (like the iPhone); "‹ Month"
-  // goes back to the grid.
+  // Cath, 2026-11-07 (mockup calendar-date-page): tapping a date in Compact or Details opens a page
+  // of that date and the dates after it (like the iPhone); "‹ Month" goes back to the month.
   const [dayOpen, setDayOpen] = useState(false);
+  const [dateShown, setDateShown] = useState(false); // stays up while it slides away
+  const [dateMonths, setDateMonths] = useState(DATE_MONTHS);
+  const dateSlide = useRef(new Animated.Value(0)).current;
+  const dateRef = useRef<FlatList<any>>(null);
+  useEffect(() => {
+    if (dayOpen) {
+      setDateShown(true);
+      if (reduceMotionNow()) {
+        dateSlide.setValue(0);
+        return;
+      }
+      dateSlide.setValue(width);
+      Animated.timing(dateSlide, { toValue: 0, duration: PAGE_OPEN_MS, easing: Easing.bezier(...CURVE), useNativeDriver: true }).start();
+      return;
+    }
+    if (!dateShown) return;
+    if (reduceMotionNow()) {
+      setDateShown(false);
+      return;
+    }
+    Animated.timing(dateSlide, { toValue: width, duration: PAGE_BACK_MS, easing: Easing.bezier(...CURVE), useNativeDriver: true }).start(({ finished }) => {
+      if (finished) setDateShown(false);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dayOpen]);
+  // The phone's Back button goes to the month first, like the link at the top.
+  useEffect(() => {
+    if (!dayOpen) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setDayOpen(false);
+      return true;
+    });
+    return () => sub.remove();
+  }, [dayOpen]);
 
   useEffect(() => {
     getCalendarViewMode().then((m) => setViewModeState(m === 'stacked' ? 'details' : m));
@@ -490,7 +531,7 @@ export default function CalendarScreen() {
   }, []);
 
   const page = pages[index] ?? pages[todayIndex];
-  const listLayout = viewMode === 'list' || dayOpen;
+  const listLayout = viewMode === 'list';
   const gridMode: 'compact' | 'details' = viewMode === 'details' ? 'details' : 'compact';
 
   const selDay =
@@ -504,8 +545,23 @@ export default function CalendarScreen() {
     [model, page.year, page.month, showBalance]
   );
 
+  // The date page: the tapped date and the dates after it, more months as you scroll.
+  const dateList = useMemo(() => {
+    if (!model || !dateShown) return [];
+    const last = pages[pages.length - 1];
+    const left = (last.year - page.year) * 12 + last.month - page.month + 1;
+    const list = datesFrom({ year: page.year, month: page.month, day: selDay }, Math.min(dateMonths, left), (y, m) => monthEventsFor(model, y, m));
+    if (!showBalance) return list.map((d) => ({ ...d, balance: undefined as number | undefined }));
+    const byMonth = new Map<string, Record<number, number>>();
+    return list.map((d) => {
+      const key = `${d.year}-${d.month}`;
+      if (!byMonth.has(key)) byMonth.set(key, computeRunningBalances(model, d.year, d.month));
+      return { ...d, balance: byMonth.get(key)?.[d.day] as number | undefined };
+    });
+  }, [model, dateShown, pages, page.year, page.month, selDay, dateMonths, showBalance]);
+
   // ---------- the vertical (scroll) list of months ----------
-  const ROW_SCROLL = gridMode === 'details' ? 96 : 62;
+  const ROW_SCROLL = gridMode === 'details' ? DETAILS_ROW : COMPACT_ROW;
   const LABEL_H = 46;
   const offsets = useMemo(() => {
     const o: number[] = [];
@@ -536,7 +592,10 @@ export default function CalendarScreen() {
       setSelected({ year: y, month: m, day: d });
       const i = pages.findIndex((p) => p.year === y && p.month === m);
       if (i >= 0) setIndex(i);
-      if (viewModeRef.current !== 'list') setDayOpen(true);
+      if (viewModeRef.current !== 'list') {
+        setDateMonths(DATE_MONTHS);
+        setDayOpen(true);
+      }
     },
     [pages]
   );
@@ -548,6 +607,7 @@ export default function CalendarScreen() {
       const i = pages.findIndex((p) => p.year === y && p.month === m);
       if (i < 0) return;
       hapticSelection();
+      if (viewModeRef.current === 'list') animateNextLayout();
       setSelected({ year: y, month: m, day: d });
       setIndex(i);
       scrollRef.current(i);
@@ -556,7 +616,6 @@ export default function CalendarScreen() {
   );
 
   // List view: the month on top changes one at a time (up/down or sideways).
-  const LIST_ROW = 46;
   const listPageH = 6 * LIST_ROW;
 
   function scrollToPage(i: number, animated = !reduceMotionNow()) {
@@ -608,9 +667,14 @@ export default function CalendarScreen() {
       setTodayArmed(true);
       return;
     }
+    if (listLayout) animateNextLayout();
     setSelected({ year: today.getFullYear(), month: today.getMonth(), day: today.getDate() });
     setIndex(todayIndex);
     scrollToPage(todayIndex);
+    if (dayOpen) {
+      setDateMonths(DATE_MONTHS);
+      dateRef.current?.scrollToOffset({ offset: 0, animated: !reduceMotionNow() });
+    }
   }
 
   function chooseView(m: CalendarViewMode) {
@@ -725,7 +789,7 @@ export default function CalendarScreen() {
           year={item.year}
           month={item.month}
           mode={gridMode}
-          rowHeight={gridMode === 'details' ? 96 : 70}
+          rowHeight={gridMode === 'details' ? DETAILS_ROW : COMPACT_ROW}
           selectedDay={item.year === pickY && item.month === pickM ? (pickD as number) : null}
           onDayPress={onDayPress}
           onGreyPress={onGreyPress}
@@ -786,7 +850,7 @@ export default function CalendarScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={10} accessibilityRole="button">
           <Text style={s.link}>Done</Text>
         </TouchableOpacity>
-      ) : dayOpen && viewMode !== 'list' ? (
+      ) : dayOpen ? (
         <TouchableOpacity onPress={() => setDayOpen(false)} hitSlop={10} accessibilityRole="button" style={s.backRow}>
           <Ionicons name="chevron-back" size={22} color={colors.gold} />
           <Text style={s.link}>{MONTHS[page.month]}</Text>
@@ -806,7 +870,7 @@ export default function CalendarScreen() {
         </TouchableOpacity>
       )}
       <View style={s.topIcons}>
-        {level === 'month' && (
+        {level === 'month' && !dayOpen && (
           <TouchableOpacity onPress={() => setMenuOpen(true)} hitSlop={8} accessibilityLabel="Calendar view">
             <Ionicons name={viewMode === 'details' ? 'reader-outline' : viewMode === 'list' ? 'list-outline' : 'grid-outline'} size={23} color={colors.gold} />
           </TouchableOpacity>
@@ -830,6 +894,31 @@ export default function CalendarScreen() {
       ))}
     </View>
   );
+
+  function dayRows(evs: CalendarEvent[], glowAt: number) {
+    return evs.map((ev, i) => {
+      const amt = eventAmount(ev, colors);
+      const target = ev.open;
+      const open = target
+        ? () => navigation.navigate(target.page, { ...target.params, backTitle: 'Calendar' })
+        : ev.tripId
+        ? () => navigation.navigate('Travel', { tripId: ev.tripId, backTitle: 'Calendar' })
+        : ev.id && (ev.type === 'bill' || ev.type === 'debt' || ev.type === 'loan')
+          ? () => navigation.navigate('PayDetail', { kind: ev.type, id: ev.id, backTitle: 'Calendar' })
+          : undefined;
+      return (
+        <TouchableOpacity key={i} testID="calendar-row" disabled={!open} onPress={open} activeOpacity={0.6} style={[s.row, i > 0 && s.rowLine]}>
+          {i === glowAt && <View testID="calendar-row-glow" style={StyleSheet.absoluteFill} pointerEvents="none"><ArrivalGlow /></View>}
+          <View style={[s.rowDot, { backgroundColor: eventColor(ev, colors) }]} />
+          <View style={{ flex: 1 }}>
+            <Text style={s.rowTitle} numberOfLines={1}>{ev.label}</Text>
+            <Text style={s.rowSub} numberOfLines={1}>{eventKind(ev)}</Text>
+          </View>
+          <Text style={[s.rowAmt, { color: amt.color }]}>{amt.text}</Text>
+        </TouchableOpacity>
+      );
+    });
+  }
 
   let body: React.ReactNode;
   if (level === 'year') {
@@ -867,8 +956,6 @@ export default function CalendarScreen() {
   } else if (listLayout) {
     const evs = monthEventsFor(model, page.year, page.month)[selDay] || [];
     const glowAt = arrived === isoOf(page.year, page.month, selDay) ? newEventIndex(dayBefore.current, evs.map((e) => e.label)) : -1;
-    const isToday = page.year === today.getFullYear() && page.month === today.getMonth() && selDay === today.getDate();
-    const label = `${isToday ? 'Today · ' : ''}${DOW_LONG[new Date(page.year, page.month, selDay).getDay()]}, ${MONTHS[page.month].slice(0, 3)} ${selDay}`;
     const vertical = navMode === 'scroll';
     body = (
       <View style={{ flex: 1 }}>
@@ -895,46 +982,24 @@ export default function CalendarScreen() {
             onMomentumScrollEnd={(e) => {
               const off = vertical ? e.nativeEvent.contentOffset.y : e.nativeEvent.contentOffset.x;
               const i = Math.round(off / (vertical ? listPageH : width));
-              if (i !== indexRef.current) setIndex(i);
+              if (i !== indexRef.current) {
+                animateNextLayout();
+                setIndex(i);
+              }
             }}
             renderItem={renderListPage}
           />
         </View>
-        <View style={s.dayHead}>
-          <Text style={s.dayTitle} numberOfLines={1}>{label}</Text>
+        {/* A month with fewer rows: the details sit right under it. */}
+        <View style={{ flex: 1, marginTop: -(6 - weeksIn(page.year, page.month)) * LIST_ROW, backgroundColor: colors.navy2 }}>
+        <View style={s.dateHead}>
+          <Text style={s.dateTitle} numberOfLines={1}>{dateHeading(page.year, page.month, selDay, today.getFullYear())}</Text>
           {showBalance && typeof balances[selDay] === 'number' && <Text style={s.dayBal}>Balance {formatPeso(balances[selDay])}</Text>}
         </View>
-        <KeyboardAwareScrollView pageBounce contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 120 }}>
-          <View style={s.group}>
-            <GradientFill match={s.group} />
-            {evs.length === 0 ? (
-              <Text style={s.empty}>Nothing on this day.</Text>
-            ) : (
-              evs.map((ev, i) => {
-                const amt = eventAmount(ev, colors);
-                const target = ev.open;
-                const open = target
-                  ? () => navigation.navigate(target.page, { ...target.params, backTitle: 'Calendar' })
-                  : ev.tripId
-                  ? () => navigation.navigate('Travel', { tripId: ev.tripId, backTitle: 'Calendar' })
-                  : ev.id && (ev.type === 'bill' || ev.type === 'debt' || ev.type === 'loan')
-                    ? () => navigation.navigate('PayDetail', { kind: ev.type, id: ev.id, backTitle: 'Calendar' })
-                    : undefined;
-                return (
-                  <TouchableOpacity key={i} disabled={!open} onPress={open} activeOpacity={0.6} style={[s.row, i > 0 && s.rowTop]}>
-                    {i === glowAt && <View testID="calendar-row-glow" style={StyleSheet.absoluteFill} pointerEvents="none"><ArrivalGlow /></View>}
-                    <View style={[s.rowDot, { backgroundColor: eventColor(ev, colors) }]} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={s.rowTitle} numberOfLines={1}>{ev.label}</Text>
-                      <Text style={s.rowSub} numberOfLines={1}>{eventKind(ev)}</Text>
-                    </View>
-                    <Text style={[s.rowAmt, { color: amt.color }]}>{amt.text}</Text>
-                  </TouchableOpacity>
-                );
-              })
-            )}
-          </View>
+        <KeyboardAwareScrollView pageBounce contentContainerStyle={{ paddingBottom: 120 }}>
+          {evs.length === 0 ? <Text style={s.dateEmpty}>Nothing on this day.</Text> : dayRows(evs, glowAt)}
         </KeyboardAwareScrollView>
+        </View>
       </View>
     );
   } else if (navMode === 'swipe') {
@@ -991,7 +1056,38 @@ export default function CalendarScreen() {
   return (
     <View style={s.container}>
       {header}
-      {body}
+      <View style={{ flex: 1 }}>
+        <View style={{ flex: 1 }} accessibilityElementsHidden={dayOpen} importantForAccessibility={dayOpen ? 'no-hide-descendants' : 'auto'}>
+          {body}
+        </View>
+        {dateShown && level === 'month' && (
+          <Animated.View testID="calendar-date-page" style={[StyleSheet.absoluteFill, { backgroundColor: colors.navy2, transform: [{ translateX: dateSlide }] }]}>
+            <FlatList
+              ref={dateRef}
+              data={dateList}
+              extraData={arrived}
+              keyExtractor={(d) => `${d.year}-${d.month}-${d.day}`}
+              initialNumToRender={12}
+              onEndReachedThreshold={1.5}
+              onEndReached={() => setDateMonths((n) => Math.min(n + DATE_MONTHS, pages.length))}
+              contentContainerStyle={{ paddingBottom: 120 }}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => {
+                const glowAt = arrived === isoOf(item.year, item.month, item.day) ? newEventIndex(dayBefore.current, item.events.map((e) => e.label)) : -1;
+                return (
+                  <View>
+                    <View style={s.dateHead}>
+                      <Text style={s.dateTitle} numberOfLines={1}>{dateHeading(item.year, item.month, item.day, today.getFullYear())}</Text>
+                      {typeof item.balance === 'number' && <Text style={s.dayBal}>Balance {formatPeso(item.balance)}</Text>}
+                    </View>
+                    {item.events.length ? dayRows(item.events, glowAt) : <Text style={s.dateEmpty}>Nothing on this day.</Text>}
+                  </View>
+                );
+              }}
+            />
+          </Animated.View>
+        )}
+      </View>
       <View style={[s.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         <TouchableOpacity onPress={goToday} hitSlop={10} accessibilityRole="button">
           <Text style={s.link}>Today</Text>
@@ -1145,12 +1241,12 @@ function makeStyles(colors: any) {
     yearTitle: { fontSize: 34, fontWeight: '600', letterSpacing: -0.2, color: colors.ink, marginTop: 10, height: 48 },
     yearLine: { height: StyleSheet.hairlineWidth, backgroundColor: colors.inkFaint, marginTop: 0, marginBottom: 14 },
     yearGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-    dayHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 18, paddingTop: 14, paddingBottom: 10 },
-    dayTitle: { fontSize: 17, fontWeight: '600', color: colors.ink + 'D9', flexShrink: 1 },
+    dateHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 18, paddingTop: 16, paddingBottom: 2 },
+    dateTitle: { fontSize: 13, fontWeight: '700', letterSpacing: 0.3, color: colors.inkDim, flexShrink: 1 },
+    dateEmpty: { fontSize: 15, color: colors.inkDim, paddingHorizontal: 18, paddingVertical: 10 },
     dayBal: { fontSize: 14, color: colors.inkDim, marginLeft: 8 },
-    group: { backgroundColor: colors.navy3, borderRadius: 18, overflow: 'hidden' },
-    empty: { fontSize: 15, color: colors.inkDim, padding: 16 },
-    row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 12 },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 18, paddingVertical: 12 },
+    rowLine: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
     rowTop: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.navy4 },
     rowDot: { width: 10, height: 10, borderRadius: 5 },
     rowTitle: { fontSize: 16, fontWeight: '600', color: colors.ink },

@@ -445,3 +445,19 @@ widget list (hold the home screen › Widgets › Finance Flow) the previews are
 8. A trip during other things: dots or names still show under the ribbon. Your projected balance does not change.
 9. Groceries: Buy by is optional on the form, and shows on the item's row and the Calendar.
 10. Dark mode: the same.
+
+## 33. Live weather (2026-11-06). AS DESCRIBED (Cath, 2026-11-07, Expo Go).
+1. Phone Settings › Apps › Finance Flow › Permissions › Location: set Don't allow. Open the app: Live weather is Off and there is no rain.
+2. Turn Live weather on: the phone asks. Say no: it goes back to Off and explains why.
+3. Turn it on and allow: the sky stays clear until a real reading arrives, and it matches the weather outside.
+4. On a dry day, no rain falls on Home, even if the air feels damp. In real rain, it falls. Open-Meteo is an estimate for your area, so a short shower can be missed.
+
+## 34. Calendar date page (2026-11-07). AS DESCRIBED (Cath, 2026-11-07, Expo Go).
+1. Compact: short rows, thin trip lines with no names. Tap a date: a page slides in with that date and the dates after it. No view button there.
+2. Scroll down: the dates carry on into the next months. A date with nothing says "Nothing on this day." and the next dates follow.
+3. Tap a row: its page opens, and one Back returns to the date page. "‹ November" returns to the month. The phone's Back does too.
+4. On the date page, + adds on that date. After Add you stay, and the new row glows.
+5. Details: looks the same as before. A date opens the same page.
+6. List: taller rows with names on the ribbons, and the day's details right under the month. Tapping another date only changes the details. Swipe to a month with 4, 5 or 6 rows: the details move smoothly and there is no gap.
+7. Projected balance on: it shows on each date heading. Dark mode: the same.
+8. Plain rows with a thin line between items of the same date, on List and the date page, no white card. List's heading reads like "THURSDAY — NOV 5".

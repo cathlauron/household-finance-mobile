@@ -335,3 +335,14 @@ Reviewed every change in the batch: calendarAll, calendarBands, planForm, the Ca
 - Walks: Calendar views and event add, light and forced dark, 0 errors. Whole-app crawl light and dark, 0 errors. The same 14 steps time out as before (the script waits on hidden text), so those pages opened with no crash but the script did not confirm their content.
 - Not run: tools/flicker-check.py (no Python here). Feel: her phone test passed before B-106, and B-106 has no visible motion change.
 - Open: when a day under a ribbon gets something new, the ribbon pops with the day's marks. Harmless, ask Cath only if she notices.
+- Open, low: H-73 Live weather with the phone's location service switched off (permission still allowed) stays On with a clear sky and no explanation. Possible.
+- Open: H-74 Live weather shows rain on dry days (Cath, 2026-11-06, with the B-107 fix on). Open-Meteo sample 2026-11-07 09:15 Philippine time: Manila code 51 with 0.1 mm and 27% cloud, Cebu code 53 with 0.2 mm, Tacloban code 51 with 0.1 mm. weatherFromCode counts every drizzle code as rain, however little falls. Her own city's reading not seen. Her pick: real rain only. Fixed, B-108.
+- Note: in the hidden browser, List's Today bar sits below the screen because the web page grows with its content (the app root has min-height 100%). Her phone screenshot shows the bar in place, so this is the browser only.
+
+## Bug + smoothness sweep 2026-11-07 (Calendar date page, Compact and List swap, rows with lines, Live weather)
+Read every change since 3.7.0. Every row uses one shared piece, so each still opens its page. Date page motion uses the shared page speeds and respects Reduce Motion.
+- Fixed: B-109 (Today on the date page). Also stopped a needless slide-away running when the Calendar opens.
+- Safety: encryption, sync, merging, parts, Firestore rules and DataContext unchanged since 3.7.0. Live weather changes stay on this phone; only the fields asked of Open-Meteo changed, with the same rounded location.
+- Walks: all views, date page, scrolling into later months and adding from the date page, light and forced dark, 0 errors.
+- Not run: tools/flicker-check.py (no Python here). Feel: Cath's phone test as described before B-109.
+- Open: H-73 (Live weather with the location service off), H-69, H-70, H-71, H-67, H-68.
