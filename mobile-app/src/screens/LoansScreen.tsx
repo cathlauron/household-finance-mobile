@@ -27,6 +27,7 @@ import { Priority, priorityRank } from '../priority';
 import { getOverdueItems } from '../overdue';
 import { useNavigation } from '@react-navigation/native';
 import { useData } from '../DataContext';
+import { useFormDraft, DraftBanner } from '../useFormDraft';
 import CountingText from '../components/CountingText';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
@@ -121,7 +122,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
   React.useEffect(() => {
     const carry = takePendingAdd('loans');
     if (!carry || formOnly) return;
-    openAddModal();
+    openAddModal(true);
     setTotalAmountInput(carry.amount);
     setNameInput(carry.name);
     // Only when this list first shows.
@@ -129,7 +130,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
   }, []);
   React.useEffect(() => {
     if (!formOnly || !addCarry) return;
-    openAddModal();
+    openAddModal(addCarry.amount !== '' || !!addCarry.name);
     setTotalAmountInput(addCarry.amount);
     setNameInput(addCarry.name);
     // The day picked in the calendar (or carried over from the other form).
@@ -230,6 +231,10 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
   // Version 3 (M4c): "Which payment was this?" when the first payment date moves.
   const [placeAsk, setPlaceAsk] = useState<PlacePaymentAsk>(null);
 
+  // Cath, 2026-11-13: a form closed by a tap outside keeps what was typed (useFormDraft.tsx).
+  const draft = useFormDraft('loan', { name: [nameInput, setNameInput], loanType: [loanTypeInput, setLoanTypeInput], direction: [directionInput, setDirectionInput], totalAmount: [totalAmountInput, setTotalAmountInput], expectedPayment: [expectedPaymentInput, setExpectedPaymentInput], interestRate: [interestRateInput, setInterestRateInput], recurType: [recurTypeInput, setRecurTypeInput], onetimeDate: [onetimeDateInput, setOnetimeDateInput], day: [dayInput, setDayInput], month: [monthInput, setMonthInput], firstDate: [firstDateInput, setFirstDateInput] }, { editing: !!editingId, typed: nameInput.trim() !== '' || totalAmountInput !== '' });
+  const draftStartOver = () => { setNameInput(''); setLoanTypeInput(''); setDirectionInput('borrowed'); setTotalAmountInput(''); setExpectedPaymentInput(''); setInterestRateInput(''); setRecurTypeInput('onetime'); setDayInput(''); setMonthInput(''); setFirstDateInput(''); };
+
   if (!model) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]}>
@@ -238,7 +243,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
     );
   }
 
-  function openAddModal() {
+  function openAddModal(noDraft?: unknown) {
     if (!singleForm.claim()) return;
     setEditingId(null);
     setNameInput('');
@@ -263,6 +268,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
     setNewPaymentMethod(undefined);
     setPaymentError('');
     setModalOpen(true);
+    if (noDraft !== true) draft.restore(formOnly ? ['onetimeDate'] : []);
   }
 
   function openEditModal(loan: Loan) {
@@ -501,6 +507,7 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
     try {
       const wasNew = !editingId;
       await saveModel(toSave);
+      if (!editingId) draft.used();
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
       if (wasNew) onAdded?.();
@@ -679,12 +686,13 @@ export default function LoansScreen({ openLoanId, openLoanNonce, onOpenHandled, 
       {/* Approved "Option 2: simple" form (Forms Redesign canvas). */}
       <BottomSheet
         visible={modalOpen}
-        onClose={closeModal}
+        onClose={() => { draft.keep(); closeModal(); }}
         // One sheet for New bill / debt / loan, so switching only changes the form.
         shared="pay-form"
         grouped
-        header={<SheetBar title={editingId ? 'Edit loan' : 'New loan'} onCancel={closeModal} onDone={handleSave} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
+        header={<SheetBar title={editingId ? 'Edit loan' : 'New loan'} onCancel={() => { draft.discard(); closeModal(); }} onDone={handleSave} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
       >
+        <DraftBanner draft={draft} onStartOver={draftStartOver} />
         {!editingId && (
           <KindSwitch
             key="pay-form-kind"

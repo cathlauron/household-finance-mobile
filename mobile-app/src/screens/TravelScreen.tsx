@@ -16,6 +16,7 @@ import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { useFormDraft, DraftBanner } from '../useFormDraft';
 import { useFormOnly, type PlanFormProps } from '../planForm';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
@@ -231,6 +232,10 @@ export default function TravelScreen({ formOnly, addDate, addNonce, onFormClosed
   useEffect(() => {
     clearFieldError();
   }, [nameInput, startDateInput, endDateInput, modalOpen, clearFieldError]);
+
+  // Cath, 2026-11-13: a form closed by a tap outside keeps what was typed (useFormDraft.tsx).
+  const draft = useFormDraft('trip', { name: [nameInput, setNameInput], startDate: [startDateInput, setStartDateInput], endDate: [endDateInput, setEndDateInput] }, { editing: false, typed: nameInput.trim() !== '' });
+  const draftStartOver = () => { setNameInput(''); setEndDateInput(''); };
 
   if (!model) {
     return (
@@ -524,12 +529,13 @@ export default function TravelScreen({ formOnly, addDate, addNonce, onFormClosed
     );
   }
 
-  function openAddModal() {
+  function openAddModal(noDraft?: unknown) {
     setNameInput('');
     setStartDateInput('');
     setEndDateInput('');
     setTrackInSavings(false);
     setModalOpen(true);
+    if (noDraft !== true) draft.restore(formOnly ? ['startDate'] : []);
   }
 
   function closeModal() {
@@ -556,6 +562,7 @@ export default function TravelScreen({ formOnly, addDate, addNonce, onFormClosed
     }
     const trip: TravelTrip = { id: makeId('trip'), name, startDate: startDateInput.trim(), endDate: endDateInput.trim(), checklist: [], trackInSavings, budget: 0, createdAt: Date.now() };
     await saveModel({ ...current, travel: [...(current.travel ?? []), trip] });
+    draft.used();
     showLeafTick('Added');
     if (formOnly) {
       onAdded?.();
@@ -882,10 +889,11 @@ export default function TravelScreen({ formOnly, addDate, addNonce, onFormClosed
 
       <BottomSheet
         visible={modalOpen}
-        onClose={closeModal}
+        onClose={() => { draft.keep(); closeModal(); }}
         grouped
-        header={<SheetBar title="New trip" onCancel={closeModal} onDone={handleAddTrip} doneLabel="Add" />}
+        header={<SheetBar title="New trip" onCancel={() => { draft.discard(); closeModal(); }} onDone={handleAddTrip} doneLabel="Add" />}
       >
+        <DraftBanner draft={draft} onStartOver={draftStartOver} />
         <FormGroup>
           <Guided {...fieldErrors.props('name')} focusRef={nameRef}>
             <InputRow mark="required" label="Trip name" value={nameInput} onChangeText={setNameInput} placeholder="e.g. Baguio weekend" autoFocus testID="travel-name-input" inputRef={nameRef} invalid={fieldErrors.field === 'name'} />

@@ -10,6 +10,7 @@ import { headerButtonText } from '../navigation/LargeHeader';
 import { useTheme } from '../ThemeContext';
 import { MarkedLabel } from '../components/MarkedLabel';
 import { useData } from '../DataContext';
+import { useFormDraft, DraftBanner } from '../useFormDraft';
 import { FormOnlyBox, useFormOnly, type PlanFormProps } from '../planForm';
 import { finishSheetHandoff } from '../components/BottomSheet';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
@@ -104,6 +105,7 @@ export default function SharedExpensesScreen({ formOnly, addDate, addNonce, onFo
     setReceipt(null);
     setError('');
     setSheetOpen(true);
+    draft.restore(formOnly ? ['date'] : []);
     return true;
   }
 
@@ -170,6 +172,10 @@ export default function SharedExpensesScreen({ formOnly, addDate, addNonce, onFo
 
   const members = useMemo(() => (model ? sharedMembers(model) : []), [model]);
   const balances = useMemo(() => (model ? pairBalances(model) : []), [model]);
+
+  // Cath, 2026-11-13: a form closed by a tap outside keeps what was typed (useFormDraft.tsx).
+  const draft = useFormDraft('shared', { label: [label, setLabel], amount: [amount, setAmount], date: [date, setDate] }, { editing: !!editingId, typed: label.trim() !== '' || amount !== '' });
+  const draftStartOver = () => { setLabel(''); setAmount(''); };
 
   if (!model) return <LoadingView />;
 
@@ -263,6 +269,7 @@ export default function SharedExpensesScreen({ formOnly, addDate, addNonce, onFo
     try {
       await saveModel({ ...model, sharedExpenses: editingId ? list.map((x) => (x.id === editingId ? record : x)) : [...list, record] });
       hapticLight();
+      if (!editingId) draft.used();
       showLeafTick(editingId ? 'Saved' : 'Added');
       if (!editingId) onAdded?.();
       setSheetOpen(false);
@@ -575,10 +582,11 @@ export default function SharedExpensesScreen({ formOnly, addDate, addNonce, onFo
 
       <BottomSheet
         visible={sheetOpen}
-        onClose={() => setSheetOpen(false)}
+        onClose={() => { draft.keep(); setSheetOpen(false); }}
         grouped
-        header={<SheetBar title={editingId ? 'Edit shared expense' : 'New shared expense'} onCancel={() => setSheetOpen(false)} onDone={saveExpense} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
+        header={<SheetBar title={editingId ? 'Edit shared expense' : 'New shared expense'} onCancel={() => { draft.discard(); setSheetOpen(false); }} onDone={saveExpense} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
       >
+        <DraftBanner draft={draft} onStartOver={draftStartOver} />
         <BigAmount mark="required" label="Total" value={amount} onChange={(v) => { setAmount(v); setError(''); }} color={colors.negative} autoFocus={!editingId} />
         {/* Voice entry (mockup V, Cath 2026-10-30). */}
         <FormGroup>

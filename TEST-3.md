@@ -461,3 +461,39 @@ widget list (hold the home screen › Widgets › Finance Flow) the previews are
 6. List: taller rows with names on the ribbons, and the day's details right under the month. Tapping another date only changes the details. Swipe to a month with 4, 5 or 6 rows: the details move smoothly and there is no gap.
 7. Projected balance on: it shows on each date heading. Dark mode: the same.
 8. Plain rows with a thin line between items of the same date, on List and the date page, no white card. List's heading reads like "THURSDAY — NOV 5".
+
+## 35. Borrowed, kept forms, Move money, cash in another currency (2026-11-14).
+1. New transaction › Borrowed: amount, From whom, account, Add. It says "Added to Loans". To-Pay › Loans has it. Transactions shows it as money in, and the account went up.
+2. The same with Debt picked, with and without Pay back by: it is in To-Pay › Debts.
+3. New transaction: type an amount and a name, tap outside the form. Open it again: "Picked up where you left off" with what you typed. Start over empties it.
+4. Type again, tap Cancel, open it again: empty. Add something: the next form is empty.
+5. Close the app fully with a half-typed form (tap outside first). Open the app and the form: still there.
+6. Home › Wallet › a card › Move money: each account says what is available now. Type an amount: "after" shows for both accounts.
+7. Move more than the account has: red note, then "Move anyway?" still lets you.
+8. Move money › Withdraw cash: pick Thai baht. A rate is filled in (today's). Type the baht you got. Change the pesos your bank took: the rate follows. Change the rate: the pesos follow. Save.
+9. Home › Wallet has Cash (THB) in baht. Your total did not change, apart from the fee.
+10. New transaction, account Cash (THB): the amount is typed in ฿, with "About ₱…" under it. After Add, the wallet went down in baht.
+11. Withdraw baht again at another rate: still one Cash (THB) wallet.
+12. No internet: Withdraw cash suggests the rate you used last.
+13. Kept forms on the other add forms: New bill, New debt, New loan, New event, New goal, New pot, New trip, New shared expense, New investment, New grocery item. In each: type something, tap outside, open it again: "Picked up where you left off". Cancel empties it. Adding empties it.
+14. Open a form from the Calendar's + on a date, with something kept: the kept words come back but the date is the one you tapped.
+15. Change back: Home › Wallet › Cash (THB) › Move money. It says "Change back". Type the baht you changed and the pesos you got. Save: the baht wallet went down, the peso account went up.
+16. Change back at a worse rate than the cash cost you: a small "Fees" transaction appears for the difference. At a better rate: a small money-in one.
+17. Undo that change back within 15 minutes: both accounts are as before and the small transaction is gone.
+18. New transaction › Borrowed: Debt is on the left and already picked; Loan is on the right.
+19. Home › Wallet › tap an account: each row has a small line like "₱12,340.00 → ₱11,890.00" (before → after). The newest row ends at the balance at the top. Money moves, paydays and savings are rows too.
+20. Add a transaction from that account and come back: a new row on top, and its "after" is the new balance.
+21. Cash (THB): the small lines are in baht. Borrow some money: Home's "In" for the month does not go up, but the account does.
+22. Close Home's eye, then open an account from the Wallet: every amount is ₱ *****. Open the eye: they are back.
+23. A bank or cash account's page says "spent from this account" and "Edit account"; a credit card still says card.
+24. New transaction, pick an account, set the date to before you last typed your balances (Accounts shows that day): a note appears with a tick box "It isn't included, take it off my balance". Not ticked: the account does not change. Ticked: it goes down by that amount, and its row on the account's page has a before → after.
+25. Delete that ticked transaction: the account goes back up.
+26. Borrowed › Debt, Add. Then delete that transaction: the pop-up says it also removes the debt, and To-Pay › Debts no longer has it. Do it again, pay part of the debt, then delete the transaction: the pop-up says the debt stays.
+27. Lag: close the app fully, open it, and tap + straight away; then tap + again a few seconds later. Then + on To-Pay for a bill, a debt and a loan. Tell me which of these still lag.
+28. Settings › Accounts: Cash (THB) shows baht, with "about ₱… · ฿1 = ₱…" under it. The totals are still pesos.
+29. Press and hold Cash (THB) (or its page › Edit account): Balance is in ฿, Currency says Thai baht, the Exchange rate is there. Change the baht and Save: the peso value follows, and the wallet's Balance updates say ฿old → ฿new.
+30. Change only the rate and Save: the baht stays, the peso value under it changes.
+31. Accounts › Add › Cash › Currency: pick another currency. A rate is filled in (today's). Type a balance, Add: a new wallet in that currency. Then Withdraw cash in that currency: it goes into the same wallet.
+32. Spend something from an account, open that account's page › Edit account: the Balance box shows what the account has now. Change only the name and Save: the balance did not move.
+33. Type half a transaction, tap outside. Sign out and sign in again: the form opens empty.
+34. Accounts › Add › Cash › Currency: pick a currency you already have a wallet in: it says you already have one.

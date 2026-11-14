@@ -27,6 +27,13 @@ import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { usePullDownToOpen } from '../pullDownToOpen';
 import { INCOME_KINDS, IncomeKind, incomeKindLabel } from '../incomeKinds';
 import AccountPicker, { accountProblem } from '../components/AccountPicker';
+import { addBorrowed, borrowedDeleteNote, syncBorrowed } from '../borrowed';
+import { isBackDated, reapplyForEdit, takeOffForTxn } from '../backDated';
+import { dateText } from '../dateUtils';
+import { usePageActive } from '../pageActive';
+import { currencySymbol, isForeign, pesoFor } from '../fx';
+import { drafts } from '../drafts';
+import { trace } from '../trace';
 import { requestOpenBill } from '../openBillRequest';
 import { accountLabel, deleteManualTxn } from '../transactionActions';
 import { requestOpenDebt } from '../openDebtRequest';
@@ -312,13 +319,23 @@ export default function TransactionsScreen({
   const [categoryInput, setCategoryInput] = useState('');
   const [amountInput, setAmountInput] = useState<number | ''>('');
   const [dateInput, setDateInput] = useState('');
+  // Cath, 2026-11-14 (H-77): "It isn't included, take it off my balance" for a back-dated one.
+  const [takeOffInput, setTakeOffInput] = useState(false);
   const [directionInput, setDirectionInput] = useState<'out' | 'in' | 'saving'>('out');
   // Money in: "What is it?" (Salary logs a payday on an Income source).
   const [incomeKindInput, setIncomeKindInput] = useState<IncomeKind | null>(null);
   const [incomeSourceIdInput, setIncomeSourceIdInput] = useState<string | null>(null);
-  const salaryEntry = !editingId && directionInput === 'in' && incomeKindInput === 'salary';
+  // Cath, 2026-11-13 (mockup money-batch-5, option B): Borrowed is a third switch. The money goes
+  // in, and a loan or a debt is added to To-Pay (borrowed.ts).
+  const [borrowedOn, setBorrowedOn] = useState(false);
+  const [borrowedKind, setBorrowedKind] = useState<'loan' | 'debt'>('debt'); // Cath, 2026-11-14: Debt first, like To-Pay
+  const [payBackInput, setPayBackInput] = useState('');
+  // Cath, 2026-11-13: the form opened with what was typed last time (formDrafts.ts).
+  const [resumed, setResumed] = useState(false);
+  const salaryEntry = !editingId && !borrowedOn && directionInput === 'in' && incomeKindInput === 'salary';
   // Version 2.1: tapping Add with something missing takes the person straight to it.
   const fieldErrors = useFieldErrors<'salary' | 'amount' | 'label' | 'date' | 'account' | 'refund'>();
+  const draftValues = useRef<Record<string, unknown>>({});
   const clearFieldError = fieldErrors.clear;
   const amountRef = useRef<{ focus: () => void }>(null);
   const labelRef = useRef<any>(null);
@@ -383,7 +400,9 @@ export default function TransactionsScreen({
     const asEntries = transferRows.map((r) => ({ id: r.id, date: r.date, label: r.title, category: '', source: 'manual' as const, amount: r.amount, direction: 'out' as const, owner: 'shared', at: r.at, transfer: r }));
     return sortTransactions([...transactions, ...asEntries], sortOrder);
   }, [transactions, transferRows, sortOrder]);
-  const days = useMemo(() => groupByDate(listed), [listed]);
+  // H-76 (2026-11-14): the form on its own never shows the list, so it does not group the
+  // days or draw them in batches (each batch used to redraw the open form).
+  const days = useMemo(() => (formOnly ? [] : groupByDate(listed)), [listed, formOnly]);
   // Version 2.2 (approved P4): a just-added transaction slides in and glows for a moment.
   // Speed sweep: the list of ids is only rebuilt when the transactions change (not on
   // every key typed in the form).
@@ -403,6 +422,10 @@ export default function TransactionsScreen({
   const totals = useMemo(() => transactionTotals(transactions), [transactions]);
   const editingRawTxn = editingId ? (model?.manualTransactions || []).find((m) => m.id === editingId) : undefined;
   const alreadyRefunded = !!editingRawTxn?.refundTransactionId;
+  const walletNow = foreignWallet(paymentMethodInput);
+  // Salary goes through paydays (its own flow), so it is not asked here.
+  const backDatedNow = !!model && !editingId && !!paymentMethodInput && isBackDated(model, dateInput) && !(directionInput === 'in' && incomeKindInput === 'salary' && !borrowedOn);
+  draftValues.current = { label: labelInput, category: categoryInput, amount: amountInput, date: dateInput, direction: directionInput, incomeKind: incomeKindInput ?? '', notes: notesInput, tags: tagsInput, person: personInput, account: paymentMethodInput, borrowedOn: borrowedOn ? 'yes' : '', borrowedKind: borrowedOn ? borrowedKind : '', payBack: payBackInput };
 
   // The red message goes away as soon as the person changes something.
   useEffect(() => {
@@ -432,11 +455,14 @@ export default function TransactionsScreen({
     }
     setBatchesShown(FIRST_BATCHES);
   }, [sortOrder, categoryFilter, monthFilter, accountFilter]);
+  // H-76 (2026-11-14): only while this tab is the one showing. Behind Home it used to keep
+  // drawing a year of days in the first seconds after the app opened, and a form opened then lagged.
+  const tabShowing = usePageActive();
   useEffect(() => {
-    if (batchesShown >= chunks.length) return;
+    if (!tabShowing || batchesShown >= chunks.length) return;
     const t = setTimeout(() => setBatchesShown((n) => n + 1), BATCH_GAP_MS);
     return () => clearTimeout(t);
-  }, [batchesShown, chunks.length]);
+  }, [batchesShown, chunks.length, tabShowing]);
   const drawDay = useCallback((day: (typeof days)[number]) => {
     if (!model) return null;
     return (
@@ -623,6 +649,7 @@ export default function TransactionsScreen({
     setCategoryInput('');
     setAmountInput('');
     setDateInput(todayISO());
+    setTakeOffInput(false);
     setDirectionInput('out');
     setIncomeKindInput(null);
     setIncomeSourceIdInput(null);
@@ -635,6 +662,56 @@ export default function TransactionsScreen({
     setPaymentMethodInput(undefined);
     setInstallmentsInput(0);
     setErrorMsg('');
+    setBorrowedOn(false);
+    setBorrowedKind('debt');
+    setPayBackInput('');
+    setResumed(false);
+  }
+
+  // ---- What was typed is kept unless you tap Cancel or Add (Cath, 2026-11-13) ----
+  const DRAFT = 'txn';
+  function restoreDraft(keepDate: boolean) {
+    drafts.load(DRAFT).then((d) => {
+      if (!d) return;
+      trace('draft', 'restored', { form: DRAFT });
+      if (typeof d.label === 'string') setLabelInput(d.label);
+      if (typeof d.category === 'string') setCategoryInput(d.category);
+      if (typeof d.amount === 'number') setAmountInput(d.amount);
+      if (!keepDate && typeof d.date === 'string' && d.date) setDateInput(d.date);
+      if (d.direction === 'in' || d.direction === 'out') setDirectionInput(d.direction);
+      if (typeof d.incomeKind === 'string' && d.incomeKind !== 'salary') setIncomeKindInput(d.incomeKind as IncomeKind);
+      if (typeof d.notes === 'string') setNotesInput(d.notes);
+      if (typeof d.tags === 'string') setTagsInput(d.tags);
+      if (typeof d.person === 'string') setPersonInput(d.person);
+      const pm = d.account as PaymentMethod | undefined;
+      const m = getModel() ?? model;
+      if (pm && m?.balanceAccounts[pm.type]?.some((a) => a.id === pm.accountId)) setPaymentMethodInput(pm);
+      if (d.borrowedOn === 'yes') setBorrowedOn(true);
+      if (d.borrowedKind === 'loan' || d.borrowedKind === 'debt') setBorrowedKind(d.borrowedKind);
+      if (typeof d.payBack === 'string') setPayBackInput(d.payBack);
+      animateNextLayout(); setResumed(true);
+    });
+  }
+  function dismissKeep() {
+    // Only something you typed is worth keeping (the date and the switch always have a value).
+    const typed = labelInput.trim() !== '' || amountInput !== '' || notesInput.trim() !== '' || tagsInput.trim() !== '' || borrowedOn;
+    if (!editingId && !savedOnceRef.current) {
+      if (typed) drafts.save(DRAFT, draftValues.current);
+      else drafts.clear(DRAFT);
+    }
+    closeModal();
+  }
+  function cancelDiscard() {
+    if (!editingId) drafts.clear(DRAFT);
+    trace('draft', 'cancel', { form: DRAFT });
+    closeModal();
+  }
+  function startOver() {
+    drafts.clear(DRAFT);
+    const date = dateInput;
+    resetForm();
+    if (formOnly) setDateInput(date);
+    trace('draft', 'start over', { form: DRAFT });
   }
 
   function openAddModal() {
@@ -669,6 +746,8 @@ export default function TransactionsScreen({
     setDirectionInput((raw.direction as 'out' | 'in' | 'saving') || 'out');
     setIncomeKindInput(raw.incomeKind ?? null);
     setIncomeSourceIdInput(null);
+    // Paid from a wallet in another currency: what was typed then.
+    if (typeof raw.foreignAmount === 'number' && foreignWallet(raw.paymentMethod)) setAmountInput(raw.foreignAmount);
     setRefundTrackingEnabled(typeof raw.refundExpectedAmount === 'number' && !raw.refundTransactionId);
     setRefundAmountInput(typeof raw.refundExpectedAmount === 'number' ? raw.refundExpectedAmount : '');
     setReceiptPhoto(raw.receiptPhoto || null);
@@ -676,6 +755,45 @@ export default function TransactionsScreen({
     setInstallmentsInput(raw.installments ?? 0);
     setErrorMsg('');
     setModalOpen(true);
+  }
+
+  // Cath, 2026-11-13 (fx.ts): the wallet in another currency this is paid from or into, if it is one.
+  function foreignWallet(pm: PaymentMethod | undefined) {
+    const m = getModel() ?? model;
+    const a = pm && m ? m.balanceAccounts[pm.type]?.find((x) => x.id === pm.accountId) : undefined;
+    return a && isForeign(a) ? a : undefined;
+  }
+
+  async function saveBorrowed() {
+    if (!model) return;
+    setErrorMsg('');
+    if (amountInput === '' || amountInput <= 0) return fieldErrors.show('amount', 'How much did you borrow?');
+    if (!labelInput.trim()) return fieldErrors.show('label', 'Who lent it to you?');
+    if (!paymentMethodInput?.accountId) return fieldErrors.show('account', 'Choose which account this goes into.');
+    const wallet = foreignWallet(paymentMethodInput);
+    const pesos = wallet ? pesoFor(amountInput, wallet.fxRate as number) : amountInput;
+    const day = dateInput.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return fieldErrors.show('date', 'Pick a date.');
+    if (savingNowRef.current) return;
+    savingNowRef.current = true;
+    setSaving(true);
+    trace('borrowed', 'saving', { kind: borrowedKind });
+    try {
+      const out = addBorrowed(getModel() ?? model, { kind: borrowedKind, amount: pesos, from: labelInput, account: paymentMethodInput, date: day, payBackBy: payBackInput || undefined });
+      await saveModel(takeOffInput && isBackDated(out.model, day) ? takeOffForTxn(out.model, out.txnId) : out.model);
+      savedOnceRef.current = true;
+      drafts.clear(DRAFT);
+      trace('borrowed', 'saved', { kind: borrowedKind, refId: out.refId });
+      showLeafTick(borrowedKind === 'loan' ? 'Added to Loans' : 'Added to Debts');
+      closeModal();
+      onAdded?.();
+    } catch (e) {
+      trace('borrowed', 'save failed');
+      setErrorMsg(notSaved('this'));
+    } finally {
+      savingNowRef.current = false;
+      setSaving(false);
+    }
   }
 
   function closeModal() {
@@ -777,6 +895,7 @@ export default function TransactionsScreen({
     }
     openAddModal();
     if (date) setDateInput(date);
+    restoreDraft(!!date);
   }
 
   function goAddSalary() {
@@ -849,6 +968,7 @@ export default function TransactionsScreen({
   async function handleSave() {
     if (savedOnceRef.current) return;
     if (!model) return;
+    if (!editingId && borrowedOn) return saveBorrowed();
     if (!editingId && directionInput === 'in' && incomeKindInput === 'salary') return saveSalary();
     // Extra income with no description gets the kind's name (e.g. "Bonus").
     const extraKind = directionInput === 'in' && incomeKindInput && incomeKindInput !== 'salary' ? incomeKindInput : undefined;
@@ -863,7 +983,10 @@ export default function TransactionsScreen({
       fieldErrors.show('label', 'What was it for?');
       return;
     }
-    const parsedAmount = amountInput;
+    // A wallet in another currency: typed in its currency, saved in pesos at its rate.
+    const wallet = foreignWallet(paymentMethodInput);
+    const parsedAmount = wallet ? pesoFor(amountInput, wallet.fxRate as number) : amountInput;
+    const foreignFields = wallet ? { foreignAmount: amountInput, foreignCurrency: wallet.currency as string } : null;
     const acctProblem = accountProblem(model, directionInput, parsedAmount, paymentMethodInput, editingId);
     if (acctProblem) {
       fieldErrors.show('account', acctProblem);
@@ -922,6 +1045,11 @@ export default function TransactionsScreen({
           };
         if (extraKind) next.incomeKind = extraKind;
         else delete next.incomeKind;
+        if (foreignFields) Object.assign(next, foreignFields);
+        else {
+          delete next.foreignAmount;
+          delete next.foreignCurrency;
+        }
         if (installmentsToSave) next.installments = installmentsToSave;
         else delete next.installments;
         // Saving an edit counts as checking it.
@@ -958,13 +1086,16 @@ export default function TransactionsScreen({
           ...(extraKind ? { incomeKind: extraKind, createdAt: Date.now() } : {}),
           ...(parsedTags.length > 0 ? { tags: parsedTags } : {}),
           paymentMethod: paymentMethodInput,
+          ...(foreignFields ?? {}),
           ...(receiptPhoto ? { receiptPhoto } : {}),
           ...(refundAmountToSave !== undefined ? { refundExpectedAmount: refundAmountToSave } : {}),
           ...(installmentsToSave ? { installments: installmentsToSave } : {}),
           ...(ruleFilled && categoryInput.trim() ? { needsReview: true, reviewWhy: 'Filled in by your rule' } : {}),
         };
       updated.manualTransactions = [...updated.manualTransactions, newTxn];
+      if (takeOffInput && paymentMethodInput && isBackDated(model, trimmedDate)) Object.assign(updated, takeOffForTxn(updated, newTxn.id));
     }
+    if (editingId) Object.assign(updated, syncBorrowed(reapplyForEdit(model, updated, editingId), editingId));
 
     if (savingNowRef.current) return;
     savingNowRef.current = true;
@@ -973,6 +1104,7 @@ export default function TransactionsScreen({
       const wasNew = !editingId;
       await saveModel(updated);
       savedOnceRef.current = true;
+      if (!editingId) drafts.clear(DRAFT);
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
       if (wasNew) onAdded?.();
@@ -1002,10 +1134,12 @@ export default function TransactionsScreen({
     }
   }
 
+  // H-78: deleting a Borrowed transaction says what happens to its loan or debt.
+  const deleteNote = (id: string | null) => [model && id ? borrowedDeleteNote(model, id) : '', 'This cannot be undone.'].filter(Boolean).join(' ');
   function handleDelete() {
     Alert.alert(
       'Delete this transaction?',
-      'This cannot be undone.',
+      deleteNote(editingId),
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: performDelete },
@@ -1032,7 +1166,7 @@ export default function TransactionsScreen({
   function handleSwipeDelete(rawId: string) {
     Alert.alert(
       'Delete this transaction?',
-      'This cannot be undone.',
+      deleteNote(rawId),
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: () => performDeleteTxnById(rawId) },
@@ -1199,10 +1333,10 @@ export default function TransactionsScreen({
           (Belongs to, Tags, Receipt) sit under "More details". */}
       <BottomSheet
         visible={modalOpen}
-        onClose={closeModal}
+        onClose={dismissKeep}
         header={
           <View style={styles.sheetBar}>
-            <TouchableOpacity onPress={closeModal} accessibilityRole="button" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <TouchableOpacity onPress={cancelDiscard} testID="txn-cancel" accessibilityRole="button" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Text style={styles.sheetBarBtn}>Cancel</Text>
             </TouchableOpacity>
             <Text style={styles.sheetBarTitle}>{editingId ? 'Edit transaction' : 'New transaction'}</Text>
@@ -1212,15 +1346,28 @@ export default function TransactionsScreen({
           </View>
         }
       >
-        <SegmentedControl<'out' | 'in' | 'saving'>
+        {resumed && !editingId && (
+          <View style={[styles.resumed, { backgroundColor: colors.okBg }]} testID="draft-banner">
+            <Text style={styles.resumedText}>Picked up where you left off</Text>
+            <TouchableOpacity onPress={startOver} accessibilityRole="button" testID="draft-start-over" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={[styles.resumedText, { color: colors.gold, fontWeight: '700' }]}>Start over</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        <SegmentedControl<'out' | 'in' | 'saving' | 'borrowed'>
           accessibilityLabel="Direction"
           options={[
-            { id: 'out', label: 'Money out' },
-            { id: 'in', label: 'Money in' },
+            { id: 'out', label: 'Money out', testID: 'txn-dir-out' },
+            { id: 'in', label: 'Money in', testID: 'txn-dir-in' },
+            ...(!editingId ? [{ id: 'borrowed' as const, label: 'Borrowed', testID: 'txn-dir-borrowed' }] : []),
             ...(directionInput === 'saving' ? [{ id: 'saving' as const, label: 'Saved' }] : []),
           ]}
-          value={directionInput}
-          onChange={setDirectionInput}
+          value={borrowedOn ? 'borrowed' : directionInput}
+          onChange={(v) => {
+            setBorrowedOn(v === 'borrowed');
+            setDirectionInput(v === 'borrowed' ? 'in' : v);
+            if (v === 'borrowed') trace('borrowed', 'picked');
+          }}
         />
 
         <Guided {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
@@ -1234,16 +1381,35 @@ export default function TransactionsScreen({
             inputStyle={[styles.bigAmountInput, { color: fieldErrors.field === 'amount' ? colors.error : amountColor(directionInput, colors) }]}
             value={amountInput}
             onChangeAmount={handleAmountChange}
+            prefix={walletNow ? currencySymbol(walletNow.currency) : undefined}
           />
         </Guided>
+        {walletNow && (
+          <Text style={[styles.formFooter, { textAlign: 'center' }]} testID="txn-foreign-note">
+            {typeof amountInput === 'number' && amountInput > 0 ? `About ${formatPeso(pesoFor(amountInput, walletNow.fxRate as number))} at your rate. ` : ''}Typed in {walletNow.currency}, because {walletNow.name} is in {walletNow.currency}.
+          </Text>
+        )}
+        {borrowedOn && (
+          <>
+            <SegmentedControl<'loan' | 'debt'>
+              accessibilityLabel="Pay it back as"
+              options={[{ id: 'debt', label: 'Debt', testID: 'txn-borrowed-debt' }, { id: 'loan', label: 'Loan', testID: 'txn-borrowed-loan' }]}
+              value={borrowedKind}
+              onChange={setBorrowedKind}
+            />
+            <Text style={[styles.formFooter, { textAlign: 'center' }]}>
+              {borrowedKind === 'loan' ? 'Added to To-Pay › Loans. Set its payments there when you know them.' : 'Added to To-Pay › Debts, to pay when it is due.'} Borrowed money is not income.
+            </Text>
+          </>
+        )}
         {/* Voice entry (mockup V, Cath 2026-10-30). */}
 
         {/* Trip items and savings have their own places, so they aren't counted twice. */}
-        {directionInput === 'out' && !editingId && (
+        {directionInput === 'out' && !editingId && !walletNow && (
           <Text style={[styles.formFooter, { textAlign: 'center' }]}>Paid for something on a trip checklist? Tick it on Travel instead. Adding to savings? Do it from the pot's page.</Text>
         )}
 
-        {directionInput === 'in' && (
+        {directionInput === 'in' && !borrowedOn && (
           <>
             <MarkedLabel text="What is it?" mark="optional" style={styles.inputLabel} />
             <View style={styles.chipRow}>
@@ -1332,12 +1498,12 @@ export default function TransactionsScreen({
           <Guided {...fieldErrors.props('label')} focusRef={labelRef}>
           <View style={styles.formRow}>
             {/* Money in with a kind picked (Bonus...) is named after the kind if left empty. */}
-            <MarkedLabel text="Description" mark={directionInput === 'in' && incomeKindInput && incomeKindInput !== 'salary' ? 'optional' : 'required'} style={[styles.formLabel, fieldErrors.field === 'label' && { color: colors.error, fontWeight: '700' }]} />
+            <MarkedLabel text={borrowedOn ? 'From whom' : 'Description'} mark={!borrowedOn && directionInput === 'in' && incomeKindInput && incomeKindInput !== 'salary' ? 'optional' : 'required'} style={[styles.formLabel, fieldErrors.field === 'label' && { color: colors.error, fontWeight: '700' }]} />
             <TextInput
               ref={labelRef}
               testID="txn-label-input"
               style={styles.formInput}
-              placeholder="e.g. SM Hypermarket"
+              placeholder={borrowedOn ? 'e.g. Ate Joy' : 'e.g. SM Hypermarket'}
               placeholderTextColor={colors.inkFaint}
               value={labelInput}
               onChangeText={handleLabelChange}
@@ -1345,7 +1511,7 @@ export default function TransactionsScreen({
           </View>
           </Guided>
           {/* H-46 (Cath, 2026-10-29, canvas E2): a real dropdown, guessed for you ("Suggested"). */}
-          <View style={styles.formRowLine}>
+          {!borrowedOn && <View style={styles.formRowLine}>
             <PickerRow
               mark="optional"
               label="Category"
@@ -1366,8 +1532,8 @@ export default function TransactionsScreen({
               />
               <OwnChoiceField options={model ? categoryOptions(model) : []} value={categoryInput} onChange={pickCategory} placeholder="e.g. Groceries" />
             </PickerRow>
-          </View>
-          <View style={[styles.formRow, styles.formRowLine]}>
+          </View>}
+          {!borrowedOn && <View style={[styles.formRow, styles.formRowLine]}>
             <MarkedLabel text="Note" mark="optional" style={styles.formLabel} />
             <TextInput
               style={styles.formInput}
@@ -1376,7 +1542,7 @@ export default function TransactionsScreen({
               value={notesInput}
               onChangeText={setNotesInput}
             />
-          </View>
+          </View>}
         </View>
         )}
         {(ruleFilled || pastGuessed) && !!categoryInput && (
@@ -1390,7 +1556,7 @@ export default function TransactionsScreen({
               mark="required"
               model={model}
               direction={directionInput}
-              amount={amountInput}
+              amount={walletNow && typeof amountInput === 'number' ? pesoFor(amountInput, walletNow.fxRate as number) : amountInput}
               value={paymentMethodInput}
               onChange={setPaymentMethodInput}
               excludeTxnId={editingId}
@@ -1438,12 +1604,34 @@ export default function TransactionsScreen({
             label="Date"
             mark="required"
             value={dateInput}
-            onChange={setDateInput}
+            onChange={(d: string) => {
+              // The balance note fades in or out with the shared row motion.
+              if (model && isBackDated(model, d) !== isBackDated(model, dateInput)) animateNextLayout();
+              setDateInput(d);
+            }}
             testID="txn-date-field"
           />
         </Guided>
+        {backDatedNow && (
+          <View style={[styles.balanceNote, { backgroundColor: colors.indigoBg }]}>
+            <Text style={{ fontSize: 14, lineHeight: 20, color: colors.ink }}>
+              Your balances were updated on {dateText(new Date((model?.balanceAccounts.asOfDate as string) + 'T00:00:00'))}, so this is already in them. Your balance won't change.
+            </Text>
+            <TouchableOpacity onPress={() => setTakeOffInput((t) => !t)} accessibilityRole="checkbox" accessibilityState={{ checked: takeOffInput }} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }} testID="txn-takeoff">
+              <View style={[styles.check, { borderColor: colors.gold, backgroundColor: takeOffInput ? colors.gold : 'transparent' }]}>
+                {takeOffInput && <Ionicons name="checkmark" size={13} color={colors.onButton} />}
+              </View>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.gold, flexShrink: 1 }}>
+                {directionInput === 'in' || borrowedOn ? "It isn't included, add it to my balance" : "It isn't included, take it off my balance"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {borrowedOn && (
+          <DateField label="Pay back by" mark="optional" value={payBackInput} onChange={setPayBackInput} placeholder="Choose" clearable testID="txn-payback-field" />
+        )}
 
-        {directionInput === 'out' && !alreadyRefunded && (
+        {directionInput === 'out' && !alreadyRefunded && !walletNow && (
           <View style={[styles.formGroup, { marginTop: 4 }]}>
             <View style={styles.formRow}>
               <Text style={[styles.formLabel, { flex: 1 }]}>Expecting a refund</Text>
@@ -1570,6 +1758,8 @@ function makeStyles(colors: any) {
     txnMain: { flex: 1, marginRight: 10 },
     reviewCard: { flexDirection: 'row', alignItems: 'center', minHeight: 60, paddingHorizontal: 16, marginBottom: 12 },
     // Quick-add sheet
+    resumed: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginHorizontal: 16, marginBottom: 10 },
+    resumedText: { fontSize: 14, color: colors.ink },
     sheetBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 2, paddingBottom: 12 },
     sheetBarBtn: { fontSize: 17, color: colors.gold },
     sheetBarTitle: { fontSize: 17, fontWeight: '600', color: colors.ink },
@@ -1584,6 +1774,8 @@ function makeStyles(colors: any) {
     // Review 10-27: "Category (optional)" kept on one line (was a fixed 112 px).
     formLabel: { fontSize: 17, color: colors.ink, flexShrink: 0, maxWidth: '60%', marginRight: 12 },
     formInput: { flex: 1, fontSize: 17, color: colors.ink, textAlign: 'right', paddingVertical: 12 },
+    balanceNote: { borderRadius: 14, padding: 12, marginTop: 8, marginHorizontal: 16 },
+    check: { width: 20, height: 20, borderRadius: 6, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
     formFooter: { fontSize: 13, color: colors.inkDim, marginTop: 6, marginHorizontal: 16 },
     inlineAmount: { flex: 1, backgroundColor: 'transparent', marginBottom: 0, minHeight: 44, justifyContent: 'flex-end' },
     moreToggle: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingVertical: 12, marginTop: 8 },

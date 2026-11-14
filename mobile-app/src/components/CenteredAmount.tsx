@@ -33,7 +33,7 @@ function fromValue(value: number | '' | undefined): string {
   return typeof value === 'number' && !isNaN(value) ? String(Math.round(value * 100) / 100) : '';
 }
 
-export default function CenteredAmount({ value, onChangeAmount, onBlur, placeholder = '0.00', allowDecimals = true, style, inputStyle, autoFocus, focusRef, testID }: Props) {
+export default function CenteredAmount({ value, onChangeAmount, onBlur, placeholder = '0.00', allowDecimals = true, style, inputStyle, autoFocus, focusRef, testID, prefix }: Props & { prefix?: string | null }) {
   const { colors } = useTheme();
   const flat = StyleSheet.flatten(inputStyle) || {};
   const size = (flat.fontSize as number) || 40;
@@ -99,7 +99,7 @@ export default function CenteredAmount({ value, onChangeAmount, onBlur, placehol
       style={[styles.wrap, { minHeight: Math.round(size * 1.6) }, style]}
     >
       <View style={styles.row} pointerEvents="none">
-        <Text style={{ fontSize: Math.round(size * 0.58), fontWeight: '700', color: tint, marginRight: 2, alignSelf: 'flex-start', marginTop: Math.round(size * 0.14) }}>₱</Text>
+        <Text style={{ fontSize: Math.round(size * 0.58), fontWeight: '700', color: tint, marginRight: 2, alignSelf: 'flex-start', marginTop: Math.round(size * 0.14) }}>{prefix || '₱'}</Text>
         <Text style={{ fontSize: size, fontWeight: '800', letterSpacing: -0.5, color: tint }} numberOfLines={1} adjustsFontSizeToFit>
           {shown}
         </Text>

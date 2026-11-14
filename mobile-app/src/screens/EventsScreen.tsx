@@ -17,6 +17,7 @@ import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { useFormDraft, DraftBanner } from '../useFormDraft';
 import { useFormOnly, type PlanFormProps } from '../planForm';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
@@ -226,6 +227,10 @@ export default function EventsScreen({ formOnly, addDate, addNonce, onFormClosed
     setDayInput(String(Number(addDate.slice(8, 10))));
   });
 
+  // Cath, 2026-11-13: a form closed by a tap outside keeps what was typed (useFormDraft.tsx).
+  const draft = useFormDraft('event', { name: [nameInput, setNameInput], type: [typeInput, setTypeInput], recurrence: [recurrenceInput, setRecurrenceInput], month: [monthInput, setMonthInput], day: [dayInput, setDayInput], onetimeDate: [onetimeDateInput, setOnetimeDateInput], budget: [budgetInput, setBudgetInput] }, { editing: !!editingId, typed: nameInput.trim() !== '' || budgetInput !== '' });
+  const draftStartOver = () => { setNameInput(''); setTypeInput('birthday'); setBudgetInput(''); };
+
   if (!model) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
@@ -297,7 +302,7 @@ export default function EventsScreen({ formOnly, addDate, addNonce, onFormClosed
     });
   }
 
-  function openAddModal() {
+  function openAddModal(noDraft?: unknown) {
     setEditingId(null);
     setNameInput('');
     setTypeInput('birthday');
@@ -311,6 +316,7 @@ export default function EventsScreen({ formOnly, addDate, addNonce, onFormClosed
     setItemsInput([]);
     setErrorMsg('');
     setModalOpen(true);
+    if (noDraft !== true) draft.restore(formOnly ? ['month', 'day', 'onetimeDate'] : []);
   }
 
   function openEditModal(ev: EventItem) {
@@ -447,6 +453,7 @@ export default function EventsScreen({ formOnly, addDate, addNonce, onFormClosed
     };
     try {
       await saveModel(updated);
+      if (!editingId) draft.used();
       showLeafTick(editingId ? 'Saved' : 'Added');
       if (!editingId) onAdded?.();
       closeModal();
@@ -662,10 +669,11 @@ export default function EventsScreen({ formOnly, addDate, addNonce, onFormClosed
 
       <BottomSheet
         visible={modalOpen}
-        onClose={closeModal}
+        onClose={() => { draft.keep(); closeModal(); }}
         grouped
-        header={<SheetBar title={editingId ? 'Edit event' : 'New event'} onCancel={closeModal} onDone={handleSaveEvent} doneLabel={editingId ? 'Save' : 'Add'} />}
+        header={<SheetBar title={editingId ? 'Edit event' : 'New event'} onCancel={() => { draft.discard(); closeModal(); }} onDone={handleSaveEvent} doneLabel={editingId ? 'Save' : 'Add'} />}
       >
+        <DraftBanner draft={draft} onStartOver={draftStartOver} />
         {itemsInput.length === 0 ? (
           <BigAmount mark="optional" label="What it will cost" value={budgetInput} onChange={setBudgetInput} color={colors.planned} />
         ) : (

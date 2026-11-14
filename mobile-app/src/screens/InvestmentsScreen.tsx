@@ -15,6 +15,7 @@ import { Text } from '../components/AppText';
 import { headerButtonText } from '../navigation/LargeHeader';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { useFormDraft, DraftBanner } from '../useFormDraft';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import GradientFill from '../components/GradientFill';
 import LoadingView from '../components/LoadingView';
@@ -113,6 +114,10 @@ export default function InvestmentsScreen({ formOnly, addDate, addNonce, onFormC
     openAdd();
   }
 
+  // Cath, 2026-11-13: a form closed by a tap outside keeps what was typed (useFormDraft.tsx).
+  const draft = useFormDraft('investment', { name: [name, setName], kind: [kind, setKind], startPutIn: [startPutIn, setStartPutIn], startWorth: [startWorth, setStartWorth] }, { editing: !!editingId, typed: name.trim() !== '' || startPutIn !== '' || startWorth !== '' });
+  const draftStartOver = () => { setName(''); setKind('mp2'); setStartPutIn(''); setStartWorth(''); };
+
   if (!model) return <LoadingView />;
   const list = model.investments || [];
   const total = investmentsTotal(model);
@@ -139,6 +144,7 @@ export default function InvestmentsScreen({ formOnly, addDate, addNonce, onFormC
     setStartWorth('');
     setFormError('');
     setFormOpen(true);
+    draft.restore(formOnly ? [] : []);
   }
   function openEdit(inv: Investment) {
     setMoveFor(null);
@@ -179,6 +185,7 @@ export default function InvestmentsScreen({ formOnly, addDate, addNonce, onFormC
         await saveModel({ ...model, investments: [...all, { id: makeId('inv'), name: n, kind, entries, createdAt: now }] });
       }
       hapticLight();
+      if (!editingId) draft.used();
       showLeafTick(editingId ? 'Saved' : 'Added');
       if (!editingId) onAdded?.();
       setFormOpen(false);
@@ -324,7 +331,8 @@ export default function InvestmentsScreen({ formOnly, addDate, addNonce, onFormC
       </BottomSheet>
 
       {/* New / edit */}
-      <BottomSheet visible={formOpen} onClose={() => setFormOpen(false)} grouped header={<SheetBar title={editingId ? 'Edit investment' : 'New investment'} onCancel={() => setFormOpen(false)} onDone={saveInvestment} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}>
+      <BottomSheet visible={formOpen} onClose={() => { draft.keep(); setFormOpen(false); }} grouped header={<SheetBar title={editingId ? 'Edit investment' : 'New investment'} onCancel={() => { draft.discard(); setFormOpen(false); }} onDone={saveInvestment} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}>
+        <DraftBanner draft={draft} onStartOver={draftStartOver} />
         <FormGroup>
           <PickerRow mark="required" label="Kind" value={kindInfo(kind).label} open={openRow === 'kind'} onToggle={() => toggleRow('kind')} testID="investment-kind-row">
             <Choices options={INVESTMENT_KINDS.map((k) => ({ id: k.id, label: k.label }))} value={kind} onChange={(v) => setKind(v as InvestmentKind)} />

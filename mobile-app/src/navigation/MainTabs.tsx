@@ -120,12 +120,27 @@ function useCurrentTab(): string {
 // drawing its whole list. The form is kept ready after the first time, so it opens at
 // once. Cath: after Add it then goes to Transactions, so you see the new entry slide in
 // there. On the Transactions tab itself, + works as before.
+const QUICK_ADD_READY_MS = 1500;
 let quickAddOpen: (() => void) | null = null;
 function QuickAdd() {
   const navigation = useNavigation<any>();
   const { getModel } = useData();
   const [nonce, setNonce] = React.useState(0);
   const [open, setOpen] = React.useState(false);
+  // H-76 (Cath, 2026-11-14: the lag is when a form opens): the form used to be built on the
+  // first tap of +, which made that first opening several times slower than the next ones.
+  // Now it is built quietly a moment after the app has settled, so the first tap is as quick.
+  const [ready, setReady] = React.useState(false);
+  React.useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const task = InteractionManager.runAfterInteractions(() => {
+      timer = setTimeout(() => setReady(true), QUICK_ADD_READY_MS);
+    });
+    return () => {
+      task.cancel();
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
   React.useEffect(() => {
     quickAddOpen = () => {
       const m = getModel();
@@ -137,7 +152,7 @@ function QuickAdd() {
       quickAddOpen = null;
     };
   }, []);
-  if (!nonce) return null;
+  if (!nonce && !ready) return null;
   return (
     // Takes no room on the screen: only its pop-up form shows.
     <View pointerEvents="box-none" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>

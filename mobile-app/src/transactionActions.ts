@@ -1,6 +1,8 @@
 import type { HouseholdModel, ManualTransaction, PaymentMethod } from './types';
 import { makeId } from './utils';
 import { todayISO } from './dateUtils';
+import { putBackForTxn } from './backDated';
+import { removeBorrowedRef } from './borrowed';
 
 // Redesign: small helpers shared by the Transaction detail page (and later, Search and
 // To review). Each returns an updated copy of the household data; the caller saves it.
@@ -20,7 +22,10 @@ export function accountLabel(model: HouseholdModel, pm: PaymentMethod | undefine
 // Deletes a manual transaction (and the refund it created, if any).
 // H-17 (2026-10-22): deleting a refund entry itself puts its expense back to "refund
 // pending" (the same as "Undo refund received"); it used to keep saying "received".
-export function deleteManualTxn(model: HouseholdModel, id: string): HouseholdModel {
+export function deleteManualTxn(start: HouseholdModel, id: string): HouseholdModel {
+  // 2026-11-14: a back-dated amount taken off the balance goes back (H-77), and a Borrowed
+  // transaction takes its unpaid loan or debt with it (H-78).
+  const model = removeBorrowedRef(putBackForTxn(start, id), id);
   const deleted = (model.manualTransactions || []).find((t) => t.id === id);
   return {
     ...model,

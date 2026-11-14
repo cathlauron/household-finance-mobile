@@ -29,6 +29,7 @@ import { debtSections, debtDue, debtAmount as debtAmountOf } from '../debtSectio
 import { paymentToPlace, placePayment } from '../billPayments';
 import PlacePaymentSheet, { type PlacePaymentAsk } from '../components/PlacePaymentSheet';
 import { useData } from '../DataContext';
+import { useFormDraft, DraftBanner } from '../useFormDraft';
 import CountingText from '../components/CountingText';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
@@ -82,7 +83,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
   React.useEffect(() => {
     const carry = takePendingAdd('debts');
     if (!carry || formOnly) return;
-    openAddModal();
+    openAddModal(true);
     setAmountInput(carry.amount);
     setCreditorInput(carry.name);
     // Only when this list first shows.
@@ -90,7 +91,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
   }, []);
   React.useEffect(() => {
     if (!formOnly || !addCarry) return;
-    openAddModal();
+    openAddModal(addCarry.amount !== '' || !!addCarry.name);
     setAmountInput(addCarry.amount);
     setCreditorInput(addCarry.name);
     // The day picked in the calendar (or carried over from the other form).
@@ -171,6 +172,10 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
   // Version 3 (M4): paid, then the due date moved: ask which payment it was.
   const [placeAsk, setPlaceAsk] = useState<PlacePaymentAsk>(null);
 
+  // Cath, 2026-11-13: a form closed by a tap outside keeps what was typed (useFormDraft.tsx).
+  const draft = useFormDraft('debt', { creditor: [creditorInput, setCreditorInput], category: [categoryInput, setCategoryInput], amount: [amountInput, setAmountInput], notes: [notesInput, setNotesInput], recurType: [recurTypeInput, setRecurTypeInput], onetimeDate: [onetimeDateInput, setOnetimeDateInput], day: [dayInput, setDayInput], month: [monthInput, setMonthInput], minPayment: [minPaymentInput, setMinPaymentInput], interestRate: [interestRateInput, setInterestRateInput] }, { editing: !!editingId, typed: creditorInput.trim() !== '' || amountInput !== '' });
+  const draftStartOver = () => { setCreditorInput(''); setCategoryInput(''); setAmountInput(''); setNotesInput(''); setRecurTypeInput('onetime'); setDayInput(''); setMonthInput(''); setMinPaymentInput(''); setInterestRateInput(''); };
+
   if (!model) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]}>
@@ -201,11 +206,12 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
     setErrorMsg('');
   }
 
-  function openAddModal() {
+  function openAddModal(noDraft?: unknown) {
     if (!singleForm.claim()) return;
     setEditingId(null);
     resetForm();
     setModalOpen(true);
+    if (noDraft !== true) draft.restore(formOnly ? ['onetimeDate'] : []);
   }
 
   function openEditModal(debt: Debt) {
@@ -434,6 +440,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
     try {
       const wasNew = !editingId;
       await saveModel(toSave);
+      if (!editingId) draft.used();
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
       if (wasNew) onAdded?.();
@@ -608,12 +615,13 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
       {/* Approved "Option 2: simple" form (Forms Redesign canvas). */}
       <BottomSheet
         visible={modalOpen}
-        onClose={closeModal}
+        onClose={() => { draft.keep(); closeModal(); }}
         // One sheet for New bill / debt / loan, so switching only changes the form.
         shared="pay-form"
         grouped
-        header={<SheetBar title={editingId ? 'Edit debt' : 'New debt'} onCancel={closeModal} onDone={handleSave} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
+        header={<SheetBar title={editingId ? 'Edit debt' : 'New debt'} onCancel={() => { draft.discard(); closeModal(); }} onDone={handleSave} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
       >
+        <DraftBanner draft={draft} onStartOver={draftStartOver} />
         {!editingId && (
           <KindSwitch
             key="pay-form-kind"

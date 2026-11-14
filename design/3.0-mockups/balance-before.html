@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Balance Before</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--t:#111;--m:#636366;--f:#AEAEB2;--l:#D1D1D6;--s:#F2F2F7;--c:#fff;--a:#B0234F;--at:#F6E3EA;--g:#1F7A3D;--gt:#E3F1E7;--r:#D70015;--rt:#FBE5E7;--bl:#1D63B8;--page:#E9E9EE;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--t:#fff;--m:#AEAEB2;--f:#636366;--l:#38383A;--s:#000;--c:#1C1C1E;--a:#F0668F;--at:#3A1A25;--g:#5FC48A;--gt:#15291D;--r:#FF6961;--rt:#3A1515;--bl:#6FB1F5;--page:#111113;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--t);font-family:'Nunito',sans-serif;line-height:1.4}
+main{max-width:1060px;margin:0 auto;padding:28px 16px 56px}
+h1{font-size:28px;margin:0 0 6px;font-weight:800}
+.lead{color:var(--m);margin:0 0 8px;max-width:70ch}
+section{margin-top:40px}
+section>h2{font-size:22px;margin:0 0 4px;font-weight:800}
+section>p{color:var(--m);margin:0 0 16px;max-width:70ch}
+.flow{display:flex;flex-wrap:wrap;gap:22px}
+.step{width:300px;max-width:100%}
+.step h3{font-size:14px;font-weight:800;margin:0 0 8px}
+.ph{position:relative;height:600px;background:var(--s);border:0.5px solid var(--l);border-radius:24px;overflow:hidden}
+.bar{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 8px;font-size:16px}
+.bar b{font-weight:700}.lk{color:var(--a)}
+.seg{display:flex;margin:4px 16px 10px;background:rgba(127,127,127,.14);border-radius:9px;padding:2px}
+.seg span{flex:1;text-align:center;font-size:13px;padding:5px 0;border-radius:7px;color:var(--t)}
+.seg .on{background:var(--c);font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.amt{text-align:center;font-size:12px;color:var(--m)}
+.big{text-align:center;font-size:34px;font-weight:700;margin:2px 0 10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 10px}
+.chip{font-size:13px;padding:5px 10px;border-radius:14px;background:rgba(127,127,127,.12)}
+.chip.on{background:var(--at);color:var(--a);font-weight:700}
+.lbl{font-size:12px;color:var(--m);padding:4px 16px 4px}
+.grp{margin:0 14px 10px;background:var(--c);border-radius:12px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;font-size:14px;gap:8px}
+.row+.row{border-top:0.5px solid var(--l)}
+.row .v{color:var(--m);text-align:right}
+.note{font-size:12px;color:var(--m);padding:0 18px 10px}
+.hint{font-size:12px;color:var(--g);font-weight:700}
+.warn{font-size:12px;color:var(--r);font-weight:700}
+.acct{display:flex;flex-wrap:wrap;gap:6px}
+.ac{border:1.5px solid var(--l);border-radius:10px;padding:5px 8px;font-size:13px;min-width:90px}
+.ac small{display:block;color:var(--m);font-size:11.5px}
+.ac.on{border-color:var(--a);background:var(--at)}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.35)}
+.sheet{position:absolute;left:0;right:0;bottom:0;top:120px;background:var(--s);border-radius:16px 16px 0 0}
+.tap{position:absolute;top:56px;left:50%;transform:translateX(-50%);background:var(--c);color:var(--t);font-size:12px;font-weight:700;padding:6px 10px;border-radius:14px}
+.banner{margin:0 14px 10px;padding:9px 12px;border-radius:10px;background:var(--gt);font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.banner .lk{font-weight:700}
+.list .it{display:flex;align-items:center;gap:10px;padding:10px 0;margin:0 16px;font-size:14px}
+.list .it+.it{border-top:0.5px solid var(--l)}
+.list .it i{width:9px;height:9px;border-radius:50%;flex:none}
+.list .it div{flex:1}.list .it small{display:block;color:var(--m);font-size:12px}
+.list .it span{font-weight:700}
+.q{margin:14px 0 0;padding:12px 14px;background:var(--c);border-radius:12px;max-width:70ch;font-size:14.5px}
+.q b{font-weight:800}
+.pick{display:inline-block;font-size:12px;font-weight:800;color:var(--a);margin-left:6px}
+.sw{width:38px;height:22px;border-radius:11px;background:var(--g);position:relative;flex:none}.sw::after{content:'';position:absolute;right:2px;top:2px;width:18px;height:18px;border-radius:50%;background:#fff}
+.ba{font-size:12px;color:var(--m)}.ba b{color:var(--t);font-weight:700}
+.it .rt{text-align:right;flex:none}.it .rt span{display:block}.it .rt small{display:block;white-space:nowrap;color:var(--m);font-size:11.5px;font-weight:400}
+.hero{margin:0 14px 12px;background:var(--c);border-radius:14px;padding:14px}.hero small{color:var(--m);font-size:12px}.hero div{font-size:28px;font-weight:700;color:var(--g)}
+.ph{height:440px}.hl{outline:2px solid var(--a);outline-offset:2px;border-radius:10px}
+</style>
+</head>
+<body>
+<main>
+  <h1>The balance before each transaction</h1>
+  <p class="lead">Three places it could show, for every account (bank, cash, e-wallet, card, and cash in another currency). The pink outline marks what is new. Names and amounts are samples. Nothing is built.</p>
+
+  <section>
+    <h2>Place A: on the account's page <span class="pick">My suggestion</span></h2>
+    <p>Home › Wallet › tap a card. Each transaction says what the account had before it and after it, newest first.</p>
+    <div class="flow">
+      <div class="step"><h3>BPI Savings</h3><div class="ph">
+        <div class="bar"><span class="lk">‹ Back</span><b>BPI Savings</b><span class="lk">Edit</span></div>
+        <div class="hero"><small>Balance</small><div>₱11,890.00</div></div>
+        <div class="lbl">Transactions</div>
+        <div class="list">
+          <div class="it hl"><i style="background:var(--r)"></i><div>Groceries<small>Today · SM Supermarket</small></div><div class="rt"><span>-₱450.00</span><small>₱12,340.00 → ₱11,890.00</small></div></div>
+          <div class="it hl"><i style="background:var(--g)"></i><div>Salary<small>Nov 13</small></div><div class="rt"><span style="color:var(--g)">+₱10,000.00</span><small>₱2,340.00 → ₱12,340.00</small></div></div>
+          <div class="it hl"><i style="background:var(--bl)"></i><div>Moved to Cash<small>Nov 12</small></div><div class="rt"><span>-₱1,000.00</span><small>₱3,340.00 → ₱2,340.00</small></div></div>
+          <div class="it hl"><i style="background:var(--r)"></i><div>Meralco bill<small>Nov 10</small></div><div class="rt"><span>-₱2,160.00</span><small>₱5,500.00 → ₱3,340.00</small></div></div>
+        </div>
+      </div></div>
+      <div class="step"><h3>Cash (THB), in baht</h3><div class="ph">
+        <div class="bar"><span class="lk">‹ Back</span><b>Cash (THB)</b><span class="lk">Edit</span></div>
+        <div class="hero"><small>Balance</small><div>฿1,820.00</div></div>
+        <div class="lbl">Transactions</div>
+        <div class="list">
+          <div class="it hl"><i style="background:var(--r)"></i><div>Food<small>Today · Pad thai</small></div><div class="rt"><span>-฿180.00</span><small>฿2,000.00 → ฿1,820.00</small></div></div>
+          <div class="it hl"><i style="background:var(--bl)"></i><div>Withdrew cash<small>Nov 13 · from BPI Savings</small></div><div class="rt"><span style="color:var(--g)">+฿2,000.00</span><small>฿0.00 → ฿2,000.00</small></div></div>
+        </div>
+      </div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Place B: when you open a transaction</h2>
+    <p>Tap any transaction, anywhere in the app. Its details gain two lines: what the account had before, and after.</p>
+    <div class="flow">
+      <div class="step"><h3>Transaction details</h3><div class="ph">
+        <div class="bar"><span class="lk">Close</span><b>Groceries</b><span class="lk">Edit</span></div>
+        <div class="amt">Money out</div><div class="big">₱450.00</div>
+        <div class="grp">
+          <div class="row"><span>Account</span><span class="v">BPI Savings</span></div>
+          <div class="row"><span>Date</span><span class="v">Nov 14, 2026</span></div>
+          <div class="row"><span>Note</span><span class="v">SM Supermarket</span></div>
+        </div>
+        <div class="grp hl">
+          <div class="row"><span>BPI Savings before</span><span class="v">₱12,340.00</span></div>
+          <div class="row"><span>BPI Savings after</span><span class="v"><b style="color:var(--t)">₱11,890.00</b></span></div>
+        </div>
+      </div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Place C: while you add a transaction</h2>
+    <p>New transaction already lets you pick the account. Under it, the form says what the account has now and what it will have after you tap Add (Move money already does this).</p>
+    <div class="flow">
+      <div class="step"><h3>New transaction</h3><div class="ph">
+        <div class="bar"><span class="lk">Cancel</span><b>New transaction</b><span class="lk"><b>Add</b></span></div>
+        <div class="seg"><span class="on">Money out</span><span>Money in</span><span>Borrowed</span></div>
+        <div class="amt">Amount</div><div class="big">₱450.00</div>
+        <div class="grp">
+          <div class="row"><span>Category</span><span class="v">Groceries</span></div>
+          <div class="row"><span>Account</span><span class="v">BPI Savings</span></div>
+        </div>
+        <div class="grp hl">
+          <div class="row"><span>BPI Savings now</span><span class="v">₱12,340.00</span></div>
+          <div class="row"><span>After this</span><span class="v"><b style="color:var(--t)">₱11,890.00</b></span></div>
+        </div>
+      </div></div>
+    </div>
+  </section>
+
+  <div class="q"><b>Your pick:</b> A, B, C, or any mix (all three work together). One thing to know for A and B: if you later type an account's balance in by hand, the amounts before that correction are worked out backwards from it, so they follow the corrected number.</div>
+</main>
+</body>
+</html>

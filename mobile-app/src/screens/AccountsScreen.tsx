@@ -28,6 +28,9 @@ import Button from '../components/Button';
 import AmountInput from '../components/AmountInput';
 import { todayISO } from '../dateUtils';
 import GradientFill from '../components/GradientFill';
+import { CURRENCIES, HOME, currencySymbol, foreignBalance, isForeign, lastRate, pesoFor, showMoney, suggestedRate } from '../fx';
+import { trace } from '../trace';
+import { animateNextLayout } from '../animateLayout';
 import Guided, { useFieldErrors } from '../components/Guided';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -66,13 +69,18 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
   // Version 2.1 (Cath): "Edit card" on a card's page comes here and opens that card's sheet.
   const route = useRoute<any>();
   const editNonce = route.params?.nonce;
+  // Sweep 2026-11-14: the form starts from what the account has NOW (the list already does).
+  // From an account's page it started from the balance as last typed in, and saving even a
+  // new name put the balance back to that old number.
+  const liveAccount = (g: AccountGroup, a: BalanceAccountEntry): BalanceAccountEntry =>
+    model && (g === 'cash' || g === 'debit' || g === 'credit') ? withCurrentBalance(model, g, a) : a;
   const formOnlyOpened = useRef(false);
   React.useEffect(() => {
     if (!formOnly || formOnlyOpened.current || !model || !editGroup || !editAccountId) return;
     const account = model.balanceAccounts[editGroup]?.find((a: BalanceAccountEntry) => a.id === editAccountId);
     if (account) {
       formOnlyOpened.current = true;
-      openEditModal(editGroup, account);
+      openEditModal(editGroup, liveAccount(editGroup, account));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formOnly, model, editGroup, editAccountId]);
@@ -82,7 +90,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
     const id = route.params?.editId as string | undefined;
     if (!editNonce || !g || !id || !model) return;
     const account = model.balanceAccounts[g]?.find((a: BalanceAccountEntry) => a.id === id);
-    if (account && firstTimeOpen('account', id, editNonce)) afterSlide(() => openEditModal(g, account));
+    if (account && firstTimeOpen('account', id, editNonce)) afterSlide(() => openEditModal(g, liveAccount(g, account)));
     // Only when "Edit card" sends a new request.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editNonce]);
@@ -128,6 +136,13 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
   const clearFieldError = fieldErrors.clear;
   const nameRef = useRef<any>(null);
   const [amountInput, setAmountInput] = useState<number | ''>('');
+  // Cath, 2026-11-14 (mockup accounts-foreign): a cash wallet can be in another currency. Its
+  // balance is typed in that currency and kept in pesos at its rate (fx.ts), like everywhere else.
+  const [currencyInput, setCurrencyInput] = useState<string>(HOME);
+  const [rateInput, setRateInput] = useState<number | ''>('');
+  const [rateFrom, setRateFrom] = useState<'today' | 'last' | 'none' | ''>('');
+  const [currencyOpen, setCurrencyOpen] = useState(false);
+  const startForeign = useRef<number | ''>('');
   const [colorInput, setColorInput] = useState<string>(DEFAULT_GROUP_COLORS.cash);
   // Version 2.2 (canvas D2): optional last 4 digits (debit and credit cards only).
   const [last4Input, setLast4Input] = useState('');
@@ -141,6 +156,9 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
   useEffect(() => {
     clearFieldError();
   }, [nameInput, activeGroup, clearFieldError]);
+
+  const foreignNow = activeGroup === 'cash' && currencyInput !== HOME;
+  const currencyName = currencyInput === HOME ? 'Philippine peso (PHP)' : `${CURRENCIES.find((c) => c.code === currencyInput)?.name || currencyInput} (${currencyInput})`;
 
   if (!model) {
     return (
@@ -156,6 +174,10 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
     setEditingId(null);
     setNameInput('');
     setAmountInput('');
+    setCurrencyInput(HOME);
+    setRateInput('');
+    setRateFrom('');
+    startForeign.current = '';
     setColorInput(DEFAULT_GROUP_COLORS[group]);
     setLast4Input('');
     setErrorMsg('');
@@ -166,10 +188,36 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
     setActiveGroup(group);
     setEditingId(account.id);
     setNameInput(account.name);
-    setAmountInput(account.amount);
+    if (isForeign(account)) {
+      const inIts = foreignBalance(account, accountAmountNumber(account));
+      setAmountInput(inIts);
+      startForeign.current = inIts;
+      setCurrencyInput(account.currency as string);
+      setRateInput(account.fxRate as number);
+    } else {
+      setAmountInput(account.amount);
+      startForeign.current = '';
+      setCurrencyInput(HOME);
+      setRateInput('');
+    }
+    setRateFrom('');
     setColorInput(account.color || DEFAULT_GROUP_COLORS[group]);
     setLast4Input(account.last4 || '');
     setErrorMsg('');
+  }
+
+  function pickCurrency(code: string) {
+    if ((code === HOME) !== (currencyInput === HOME)) animateNextLayout();
+    setCurrencyInput(code);
+    setCurrencyOpen(false);
+    setRateInput('');
+    setRateFrom('');
+    trace('fx', 'account currency picked', { code });
+    if (code === HOME || !model) return;
+    suggestedRate(code, lastRate(model, code), fetch as any).then((r) => {
+      setRateFrom(r.from);
+      if (r.rate) setRateInput((typed) => (typed === '' ? (r.rate as number) : typed));
+    });
   }
 
   function closeModal() {
@@ -196,7 +244,18 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
       return;
     }
     const last4 = hasLast4 && last4Input.length === 4 ? last4Input : undefined;
-    const parsedAmount = amountInput === '' ? 0 : amountInput;
+    const foreign = activeGroup === 'cash' && currencyInput !== HOME;
+    if (foreign && (rateInput === '' || rateInput <= 0)) {
+      setErrorMsg('Type the exchange rate: how many pesos one ' + currencyInput + ' is.');
+      return;
+    }
+    if (foreign && !editingId && model.balanceAccounts.cash.some((a) => a.currency === currencyInput && isForeign(a))) {
+      setErrorMsg(`You already have a wallet in ${currencyInput}. Cash in ${currencyInput} goes into that one.`);
+      return;
+    }
+    const typedAmount = amountInput === '' ? 0 : amountInput;
+    // Kept in pesos, so every total stays right.
+    const parsedAmount = foreign ? pesoFor(typedAmount, rateInput as number) : typedAmount;
 
     // Redesign: balances shown here are live (saved balance + anything paid since).
     // If the balance was changed, every spending account's saved balance becomes its
@@ -206,7 +265,9 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
     let newId: string | null = null;
     const previous = editingId ? model.balanceAccounts[activeGroup].find((a) => a.id === editingId) : undefined;
     const previousLive = previous ? accountCurrentBalance(model, activeGroup, previous) : 0;
-    const balanceChanged = !editingId || !previous || Number(previousLive) !== Number(parsedAmount || 0);
+    // A foreign wallet: changed only if the amount in its currency or its rate was changed
+    // (its peso value has more decimals than what is shown).
+    const balanceChanged = !editingId || !previous || (foreign && isForeign(previous) ? typedAmount !== startForeign.current || rateInput !== previous.fxRate : Number(previousLive) !== Number(parsedAmount || 0));
 
     const updated: HouseholdModel = {
       ...model,
@@ -225,6 +286,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
               amount: balanceChanged ? parsedAmount : a.amount,
               color: colorInput,
               last4,
+              ...(foreign ? { fxRate: rateInput as number } : {}),
               ...(balanceChanged && isSpendingGroup ? { balanceLog: [logEntry(Number(previousLive) || 0), ...(a.balanceLog || [])].slice(0, 50) } : {}),
             }
           : a
@@ -237,6 +299,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
         amount: parsedAmount,
         color: colorInput,
         ...(last4 ? { last4 } : {}),
+        ...(foreign ? { currency: currencyInput, fxRate: rateInput as number } : {}),
         ...(isSpendingGroup ? { balanceLog: [logEntry(null)] } : {}),
       };
       updated.balanceAccounts[activeGroup] = [...currentList, newAccount];
@@ -417,16 +480,21 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
                         onPress={() => navigation.navigate('CardDetail', { group, id: account.id, backTitle: 'Accounts' })}
                         onLongPress={() => openEditModal(group, account)}
                         accessibilityRole="button"
-                        accessibilityLabel={`${account.name}, ${formatPeso(bal)}`}
+                        accessibilityLabel={`${account.name}, ${showMoney(account, bal)}`}
                       >
                         <View style={[styles.accountChip, cardFaceColors(tint, isDark)]}>
                           <CardFaceFill color={tint} radius={6} />
                         </View>
                         <View style={{ flex: 1, marginRight: 8 }}>
                           <Text style={styles.accountName} numberOfLines={1}>{account.name || GROUP_LABELS[group]}</Text>
-                          <Text style={styles.accountSub} numberOfLines={1}>{GROUP_LABELS[group]}</Text>
+                          <Text style={styles.accountSub} numberOfLines={1}>{isForeign(account) ? CURRENCIES.find((c) => c.code === account.currency)?.name || account.currency : GROUP_LABELS[group]}</Text>
                         </View>
-                        <Text style={[styles.accountAmount, { color: moneyColor(bal) }]}>{formatPeso(bal)}</Text>
+                        <View style={{ alignItems: 'flex-end', flexShrink: 1 }}>
+                          <Text style={[styles.accountAmount, { color: moneyColor(bal) }]}>{showMoney(account, bal)}</Text>
+                          {isForeign(account) && (
+                            <Text style={styles.accountSub} numberOfLines={1}>{`about ${formatPeso(bal)} · ${currencySymbol(account.currency)}1 = ₱${account.fxRate}`}</Text>
+                          )}
+                        </View>
                         <Ionicons name="chevron-forward" size={17} color={colors.inkFaint} style={{ marginLeft: 6 }} />
                       </TouchableOpacity>
                     </SwipeableRow>
@@ -485,13 +553,42 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
         />
         </Guided>
 
+        {activeGroup === 'cash' && (
+          <>
+            <MarkedLabel text="Currency" mark="required" style={styles.inputLabel} />
+            {editingId ? (
+              <Text style={[styles.input, { paddingVertical: 12, color: colors.inkDim }]}>{currencyName}</Text>
+            ) : (
+              <TouchableOpacity style={[styles.input, { paddingVertical: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]} onPress={() => setCurrencyOpen(true)} accessibilityRole="button" testID="account-currency-row">
+                <Text style={{ fontSize: 16, color: colors.ink }}>{currencyName}</Text>
+                <Ionicons name="chevron-down" size={17} color={colors.inkFaint} />
+              </TouchableOpacity>
+            )}
+          </>
+        )}
+
         <MarkedLabel text="Balance" mark="optional" style={styles.inputLabel} />
           <AmountInput
             style={styles.amountInput}
             value={amountInput}
             onChangeAmount={setAmountInput}
             allowNegative
+            prefix={foreignNow ? currencySymbol(currencyInput) : '₱'}
+            testID="account-balance"
           />
+
+        {foreignNow && (
+          <>
+            <MarkedLabel text={`Exchange rate (${currencySymbol(currencyInput)}1 in ₱)`} mark="required" style={styles.inputLabel} />
+            <AmountInput style={styles.amountInput} value={rateInput} onChangeAmount={(v) => { setRateInput(v); setRateFrom(''); }} testID="account-rate" />
+            <Text style={[styles.inputLabel, { marginTop: -6, fontWeight: '400', color: colors.inkDim }]} testID="account-peso-note">
+              {rateFrom === 'today' ? "Suggested: today's rate. " : rateFrom === 'last' ? 'Suggested: the rate you used last. ' : rateFrom === 'none' ? "Couldn't get a rate: type it in. " : ''}
+              {typeof amountInput === 'number' && typeof rateInput === 'number' && rateInput > 0 ? `About ${formatPeso(pesoFor(amountInput, rateInput))}. ` : ''}
+              {'Your totals and Left to Spend use the peso value.'}
+            </Text>
+            {!!editingId && <Text style={[styles.inputLabel, { fontWeight: '400', color: colors.inkDim }]}>A wallet keeps the currency it was started with.</Text>}
+          </>
+        )}
 
         {(activeGroup === 'debit' || activeGroup === 'credit') && (
           <>
@@ -531,11 +628,20 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
 
         <ErrorNote text={errorMsg} />
 
-        <Button label="Save" onPress={handleSave} loading={saving} />
+        <Button label="Save" onPress={handleSave} loading={saving} testID="account-save" />
 
         {editingId && <Button label="Remove account" variant="destructive" onPress={handleDelete} />}
 
         <Button label="Cancel" variant="quiet" onPress={closeModal} />
+      </BottomSheet>
+
+      <BottomSheet visible={currencyOpen} onClose={() => setCurrencyOpen(false)} title="Currency">
+        {[{ code: HOME, name: 'Philippine peso', symbol: '₱' }, ...CURRENCIES.filter((c) => c.code !== HOME)].map((c, i) => (
+          <TouchableOpacity key={c.code} style={[styles.typeRow, i > 0 && styles.typeRowTop]} onPress={() => pickCurrency(c.code)} accessibilityRole="button" accessibilityState={{ selected: currencyInput === c.code }} testID={`account-currency-${c.code}`}>
+            <Text style={[styles.typeRowText, { flex: 1 }]} numberOfLines={1}>{c.name}</Text>
+            <Text style={[styles.accountSub, currencyInput === c.code && { color: colors.gold, fontWeight: '700' }]}>{c.code} · {c.symbol}</Text>
+          </TouchableOpacity>
+        ))}
       </BottomSheet>
     </SafeAreaView>
   );

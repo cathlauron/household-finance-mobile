@@ -170,3 +170,13 @@ Same test, 3.6.0, current, and current without useMainOnTop: 3 runs each in turn
 
 ## Correction, 2026-11-06
 The "light and dark" walks earlier today were light only: the test browser's dark setting doesn't reach the app. Dark needs the app's own colorModePreference set to dark. Rerun properly on the current code: whole-app walk and the new Calendar forms, no crashes or errors. Calendar and the Plan sheet compared by eye in dark. 14 walk steps time out the same way in light, dark and the earlier run (the script waits on text that is on screen but hidden), so those pages opened with no crash, but the script did not confirm their content.
+
+## Smoothness hunt 2026-11-14, before the 3.9.0 Beta build
+Screens: the transaction form (Borrowed, the balance note, kept-form note), Move money (Withdraw cash, Change back), Accounts (currency, rate), the account's page.
+- S (fixed, snap): the "Picked up where you left off" note arrived a moment after the form and pushed it down. Now it comes in with the shared row motion (animateNextLayout), on every form.
+- S (fixed, snap): Move money / Withdraw cash swapped its boxes all at once. Shared row motion now.
+- S (fixed, snap): the exchange rate box on Accounts and the balance note under the date on the transaction form popped in. Shared row motion now.
+- Checked, fine: every new sheet is the shared BottomSheet; no new speeds or curves (npm run test:motion passes); all of the above do nothing with Reduce Motion on (animateNextLayout checks it).
+- Left as it is: Money out / Money in / Borrowed changes the fields without a fade, as that switch always has (the 10-23 fade decision names the + form's Bill / Debt / Loan switch). Ask Cath if she wants it here too.
+- Look: the Accounts form keeps that page's own look (label above each box). The account's page rows use the page's existing row style with one small line added.
+- Needs her phone: how all of these feel; pop-ups opening and closing.

@@ -11,6 +11,7 @@
 // Nothing in the app calls these functions yet — that wiring happens in
 // Checkpoint A.3 (Sign In / Create Profile screens).
 
+import { drafts } from './drafts';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -70,6 +71,8 @@ export async function sendConfirmEmail(): Promise<void> {
 
 // Signs the current Firebase account out.
 export async function signOutFirebase(): Promise<void> {
+  // Bug hunt 2026-11-14: half-typed forms kept on this phone go with the person who typed them.
+  await drafts.clearAll().catch(() => {});
   await firebaseSignOut(auth);
 }
 

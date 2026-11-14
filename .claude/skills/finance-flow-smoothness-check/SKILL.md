@@ -140,6 +140,7 @@ How to check (besides reading the code):
 - 2026-11-06: trip drop-downs open with the shared row motion (animateNextLayout); a greyed day
   moves the month with the same scroll as Today, instant with Reduce Motion.
 - 2026-11-06: REPLACES 10-23 "calendar + goes straight to the right screen": she stays on the
+- 2026-11-14 (H-76, forms lag): a form on its own never does list work (TransactionsScreen formOnly groups no days); a hidden tab does no batch drawing (usePageActive); Home's + form is built ahead, a moment after the app settles (MainTabs QuickAdd). Keep all three when touching those files.
   Calendar. The day's marks pop (ROW_MS, after SHEET_CLOSE_MS); list rows use ArrivalGlow.
 
 - 2026-11-06: From your Plan and each Plan form take the sheet's place with the same handoff as the

@@ -8,6 +8,7 @@
 // sign-in itself -> this phone's copies. Online steps first, while still signed in (the
 // rules only let you delete your own records while signed in as you).
 
+import { drafts } from './drafts';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { EmailAuthProvider, reauthenticateWithCredential, deleteUser } from 'firebase/auth';
 import { collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
@@ -102,6 +103,8 @@ export async function deleteMyAccount(opts: {
     if (nameOwner === uid) await setDoc(nameRef, { uid, createdAt: serverTimestamp() }).catch(() => {});
     throw new Error("Your account wasn't deleted. Check your connection and try again.");
   }
+  // Bug hunt 2026-11-14: half-typed forms kept on this phone go with the account.
+  await drafts.clearAll().catch(() => {});
 
   // 5. This phone's copies.
   await forgetOnThisPhone(opts.username);

@@ -201,6 +201,20 @@ until she picks.
 
 - 2026-11-07: **Calendar rows are plain with a line between them** (mockup calendar-list-lines), on List and the date page, with no white card. List's heading matches the date page ("THURSDAY — NOV 5").
 
+- 2026-11-13: **Borrowed money** (mockup money-batch-5, option B): a third switch on the transaction form. The money goes in, and a loan or debt is added to To-Pay (borrowed.ts). It is never income.
+- 2026-11-13: **Forms keep what you typed.** Closed by a tap outside or a swipe: kept, on this phone only, and the form opens with it ("Picked up where you left off", Start over). Cancel and Add throw it away. Photos are never kept. Every add form should do this (formDrafts.ts); the transaction form and Move money do so far.
+- 2026-11-13: **Move money shows what is available now**, and what each account holds after. More than an account has warns but is allowed.
+- 2026-11-13: **Cash in another currency** (fx.ts): Withdraw cash on Move money, any currency, with an exchange rate filled in (today's from the internet, else the last one) that she can edit. A foreign wallet keeps its balance in pesos, so every total is unchanged; it shows and is typed in its own currency.
+- 2026-11-13: **Trace logs** ("[flow:borrowed] saved", trace.ts) on these flows, in test builds only. **Click-through tests** in e2e/ (npm run test:e2e, after npm run browser:build:fixture). New features are built tests first.
+- 2026-11-14: **Borrowed: Debt before Loan**, the same order as To-Pay, and Debt is the one picked first. Any place that lists Bills, Debts and Loans keeps that order.
+- 2026-11-14: **Balance before and after** (mockup balance-before, Place A): on an account's page every row says what the account had before and after it (accountTrail.ts), in the account's own currency. The page lists everything that moved the account: moves, paydays, savings and investments too. Anything new that moves a balance must be added to accountTrail.ts and to accountActivitySinceUpdate.
+- 2026-11-14: **Borrowed money is never in an In total** (transactionTotals).
+- 2026-11-14: **Back-dated asks.** Anything with an account, dated before the balances were last typed in, asks "It isn't included, take it off my balance" (payments: PayFromSheet; transactions and Borrowed: backDated.ts). Deleting it puts the balance back.
+- 2026-11-14: **Borrowed follows its loan or debt** (borrowed.ts): deleting the transaction removes an unpaid loan or debt (the pop-up says so; one with payments stays); editing it carries the name and amount over.
+- 2026-11-14: **Home's eye covers the account's page too.** A bank or cash account is called an account, only a credit card a card.
+- 2026-11-14: **A foreign wallet's rate** stays the wallet's own average rate everywhere, older rows included (her answer to H-82).
+- 2026-11-14: **Foreign wallets on Accounts** (mockup accounts-foreign, all 3 parts): shown and edited in their own currency with the rate; a new cash account can pick a currency. A wallet keeps the currency it was started with.
+
 ## Same kind of thing, same behaviour
 
 Many of Cath's bugs were one sibling getting a fix the others didn't. When you check or fix

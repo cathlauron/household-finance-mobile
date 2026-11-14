@@ -45,11 +45,12 @@ export function undoTransfer(model: HouseholdModel, t: Transfer): HouseholdModel
     };
   };
   const fee = typeof t.fee === 'number' ? t.fee : 0;
-  let next = bump(bump(model, t.from, t.amount + (t.feeOffSaved ? fee : 0)), t.to, -t.amount);
+  // A change-back took what the cash COST out of the wallet, not the pesos you got (fx.ts).
+  let next = bump(bump(model, t.from, (typeof t.cost === "number" ? t.cost : t.amount) + (t.feeOffSaved ? fee : 0)), t.to, -t.amount);
   next = {
     ...next,
     transfers: (next.transfers || []).filter((x) => x.id !== t.id),
-    manualTransactions: t.feeTxnId ? (next.manualTransactions || []).filter((x) => x.id !== t.feeTxnId) : next.manualTransactions,
+    manualTransactions: t.feeTxnId || t.diffTxnId ? (next.manualTransactions || []).filter((x) => x.id !== t.feeTxnId && x.id !== t.diffTxnId) : next.manualTransactions,
   };
   return next;
 }

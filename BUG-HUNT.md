@@ -346,3 +346,40 @@ Read every change since 3.7.0. Every row uses one shared piece, so each still op
 - Walks: all views, date page, scrolling into later months and adding from the date page, light and forced dark, 0 errors.
 - Not run: tools/flicker-check.py (no Python here). Feel: Cath's phone test as described before B-109.
 - Open: H-73 (Live weather with the location service off), H-69, H-70, H-71, H-67, H-68.
+
+## Bug + speed hunt 2026-11-13 (Cath: "the app lags and you won't get directed to the appropriate screen immediately")
+Hidden browser, 3.8.0 code, CPU slowed 4x, two rounds, longest single freeze after each tap. A phone is not this browser: these show where, not how long.
+- H-76 (open, likely): going Back from any Plan page freezes 0.4 to 1.6 s (Savings 1.19 / 0.93, Events 0.92 / 0.93, Groceries 0.81 / 1.02, Travel 0.65 / 1.20, Yearly Goals 0.84 / 1.29, Investments 0.49 / 1.56, Shared 0.41 / 1.16). Opening one: 0.4 to 1.1 s. Closing the Calendar with Done: 1.44 / 1.11 s. Opening the Calendar from Home: 1.01 / 0.68 s. Transactions tab: 0.42 / 1.13 s. Cause not found yet (H-72's test ruled out useMainOnTop). Same area as H-68.
+- 2026-11-14, H-76: a recording of what the app is busy with on Back from Savings and Travel (browser, 4x slower) shows mostly the browser's own animation and styling work plus screens redrawing after the data provider changes. That part does not exist on a phone, so the cause on her phone is still not found. Nothing changed. Next: timings from her phone, and which tap lands on the wrong screen (asked).
+- 2026-11-14 sweep of the money batch: B-111 fixed. Known gaps told to Cath: deleting a Borrowed transaction leaves its loan or debt; a foreign wallet's balance shows in pesos when edited in Accounts; Bills, Debts, Loans, Savings, Shared and Investments kept forms have no check of their own (the shared piece does); "Move anyway" is not checked in the browser (no pop-ups there).
+- Fine: Calendar date tap 0.18 / 0.13 s, back to month 0.24 / 0.14 s, + sheet 0.17 / 0.10 s, form Cancel 0.13 s, To-Pay sub-pages 0.09 to 0.19 s.
+- H-75 (certain): Move money shows each account's saved balance, not what is in it now (TransferScreen.tsx:146 uses a.amount; the Wallet uses accountCurrentBalance). Fix goes with her Move money mockup.
+- Checked, no bug found: no screen change waits on a timer except the guest set-up picks (400 ms, on purpose); saves do not hold up a screen change (they wait until after it).
+- Not done yet: reading every screen file again for the other bug kinds (dates, offline, two phones). No errors in the two timing rounds.
+
+## Deep sweep 2026-11-14 (Cath: "check if there are things that our app could improve on, and make sure everything is logical")
+Fixed: B-112 (borrowed money in the In totals), B-113 (an account's See all). Open, all need her answer:
+- H-77 (certain, breaks a task): a transaction dated BEFORE the balances were last typed in, added afterwards, never changes the account's balance, and nothing says so (payments ask "take it off my balance?", PayFromSheet S4; plain transactions do not). The account page now says "dated before your last balance update" on that row. Ask: should the form ask the same question?
+- H-78 (certain, breaks a task): deleting or editing a Borrowed transaction leaves its loan or debt as it was (and the other way round). Touches deleting: ask.
+- H-79 (certain, annoying): Accounts shows and edits a foreign wallet's balance in pesos; everywhere else it is in its own currency. Needs a mockup.
+- H-80 (likely, annoying): the account's page shows amounts while Home's eye hides them (it never hid them). Ask whether the eye should cover this page.
+- H-81 (cosmetic): the account page's empty note says "Nothing paid from this card yet" for cash and bank accounts too.
+- H-82 (possible): before and after on a foreign wallet's older rows are shown at today's average rate, not the rate of that day.
+- H-83 (idea): Place B and C of the mockup (before and after on a transaction's details and in the form) were not picked; the form for Move money already has it.
+- H-76 lag: still open, cause on the phone not found.
+- 2026-11-14, Cath's answers: H-77 yes ask (B-114), H-78 yes (B-115), H-79 mockup design/3.0-mockups/accounts-foreign.html sent (waiting), H-80 yes (B-116), H-81 yes (B-116), H-82 keep the wallet's rate as it is now, H-76 "when a form is being opened" (B-117).
+- H-76 measurements (browser, 4x slower, test household with a year of spending). Home's +, tapped about 5 s after the app opens: form visible after about 1.5 s, with the hidden Transactions tab's DayBatch drawing at the same time. Tapped after the app settled: 0.43 s, the same as the second time (0.39 s). To-Pay's + (New bill): about 0.8 s busy, no single cause found in the app's own code (mostly the browser's styling work).
+- H-84 (open, idea): the bill, debt and loan forms live inside their list screens, so opening one redraws that screen. Not measured on a phone. Next step if she still feels it there: a timing readout in test builds.
+- H-78 limits told to Cath: deleting the LOAN or DEBT keeps the money-in transaction (the money did arrive); editing the loan's amount does not change the transaction. A loan or debt that already has payments is kept when its transaction is deleted (the pop-up says so).
+- H-77 limits: asked for plain transactions and Borrowed. Salary (paydays) is not asked. Editing a transaction to a date before the update does not ask (only new ones).
+- 2026-11-14: H-79 built (B-118), all three parts of design/3.0-mockups/accounts-foreign.html. The form keeps the Accounts page's own look (label above each box), not the row look drawn in the mockup. Told Cath.
+
+## Bug hunt 2026-11-14, before the 3.9.0 Beta build (Cath: "do another bug hunt and smoothness hunt, then build")
+Area: everything new since 3.8.0 (fx.ts, borrowed.ts, backDated.ts, accountTrail.ts, formDrafts.ts, useFormDraft, TransferScreen, the transaction form, Accounts, the account's page).
+- Fixed: B-120 (kept forms after sign-out), B-121 (removed account accepted for money in), B-122 (second wallet in one currency).
+- H-85 (possible, annoying): a kept form is read from the phone a moment after the form opens; typing in that moment could be overwritten by what was kept. Not seen in the browser.
+- H-86 (certain, cosmetic): Settings › Accounts shows amounts with Home's eye closed (the account's page now hides them). Ask Cath.
+- H-87 (possible): editing a Borrowed transaction and switching it to Money out leaves its loan or debt in To-Pay.
+- H-88 (certain, by design, told to Cath): a change-back gain is money in on no account, a loss is a Fees transaction on no account.
+- Safety: encryption, sync, merging, parts, Firestore rules and DataContext unchanged since 3.8.0. Kept forms live only on the phone (AsyncStorage, not encrypted: what was typed in one unfinished form), never in the household's data, and are removed on sign-out and account deletion. The rate service is sent only currency codes.
+- Not run: tools/flicker-check.py (no Python here). Cath has NOT phone-tested this batch (TEST-3 s35); she asked for the build first.

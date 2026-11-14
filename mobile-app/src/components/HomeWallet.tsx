@@ -14,6 +14,7 @@ import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
 import type { ThemeColors } from '../theme';
 import { formatPeso, totalCurrentBalance, accountCurrentBalance } from '../balanceProjection';
+import { isForeign, showMoney } from '../fx';
 import { useHideAmounts } from '../hideAmounts';
 import type { HouseholdModel, BalanceAccountEntry } from '../types';
 import { DEFAULT_GROUP_COLORS, AccountGroup } from './AccountCard';
@@ -537,13 +538,13 @@ function HomeWallet({ model }: { model: HouseholdModel }) {
                         <Text style={styles.typeTagText}>{GROUP_LABEL[c.group]}</Text>
                       </View>
                     )}
-                    {!isFront && !lifted && <Text style={[styles.peekAmount, { color: amountColor(amount) }]}>{money(amount)}</Text>}
+                    {!isFront && !lifted && <Text style={[styles.peekAmount, { color: amountColor(amount) }]}>{isForeign(c.account) ? (hidden ? money(amount) : showMoney(c.account, amount)) : money(amount)}</Text>}
                   </View>
                   {isFront && (
                     <View style={[styles.front, styles.frontRow]}>
                       <View style={{ flexShrink: 1 }}>
                         <Text style={styles.frontLabel}>Balance</Text>
-                        <Text style={[styles.frontAmount, { color: amountColor(amount) }]}>{money(amount)}</Text>
+                        <Text style={[styles.frontAmount, { color: amountColor(amount) }]}>{isForeign(c.account) ? (hidden ? money(amount) : showMoney(c.account, amount)) : money(amount)}</Text>
                       </View>
                       {/* Version 2.2 (canvas D1): last 4 digits on the same bottom line, front card only. */}
                       {!!c.account.last4 && c.group !== 'cash' && (

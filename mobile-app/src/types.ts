@@ -526,6 +526,14 @@ export type Transfer = {
   from: string; // "debit:<accountId>" style key
   to: string;
   amount: number;
+  // Cath, 2026-11-13: cash withdrawn in another currency (fx.ts): what you got, and the rate.
+  foreignAmount?: number;
+  currency?: string;
+  rate?: number;
+  // Changing foreign cash back (fx.ts changeBack): what that cash cost, and the entry for the
+  // gain or loss, so an undo puts everything back exactly.
+  cost?: number;
+  diffTxnId?: string;
   fee?: number;
   note?: string;
   // Cath, 2026-10-27 (Undo, until a balance is typed in again): when it was made, its fee's
@@ -544,6 +552,9 @@ export type BalanceAccountEntry = {
   name: string;
   amount: number | '';
   currency?: string;
+  // Cath, 2026-11-13: a cash wallet in another currency (fx.ts). `amount` stays in pesos; this is
+  // pesos for one unit of `currency`.
+  fxRate?: number;
   owner?: string;
   color?: string;
   // Version 3, credit cards only. `amount` stays what you can still use (approved K3);
@@ -609,6 +620,9 @@ export type ManualTransaction = {
   // Redesign ("To review"): set when the category wasn't chosen by hand — filled in by
   // a rule, or imported from a spreadsheet — so the person can check it with one tap.
   // reviewWhy says why, e.g. 'Filled in by your rule' or 'Imported from a spreadsheet'.
+  // Cath, 2026-11-14 (H-77, backDated.ts): dated before the balances were last typed in, and
+  // taken straight off the saved balance when it was added.
+  offSaved?: boolean;
   needsReview?: boolean;
   reviewWhy?: string;
   // Money in only: what kind of extra income this is (see incomeKinds.ts). Shown under
@@ -616,6 +630,12 @@ export type ManualTransaction = {
   incomeKind?: 'bonus' | 'side' | 'allowance' | 'gift' | 'other';
   // Redesign ("Make it repeat"): set on transactions added by a repeat, pointing at it.
   recurringId?: string;
+  // Cath, 2026-11-13: borrowed money (borrowed.ts): the loan or debt it made in To-Pay.
+  borrowed?: { kind: 'loan' | 'debt'; id: string };
+  // Cath, 2026-11-13: paid from a wallet in another currency (fx.ts): what was typed. `amount`
+  // stays in pesos.
+  foreignAmount?: number;
+  foreignCurrency?: string;
   // Version 2.2 (canvas W1 B + W2): who added it (username), and who last changed it and
   // when. Stamped on save; shown only in a shared household.
   addedBy?: string;

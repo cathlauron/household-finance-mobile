@@ -18,6 +18,7 @@ import { Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { useFormDraft, DraftBanner } from '../useFormDraft';
 import { useFormOnly, type PlanFormProps } from '../planForm';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import type { YearlyGoal, HouseholdModel } from '../types';
@@ -123,6 +124,10 @@ export default function GoalsScreen({ formOnly, addDate, addNonce, onFormClosed,
     if (addDate) setTargetDateInput(addDate);
   });
 
+  // Cath, 2026-11-13: a form closed by a tap outside keeps what was typed (useFormDraft.tsx).
+  const draft = useFormDraft('goal', { title: [titleInput, setTitleInput], description: [descriptionInput, setDescriptionInput], mode: [modeInput, setModeInput], targetAmount: [targetAmountInput, setTargetAmountInput], targetDate: [targetDateInput, setTargetDateInput] }, { editing: !!editingId, typed: titleInput.trim() !== '' || descriptionInput.trim() !== '' || targetAmountInput !== '' });
+  const draftStartOver = () => { setTitleInput(''); setDescriptionInput(''); setModeInput('progress'); setTargetAmountInput(''); };
+
   if (!model) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
@@ -154,7 +159,7 @@ export default function GoalsScreen({ formOnly, addDate, addNonce, onFormClosed,
     ]);
   }
 
-  function openAddModal() {
+  function openAddModal(noDraft?: unknown) {
     setEditingId(null);
     setTitleInput('');
     setDescriptionInput('');
@@ -166,6 +171,7 @@ export default function GoalsScreen({ formOnly, addDate, addNonce, onFormClosed,
     setLinkInput(undefined);
     setErrorMsg('');
     setModalOpen(true);
+    if (noDraft !== true) draft.restore(formOnly ? ['targetDate'] : []);
   }
 
   function openEditModal(g: YearlyGoal) {
@@ -246,6 +252,7 @@ export default function GoalsScreen({ formOnly, addDate, addNonce, onFormClosed,
     const updated: HouseholdModel = { ...model, yearlyGoals: updatedList };
     try {
       await saveModel(updated);
+      if (!editingId) draft.used();
       showLeafTick(editingId ? 'Saved' : 'Added');
       if (!editingId) onAdded?.();
       closeModal();
@@ -419,10 +426,11 @@ export default function GoalsScreen({ formOnly, addDate, addNonce, onFormClosed,
 
       <BottomSheet
         visible={modalOpen}
-        onClose={closeModal}
+        onClose={() => { draft.keep(); closeModal(); }}
         grouped
-        header={<SheetBar title={editingId ? 'Edit goal' : 'New goal'} onCancel={closeModal} onDone={handleSaveGoal} doneLabel={editingId ? 'Save' : 'Add'} />}
+        header={<SheetBar title={editingId ? 'Edit goal' : 'New goal'} onCancel={() => { draft.discard(); closeModal(); }} onDone={handleSaveGoal} doneLabel={editingId ? 'Save' : 'Add'} />}
       >
+        <DraftBanner draft={draft} onStartOver={draftStartOver} />
         {/* Voice entry (mockup V, Cath 2026-10-30). */}
         <FormGroup>
           <Guided {...fieldErrors.props('title')} focusRef={titleRef}>

@@ -14,7 +14,8 @@
     "browser:build": "expo export --platform web --output-dir web-build",
     "browser:build:fixture": "EXPO_PUBLIC_WALK_FIXTURE=1 expo export --platform web --output-dir web-build",
     "browser:walk": "node tools/browser-walk.mjs",
-    "test:hooks": "eslint src App.tsx"
+    "test:hooks": "eslint src App.tsx",
+    "test:e2e": "node --test --test-concurrency=1 e2e/money.e2e.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/nunito": "^0.4.2",

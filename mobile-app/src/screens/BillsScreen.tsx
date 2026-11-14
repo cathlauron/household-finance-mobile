@@ -22,6 +22,7 @@ import KindSwitch from '../components/KindSwitch';
 import FormSwapFade from '../components/FormSwapFade';
 import { MarkedLabel } from '../components/MarkedLabel';
 import { useData } from '../DataContext';
+import { useFormDraft, DraftBanner } from '../useFormDraft';
 import CountingText from '../components/CountingText';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
@@ -100,7 +101,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
   React.useEffect(() => {
     const carry = takePendingAdd('bills');
     if (!carry || formOnly) return;
-    openAddModal();
+    openAddModal(true);
     setAmountInput(carry.amount);
     setNameInput(carry.name);
     // Only when this list first shows.
@@ -108,7 +109,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
   }, []);
   React.useEffect(() => {
     if (!formOnly || !addCarry) return;
-    openAddModal();
+    openAddModal(addCarry.amount !== '' || !!addCarry.name);
     setAmountInput(addCarry.amount);
     setNameInput(addCarry.name);
     // The day picked in the calendar (or carried over from the other form).
@@ -213,6 +214,10 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
   // Version 3 (M4): paid, then the due date moved: ask which bill the payment was for.
   const [placeAsk, setPlaceAsk] = useState<PlacePaymentAsk>(null);
 
+  // Cath, 2026-11-13: a form closed by a tap outside keeps what was typed (useFormDraft.tsx).
+  const draft = useFormDraft('bill', { name: [nameInput, setNameInput], category: [categoryInput, setCategoryInput], amount: [amountInput, setAmountInput], notes: [notesInput, setNotesInput], recurType: [recurTypeInput, setRecurTypeInput], onetimeDate: [onetimeDateInput, setOnetimeDateInput], day: [dayInput, setDayInput], month: [monthInput, setMonthInput], priority: [priorityInput, setPriorityInput] }, { editing: !!editingId, typed: nameInput.trim() !== '' || amountInput !== '' });
+  const draftStartOver = () => { setNameInput(''); setCategoryInput(''); setAmountInput(''); setNotesInput(''); setRecurTypeInput('onetime'); setDayInput(''); setMonthInput(''); setPriorityInput(''); };
+
   if (!model) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]}>
@@ -243,11 +248,12 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
     setErrorMsg('');
   }
 
-  function openAddModal() {
+  function openAddModal(noDraft?: unknown) {
     if (!singleForm.claim()) return;
     setEditingId(null);
     resetForm();
     setModalOpen(true);
+    if (noDraft !== true) draft.restore(formOnly ? ['onetimeDate'] : []);
   }
 
   function openEditModal(bill: Bill) {
@@ -464,6 +470,7 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
     try {
       const wasNew = !editingId;
       await saveModel(toSave);
+      if (!editingId) draft.used();
       showLeafTick(editingId ? 'Saved' : 'Added');
       closeModal();
       if (wasNew) onAdded?.();
@@ -721,12 +728,13 @@ export default function BillsScreen({ openBillId, openBillNonce, onOpenHandled, 
       {/* Approved "Option 2: simple" form (Forms Redesign canvas). */}
       <BottomSheet
         visible={modalOpen}
-        onClose={closeModal}
+        onClose={() => { draft.keep(); closeModal(); }}
         // One sheet for New bill / debt / loan, so switching only changes the form.
         shared="pay-form"
         grouped
-        header={<SheetBar title={editingId ? (regularInput ? 'Edit regular payment' : 'Edit bill') : regularInput ? 'New regular payment' : 'New bill'} onCancel={closeModal} onDone={handleSave} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
+        header={<SheetBar title={editingId ? (regularInput ? 'Edit regular payment' : 'Edit bill') : regularInput ? 'New regular payment' : 'New bill'} onCancel={() => { draft.discard(); closeModal(); }} onDone={handleSave} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
       >
+        <DraftBanner draft={draft} onStartOver={draftStartOver} />
         {!editingId && (
           <KindSwitch
             key="pay-form-kind"

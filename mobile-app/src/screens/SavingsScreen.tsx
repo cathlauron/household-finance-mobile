@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '../components/BottomSheet';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { useFormDraft, DraftBanner } from '../useFormDraft';
 import CountingText from '../components/CountingText';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso, computeMonthlyObligationsBaseline } from '../balanceProjection';
@@ -221,6 +222,10 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce, formOnl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addNonce]);
 
+  // Cath, 2026-11-13: a form closed by a tap outside keeps what was typed (useFormDraft.tsx).
+  const draft = useFormDraft('pot', { name: [nameInput, setNameInput], targetAmount: [targetAmountInput, setTargetAmountInput], targetDate: [targetDateInput, setTargetDateInput], autoAmt: [autoAmtInput, setAutoAmtInput] }, { editing: !!editingId, typed: nameInput.trim() !== '' || targetAmountInput.trim() !== '' });
+  const draftStartOver = () => { setNameInput(''); setTargetAmountInput(''); setAutoAmtInput(''); };
+
   if (!model) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]}>
@@ -247,7 +252,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce, formOnl
     };
   }
 
-  function openAddModal() {
+  function openAddModal(noDraft?: unknown) {
     setEditingId(null);
     setNameInput('');
     setTargetAmountInput('');
@@ -258,6 +263,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce, formOnl
     setAutoAmtInput('');
     setErrorMsg('');
     setModalOpen(true);
+    if (noDraft !== true) draft.restore(formOnly ? ['targetDate'] : []);
   }
 
   function openEditModal(goal: SavingsGoal) {
@@ -399,6 +405,7 @@ export default function SavingsScreen({ openSavingsId, openSavingsNonce, formOnl
     try {
       // Fill in any payday additions that are due now that the setting is on.
       await saveModel(applyAutoSavings(updated) ?? updated);
+      if (!editingId) draft.used();
       showLeafTick(editingId ? 'Saved' : 'Added');
       if (!editingId) onAdded?.();
       closeModal();
@@ -857,10 +864,11 @@ const suggestedMonthlyIncome = computeMonthlyIncomeBaseline(model.income || []);
 
       <BottomSheet
         visible={modalOpen}
-        onClose={closeModal}
+        onClose={() => { draft.keep(); closeModal(); }}
         grouped
-        header={<SheetBar title={editingId ? 'Edit pot' : 'New pot'} onCancel={closeModal} onDone={handleSaveGoal} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
+        header={<SheetBar title={editingId ? 'Edit pot' : 'New pot'} onCancel={() => { draft.discard(); closeModal(); }} onDone={handleSaveGoal} doneLabel={editingId ? 'Save' : 'Add'} busy={saving} />}
       >
+        <DraftBanner draft={draft} onStartOver={draftStartOver} />
         <Guided {...fieldErrors.props('target')} focusRef={targetRef} inset={false} radius={22}>
         <BigAmount
           focusRef={targetRef}

@@ -15,6 +15,7 @@ import { useFormOnly, type PlanFormProps } from '../planForm';
 import { dateText } from '../dateUtils';
 import { useTheme } from '../ThemeContext';
 import { useData } from '../DataContext';
+import { useFormDraft, DraftBanner } from '../useFormDraft';
 import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { formatPeso } from '../balanceProjection';
 import type { GroceryItem, GroceryCalcEntry, MealIdea, ManualTransaction } from '../types';
@@ -104,6 +105,10 @@ export default function GroceriesScreen({ formOnly, addDate, addNonce, onFormClo
     if (addDate) setBuyByIn(addDate);
   });
 
+  // Cath, 2026-11-13: a form closed by a tap outside keeps what was typed (useFormDraft.tsx).
+  const draft = useFormDraft('grocery', { name: [nameIn, setNameIn], planned: [plannedIn, setPlannedIn], buyBy: [buyByIn, setBuyByIn] }, { editing: !!sheet?.id || sheet?.kind === 'meal', typed: nameIn.trim() !== '' || plannedIn !== '' });
+  const draftStartOver = () => { setNameIn(''); setPlannedIn(''); };
+
   if (!model) {
     return (
       <View style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
@@ -127,6 +132,7 @@ export default function GroceriesScreen({ formOnly, addDate, addNonce, onFormClo
     setActualIn(g && typeof g.actualAmount === 'number' ? g.actualAmount : '');
     setBuyByIn(g?.buyBy ?? '');
     setSheet({ kind: 'item', id: g?.id });
+    if (!g) draft.restore(formOnly ? ['buyBy'] : []);
   }
 
   // Voice entry (mockup V, Cath 2026-10-30): an item ("Rice 5 kg, 320"), several items, or a
@@ -159,6 +165,7 @@ export default function GroceriesScreen({ formOnly, addDate, addNonce, onFormClo
         : [...meals, { id: makeId('meal'), name, ingredients: ing }];
       await saveModel({ ...model, mealIdeas: list });
     }
+    if (!sheet.id && sheet.kind === 'item') draft.used();
     showLeafTick(sheet.id ? 'Saved' : 'Added');
     if (!sheet.id) onAdded?.();
     setSheet(null);
@@ -489,17 +496,18 @@ export default function GroceriesScreen({ formOnly, addDate, addNonce, onFormClo
 
       <BottomSheet
         visible={sheet !== null}
-        onClose={() => setSheet(null)}
+        onClose={() => { draft.keep(); setSheet(null); }}
         grouped
         header={
           <SheetBar
             title={sheet?.kind === 'meal' ? (sheet.id ? 'Edit meal' : 'New meal') : sheet?.id ? 'Edit item' : 'New item'}
-            onCancel={() => setSheet(null)}
+            onCancel={() => { draft.discard(); setSheet(null); }}
             onDone={saveSheet}
             doneLabel={sheet?.id ? 'Save' : 'Add'}
           />
         }
       >
+        <DraftBanner draft={draft} onStartOver={draftStartOver} />
         {sheet?.kind === 'item' && (
           <>
             <BigAmount mark="optional" label="Planned price" value={plannedIn} onChange={setPlannedIn} color={colors.planned} />

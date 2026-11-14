@@ -9,6 +9,7 @@ import { accountCurrentBalance, formatPeso, SpendingGroup } from '../balanceProj
 import type { HouseholdModel, PaymentMethod } from '../types';
 import GradientFill from './GradientFill';
 import { cardColor, cardChipColors } from './CardFace';
+import { showMoney } from '../fx';
 
 // Redesign: choosing the account for a new transaction (required).
 // Money out: "Paid from". An account with nothing in it, or less than the amount, is
@@ -39,6 +40,10 @@ export function accountProblem(
   excludeTxnId?: string | null
 ): string | null {
   if (!pm || !pm.accountId) {
+    return direction === 'in' ? 'Choose which account this goes into.' : 'Choose which account this is paid from.';
+  }
+  // Bug hunt 2026-11-14: an account removed since (a kept form can still hold it) is not an account.
+  if (!(model.balanceAccounts[pm.type] || []).some((a) => a.id === pm.accountId)) {
     return direction === 'in' ? 'Choose which account this goes into.' : 'Choose which account this is paid from.';
   }
   if (direction === 'in') return null;
@@ -137,7 +142,7 @@ function AccountPicker({ model, direction, amount, value, onChange: onChangeRaw,
                     {reason ? `${GROUP_LABEL[g]} · ${reason}` : GROUP_LABEL[g]}
                   </Text>
                 </View>
-                <Text style={[styles.balance, { color: bal < 0 ? colors.negative : colors.inkDim }]}>{formatPeso(bal)}</Text>
+                <Text style={[styles.balance, { color: bal < 0 ? colors.negative : colors.inkDim }]}>{showMoney(a, bal)}</Text>
               </TouchableOpacity>
             );
           })}

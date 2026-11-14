@@ -1,5 +1,6 @@
 import React, { useLayoutEffect, useState, useMemo } from 'react';
 import { dateText } from '../dateUtils';
+import { borrowedDeleteNote } from '../borrowed';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { alertNotSaved, alertNotDeleted } from '../messages';
 import { View, ScrollView, StyleSheet, Image, Alert } from 'react-native';
@@ -127,7 +128,7 @@ export default function TransactionDetailScreen() {
 
   function confirmDelete() {
     if (!raw || !model) return;
-    Alert.alert('Delete this transaction?', 'This cannot be undone.', [
+    Alert.alert('Delete this transaction?', [borrowedDeleteNote(model, raw.id), 'This cannot be undone.'].filter(Boolean).join(' '), [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',

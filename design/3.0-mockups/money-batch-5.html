@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Borrowed Money Options</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--t:#111;--m:#636366;--f:#AEAEB2;--l:#D1D1D6;--s:#F2F2F7;--c:#fff;--a:#B0234F;--at:#F6E3EA;--g:#1F7A3D;--gt:#E3F1E7;--r:#D70015;--rt:#FBE5E7;--bl:#1D63B8;--page:#E9E9EE;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--t:#fff;--m:#AEAEB2;--f:#636366;--l:#38383A;--s:#000;--c:#1C1C1E;--a:#F0668F;--at:#3A1A25;--g:#5FC48A;--gt:#15291D;--r:#FF6961;--rt:#3A1515;--bl:#6FB1F5;--page:#111113;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--t);font-family:'Nunito',sans-serif;line-height:1.4}
+main{max-width:1060px;margin:0 auto;padding:28px 16px 56px}
+h1{font-size:28px;margin:0 0 6px;font-weight:800}
+.lead{color:var(--m);margin:0 0 8px;max-width:70ch}
+section{margin-top:40px}
+section>h2{font-size:22px;margin:0 0 4px;font-weight:800}
+section>p{color:var(--m);margin:0 0 16px;max-width:70ch}
+.flow{display:flex;flex-wrap:wrap;gap:22px}
+.step{width:300px;max-width:100%}
+.step h3{font-size:14px;font-weight:800;margin:0 0 8px}
+.ph{position:relative;height:600px;background:var(--s);border:0.5px solid var(--l);border-radius:24px;overflow:hidden}
+.bar{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 8px;font-size:16px}
+.bar b{font-weight:700}.lk{color:var(--a)}
+.seg{display:flex;margin:4px 16px 10px;background:rgba(127,127,127,.14);border-radius:9px;padding:2px}
+.seg span{flex:1;text-align:center;font-size:13px;padding:5px 0;border-radius:7px;color:var(--t)}
+.seg .on{background:var(--c);font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.amt{text-align:center;font-size:12px;color:var(--m)}
+.big{text-align:center;font-size:34px;font-weight:700;margin:2px 0 10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 10px}
+.chip{font-size:13px;padding:5px 10px;border-radius:14px;background:rgba(127,127,127,.12)}
+.chip.on{background:var(--at);color:var(--a);font-weight:700}
+.lbl{font-size:12px;color:var(--m);padding:4px 16px 4px}
+.grp{margin:0 14px 10px;background:var(--c);border-radius:12px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;font-size:14px;gap:8px}
+.row+.row{border-top:0.5px solid var(--l)}
+.row .v{color:var(--m);text-align:right}
+.note{font-size:12px;color:var(--m);padding:0 18px 10px}
+.hint{font-size:12px;color:var(--g);font-weight:700}
+.warn{font-size:12px;color:var(--r);font-weight:700}
+.acct{display:flex;flex-wrap:wrap;gap:6px}
+.ac{border:1.5px solid var(--l);border-radius:10px;padding:5px 8px;font-size:13px;min-width:90px}
+.ac small{display:block;color:var(--m);font-size:11.5px}
+.ac.on{border-color:var(--a);background:var(--at)}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.35)}
+.sheet{position:absolute;left:0;right:0;bottom:0;top:120px;background:var(--s);border-radius:16px 16px 0 0}
+.tap{position:absolute;top:56px;left:50%;transform:translateX(-50%);background:var(--c);color:var(--t);font-size:12px;font-weight:700;padding:6px 10px;border-radius:14px}
+.banner{margin:0 14px 10px;padding:9px 12px;border-radius:10px;background:var(--gt);font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.banner .lk{font-weight:700}
+.list .it{display:flex;align-items:center;gap:10px;padding:10px 0;margin:0 16px;font-size:14px}
+.list .it+.it{border-top:0.5px solid var(--l)}
+.list .it i{width:9px;height:9px;border-radius:50%;flex:none}
+.list .it div{flex:1}.list .it small{display:block;color:var(--m);font-size:12px}
+.list .it span{font-weight:700}
+.q{margin:14px 0 0;padding:12px 14px;background:var(--c);border-radius:12px;max-width:70ch;font-size:14.5px}
+.q b{font-weight:800}
+.pick{display:inline-block;font-size:12px;font-weight:800;color:var(--a);margin-left:6px}
+.sw{width:38px;height:22px;border-radius:11px;background:var(--g);position:relative;flex:none}.sw::after{content:'';position:absolute;right:2px;top:2px;width:18px;height:18px;border-radius:50%;background:#fff}
+</style>
+</head>
+<body>
+<main>
+  <h1>Borrowed money: three other ways</h1>
+  <p class="lead">Different takes on change 1, plus the exchange rate you asked for on change 4. Names and amounts are samples. Nothing is built.</p>
+
+  <section>
+    <h2>Option A: Loan and Debt are their own choices <span class="pick">Closest to your words</span></h2>
+    <p>Under Money in, "Loan" and "Debt" sit beside Salary and Gift. You only fill in who it's from. Everything else can be added later in To-Pay.</p>
+    <div class="flow">
+      <div class="step"><h3>Money in, Loan picked</h3><div class="ph">
+        <div class="bar"><span class="lk">Cancel</span><b>New transaction</b><span class="lk"><b>Add</b></span></div>
+        <div class="seg"><span>Money out</span><span class="on">Money in</span></div>
+        <div class="amt">Amount *</div><div class="big" style="color:var(--g)">₱5,000</div>
+        <div class="lbl">What is it? (optional)</div>
+        <div class="chips"><span class="chip">Salary</span><span class="chip">Bonus</span><span class="chip">Side hustle</span><span class="chip">Allowance</span><span class="chip">Gift</span><span class="chip on">Loan</span><span class="chip">Debt</span><span class="chip">Other</span></div>
+        <div class="grp"><div class="row">From whom *<span class="v">Ate Joy</span></div><div class="row">Account *<span class="v">BPI Savings</span></div><div class="row">Date *<span class="v">Today</span></div></div>
+        <div class="note">This adds "Ate Joy" to To-Pay › Loans with ₱5,000 to pay back. Add payments and dates there when you know them.</div>
+      </div></div>
+      <div class="step"><h3>After Add</h3><div class="ph">
+        <div class="bar"><b style="font-size:24px">Transactions</b></div>
+        <div class="banner">Added to Loans: Ate Joy, ₱5,000<span class="lk">Open</span></div>
+        <div class="list"><div class="it"><i style="background:var(--g)"></i><div>Ate Joy<small>Loan received · BPI Savings</small></div><span style="color:var(--g)">+₱5,000</span></div><div class="it"><i style="background:var(--bl)"></i><div>Sample spend<small>Food · Cash</small></div><span style="color:var(--r)">−₱250</span></div></div>
+      </div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Option B: Borrowed is a third switch at the top</h2>
+    <p>The form's top switch becomes Money out, Money in, Borrowed. Borrowed has its own short form with Loan or Debt inside it.</p>
+    <div class="flow">
+      <div class="step"><h3>Borrowed</h3><div class="ph">
+        <div class="bar"><span class="lk">Cancel</span><b>New transaction</b><span class="lk"><b>Add</b></span></div>
+        <div class="seg"><span>Money out</span><span>Money in</span><span class="on">Borrowed</span></div>
+        <div class="amt">Amount *</div><div class="big" style="color:var(--a)">₱5,000</div>
+        <div class="seg"><span class="on">Loan</span><span>Debt</span></div>
+        <div class="grp"><div class="row">From whom *<span class="v">Ate Joy</span></div><div class="row">Account *<span class="v">BPI Savings</span></div><div class="row">Date *<span class="v">Today</span></div><div class="row">Pay back by<span class="v">Choose</span></div></div>
+        <div class="note">Lands in To-Pay › Loans. The money goes into BPI Savings.</div>
+      </div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Option C: start from To-Pay instead</h2>
+    <p>Nothing changes on Money in. The New loan and New debt forms get a switch: "I received this money". Turn it on and pick the account it went into.</p>
+    <div class="flow">
+      <div class="step"><h3>To-Pay › New loan</h3><div class="ph">
+        <div class="bar"><span class="lk">Cancel</span><b>New loan</b><span class="lk"><b>Add</b></span></div>
+        <div class="seg"><span class="on">I borrowed</span><span>I lent</span></div>
+        <div class="amt">Total amount *</div><div class="big">₱5,000</div>
+        <div class="grp"><div class="row">Name *<span class="v">Ate Joy</span></div><div class="row">Payment<span class="v">₱1,000 monthly</span></div></div>
+        <div class="grp"><div class="row">I received this money<span class="sw"></span></div><div class="row">Into account *<span class="v">BPI Savings</span></div><div class="row">On *<span class="v">Today</span></div></div>
+        <div class="note">BPI Savings goes up by ₱5,000, and it shows on Transactions as money in.</div>
+      </div></div>
+    </div>
+    <p class="q"><b>In every option:</b> the money goes into the account you pick, it shows on Transactions, and it does not count as income. Removing that transaction within the undo time would ask whether to remove the loan or debt too. A and C can also be built together.</p>
+  </section>
+
+  <section>
+    <h2>Change 4: exchange rate you can edit</h2>
+    <p>Any currency, picked from a list. The rate is filled in for you and you can change it. Changing the rate or either amount updates the other.</p>
+    <div class="flow">
+      <div class="step"><h3>Withdraw cash</h3><div class="ph">
+        <div class="bar"><span class="lk">Cancel</span><b>Withdraw cash</b><span class="lk"><b>Save</b></span></div>
+        <div class="seg"><span>Move money</span><span class="on">Withdraw cash</span></div>
+        <div class="amt">Cash you got *</div><div class="big">฿2,000</div>
+        <div class="grp"><div class="row">Currency *<span class="v">Thai baht (THB) ›</span></div><div class="row">From *<span class="v">BPI Savings · ₱12,340 available</span></div></div>
+        <div class="grp"><div class="row">Exchange rate<span class="v"><b style="color:var(--t)">฿1 = ₱1.74</b> ✎</span></div><div class="row">Taken from BPI Savings<span class="v">₱3,480</span></div><div class="row">ATM fee (in ₱)<span class="v">₱250</span></div></div>
+        <div class="note">Suggested rate, from your last withdrawal. Tap to change it, or type the pesos your bank took and the rate works itself out.</div>
+      </div></div>
+      <div class="step"><h3>Pick a currency</h3><div class="ph">
+        <div class="bar"><span class="lk">Cancel</span><b>Currency</b><span class="lk"><b>Done</b></span></div>
+        <div class="grp" style="margin-top:8px"><div class="row" style="color:var(--m)">Search</div></div>
+        <div class="list"><div class="it"><div>Thai baht<small>THB · ฿</small></div><span class="lk">✓</span></div><div class="it"><div>US dollar<small>USD · $</small></div></div><div class="it"><div>Japanese yen<small>JPY · ¥</small></div></div><div class="it"><div>Singapore dollar<small>SGD · S$</small></div></div><div class="it"><div>Hong Kong dollar<small>HKD · HK$</small></div></div><div class="it"><div>Korean won<small>KRW · ₩</small></div></div></div>
+      </div></div>
+    </div>
+    <p class="q"><b>Decide: where the suggested rate comes from.</b> (1) <b>Your last rate</b> for that currency, and empty the first time. Nothing goes online. (2) <b>Today's rate from the internet</b>, when you're online, and your last rate when you're not. Only the two currency names are sent, never your money data. My suggestion: (2), because the first withdrawal of a trip is when you need it most.</p>
+  </section>
+</main>
+</body>
+</html>
