@@ -25,6 +25,9 @@ export type Settings = {
   // Payday nudge: a 6:00 PM "Did it come in?" reminder on each expected payday that
   // hasn't been logged yet. Missing means on (needs "Notify me on this phone").
   paydayNudgeEnabled?: boolean;
+  // Cath, 2026-11-24: "Quiet day?" at 8:00 PM (time per phone) on a day nothing was logged.
+  // Missing means on (needs "Notify me on this phone").
+  dailyCheckInEnabled?: boolean;
   // Envelope alerts: a notification when an envelope reaches 80% and 100% of what it has
   // this month (once each per month). Missing means on.
   envelopeAlertsEnabled?: boolean;

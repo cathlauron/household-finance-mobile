@@ -35,6 +35,7 @@ import BusyOverlay, { paintBusy } from './src/components/BusyOverlay';
 import { textSizeLoaded } from './src/textSize';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
+import { setQuietDay } from './src/checkInStore';
 import { navigationRef } from './src/navigation/navigationRef';
 import CryptoJS from 'crypto-js';
 import CreateProfileScreen from './src/screens/CreateProfileScreen';
@@ -159,6 +160,8 @@ function AppContent() {
   // Mockup W2: a widget's + Add (financeflow://add). Voice entry was removed (Cath, 2026-11-04);
   // a link from an old voice widget still on a home screen opens + Add too.
   const pendingQuickAdd = useRef(false);
+  // Cath, 2026-11-24: a calendar widget (financeflow://calendar, or .../calendar/2026-11-24 for a day).
+  const pendingCalendar = useRef<string | null>(null);
   const handledNotificationIds = useRef<Set<string>>(new Set());
 
   function captureNotificationResponse(response: Notifications.NotificationResponse | null) {
@@ -175,6 +178,18 @@ function AppContent() {
       pendingDeepLinkPayday.current = typeof data.personId === 'string' ? data.personId : '';
       flushPendingDeepLink();
     }
+    // Cath, 2026-11-24: the daily check-in. Its body or "Add a transaction" opens New
+    // transaction; "Nothing today" quiets it for today and closes it.
+    if (data?.type === 'checkIn') {
+      if (response.actionIdentifier === 'quiet') {
+        const d = new Date();
+        setQuietDay(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`).catch(() => {});
+        Notifications.dismissNotificationAsync(id).catch(() => {});
+      } else {
+        pendingQuickAdd.current = true;
+        flushPendingDeepLink();
+      }
+    }
     if (data?.type === 'envelopeAlert' || data?.type === 'closeOut') {
       pendingDeepLinkPage.current = data.type;
       flushPendingDeepLink();
@@ -186,6 +201,11 @@ function AppContent() {
     if (pendingQuickAdd.current && navigationRef.isReady() && screenRef.current === 'home') {
       pendingQuickAdd.current = false;
       goToMain(navigationRef, { screen: 'Transactions', params: { addNonce: Date.now() } });
+    }
+    if (pendingCalendar.current !== null && navigationRef.isReady() && screenRef.current === 'home') {
+      const day = pendingCalendar.current;
+      pendingCalendar.current = null;
+      navigationRef.navigate('Calendar', day ? { openDate: day, openNonce: Date.now() } : undefined);
     }
     if (pendingJoinOpen.current && navigationRef.isReady() && screenRef.current === 'home') {
       pendingJoinOpen.current = false;
@@ -214,6 +234,12 @@ function AppContent() {
   // straight away when signed in, or after signing in.
   useEffect(() => {
     const handle = (url: string | null) => {
+      const cal = /^financeflow:\/\/calendar(?:\/(\d{4}-\d{2}-\d{2}))?/i.exec(url || '');
+      if (cal) {
+        pendingCalendar.current = cal[1] || '';
+        flushPendingDeepLink();
+        return;
+      }
       const quick = /^financeflow:\/\/(voice|add)\b/i.exec(url || '');
       if (quick) {
         pendingQuickAdd.current = true;

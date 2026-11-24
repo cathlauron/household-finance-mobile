@@ -46,7 +46,8 @@ import { getSharedHeaderOptions } from './headerOptions';
 export type RootStackParamList = {
   Main: { openBillId?: string } | undefined;
   Profile: undefined;
-  Calendar: undefined;
+  // Cath, 2026-11-24: a calendar widget's day opens that day.
+  Calendar: { openDate?: string; openNonce?: number } | undefined;
   // Version 2.1: the card page's "Edit card" opens this card's edit sheet here.
   Accounts: { editGroup?: 'cash' | 'debit' | 'credit'; editId?: string; nonce?: number } | undefined;
   Income: { openIncomeId?: string; openIncomeNonce?: number; openAddNonce?: number } | undefined;

@@ -383,3 +383,9 @@ Area: everything new since 3.8.0 (fx.ts, borrowed.ts, backDated.ts, accountTrail
 - H-88 (certain, by design, told to Cath): a change-back gain is money in on no account, a loss is a Fees transaction on no account.
 - Safety: encryption, sync, merging, parts, Firestore rules and DataContext unchanged since 3.8.0. Kept forms live only on the phone (AsyncStorage, not encrypted: what was typed in one unfinished form), never in the household's data, and are removed on sign-out and account deletion. The rate service is sent only currency codes.
 - Not run: tools/flicker-check.py (no Python here). Cath has NOT phone-tested this batch (TEST-3 s35); she asked for the build first.
+
+## 2026-11-24: older open items closed (Cath: "close those previous open items")
+- H-69 fixed (B-124), H-71 fixed (B-125), H-73 fixed (B-126), H-70 changed (B-127, needs her phone), H-86 fixed (eye on Accounts), H-87 fixed (B-123).
+- H-67, H-68, H-84 (forms and pages slow to open on the slowed test browser): closed into H-76, the one lag item. The form-opening fixes (B-117, 3.9.0) were aimed at exactly these; the next step is her phone's answer on whether forms still lag, then a timing readout in a test build if they do.
+- Bug hunt of this batch (minimum payment, check-in, calendar widgets, fade, lending): no new bugs found by reading. Known limits told to Cath: a partner's entry only quiets your check-in once it reaches your phone (the app syncs when open); the widgets need the installed build.
+- Smoothness: the direction switch uses the shared fade; the check-in rows open with the shared row motion; nothing else new moves. npm run test:motion passes.

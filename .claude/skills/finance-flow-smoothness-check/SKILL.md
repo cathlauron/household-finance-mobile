@@ -218,3 +218,4 @@ list and ask which to fix first.
 - Never skip Reduce Motion.
 - Never say a motion "feels smooth" from code alone: that needs her phone.
 - Never weaken an existing check to make it pass.
+- 2026-11-24: Money out / Money in / Borrowed in the transaction form fades its fields like Bill / Debt / Loan (FormSwapFade channel 'direction'); the amount box stays.

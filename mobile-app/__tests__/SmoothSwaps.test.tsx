@@ -82,3 +82,14 @@ test('afterSlide still runs (once) when the app never settles', () => {
   expect(fn).toHaveBeenCalledTimes(1);
   spy.mockRestore();
 });
+
+// Cath, 2026-11-24 ("just use what the app already has for the other buttons"): Money out /
+// Money in / Borrowed fades its fields the same way, through the same shared piece.
+test('the transaction form\'s Money out / Money in / Borrowed uses the shared form fade', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'src/screens/TransactionsScreen.tsx'), 'utf8');
+  expect(src).toMatch(/dipFormFields\('direction', \(\) => \{/);
+  expect(src).toMatch(/<FormSwapFade channels=\{\['direction'\]\} swapKey=\{`txn-\$\{borrowedOn \? 'borrowed' : directionInput\}`\}>/);
+  // The amount box stays outside the fade (it keeps its place and the keyboard stays up).
+  const fade = src.indexOf("<FormSwapFade channels={['direction']}");
+  expect(src.indexOf('focusRef={amountRef}')).toBeLessThan(fade);
+});

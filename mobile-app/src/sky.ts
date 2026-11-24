@@ -111,6 +111,8 @@ export async function setLiveWeatherOn(on: boolean): Promise<boolean> {
   try {
     const perm = await Location.requestForegroundPermissionsAsync();
     if (perm.status !== 'granted') return false;
+    // H-73: the phone's location switched off counts as no location.
+    if (!(await Location.hasServicesEnabledAsync())) return false;
   } catch {
     return false;
   }
@@ -133,7 +135,8 @@ function forgetPlaceAndWeather() {
 async function stillAllowed(): Promise<boolean> {
   try {
     const perm = await Location.getForegroundPermissionsAsync();
-    if (perm.status === 'granted') return true;
+    // H-73 (2026-11-24): and the phone's location itself is on.
+    if (perm.status === 'granted' && (await Location.hasServicesEnabledAsync())) return true;
   } catch {
     return true; // Couldn't check: leave it as it is.
   }

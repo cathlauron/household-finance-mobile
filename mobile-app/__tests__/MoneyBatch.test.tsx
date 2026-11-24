@@ -222,3 +222,33 @@ test('An account that is not there any more is never accepted', () => {
   expect(accountProblem(mockModel, 'out', 500, gone)).toMatch(/Choose which account/);
   expect(accountProblem(mockModel, 'in', 500, { type: 'debit', accountId: 'd1' })).toBeNull();
 });
+
+// Cath, 2026-11-24 (H-87): editing a Borrowed transaction to Money out makes it money lent; once
+// something was paid on it, the switch is locked.
+async function editTxn(id: string) {
+  const Screen = require('../src/screens/TransactionsScreen').default;
+  render(<ThemeProvider><Screen formOnly editTxnId={id} onFormClosed={() => {}} /></ThemeProvider>);
+  await settle();
+}
+test('Editing a Borrowed loan to Money out moves it to Loans › Lent', async () => {
+  const { addBorrowed } = require('../src/borrowed');
+  const b = addBorrowed(mockModel, { kind: 'loan', amount: 5000, from: 'Ate Joy', account: { type: 'debit', accountId: 'd1' }, date: '2026-11-20', now: 1 });
+  mockModel = b.model;
+  await editTxn(b.txnId);
+  await press('txn-dir-out');
+  await press('txn-save');
+  await settle();
+  const m = mockSaved.at(-1);
+  expect(m.loans.find((l: any) => l.id === b.refId).direction).toBe('lent');
+  expect(m.manualTransactions.find((t: any) => t.id === b.txnId)).toMatchObject({ direction: 'out', category: 'Lent' });
+}, 30000);
+
+test('Editing a Borrowed transaction already paid on: Money in / Money out is locked', async () => {
+  const { addBorrowed } = require('../src/borrowed');
+  const b = addBorrowed(mockModel, { kind: 'loan', amount: 5000, from: 'Ate Joy', account: { type: 'debit', accountId: 'd1' }, date: '2026-11-20', now: 1 });
+  b.model.loans = b.model.loans.map((l: any) => ({ ...l, actualPayments: [{ id: 'p', date: '2026-11-21', actual: 500 }] }));
+  mockModel = b.model;
+  await editTxn(b.txnId);
+  expect(screen.queryByTestId('txn-dir-out')).toBeNull();
+  expect(screen.getByText(/already paid on/i)).toBeTruthy();
+}, 30000);

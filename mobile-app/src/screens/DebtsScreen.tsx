@@ -26,7 +26,7 @@ import { getOverdueItems } from '../overdue';
 import { useNavigation } from '@react-navigation/native';
 import { currentCycle, withEditedCurrentCycle, isCyclePaid, paidCycles } from '../billPayments';
 import { debtSections, debtDue, debtAmount as debtAmountOf } from '../debtSections';
-import { paymentToPlace, placePayment } from '../billPayments';
+import { debtShownAmount, paymentToPlace, placePayment } from '../billPayments';
 import PlacePaymentSheet, { type PlacePaymentAsk } from '../components/PlacePaymentSheet';
 import { useData } from '../DataContext';
 import { useFormDraft, DraftBanner } from '../useFormDraft';
@@ -528,6 +528,7 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
           <GradientFill match={[styles.group, styles.summaryCard]} />
           <Text style={styles.balanceBannerLabel}>Still to pay this month</Text>
           <CountingText style={[styles.balanceBannerAmount, { color: redUnlessZero(grouped.stillToPay, colors) }]} value={grouped.stillToPay} format={formatPeso} />
+          {grouped.stillToPayFull > grouped.stillToPay + 0.005 && <Text style={styles.summarySub}>{`minimums · ${formatPeso(grouped.stillToPayFull)} in all`}</Text>}
           <View style={styles.summaryLine} />
           <View style={styles.summaryRow}>
             <Text style={styles.summarySub}>No due date</Text>
@@ -552,6 +553,9 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
                 const due = debtDue(debt);
                 const isOverdue = overdueDebtIds.has(debt.id);
                 const days = due ? Math.round((due.getTime() - new Date(new Date().setHours(0, 0, 0, 0)).getTime()) / 86400000) : Infinity;
+                // Cath, 2026-11-24: a debt with "Pay at least" shows its minimum, of the full amount.
+                const shown = debtShownAmount(debt);
+                const dueText = due ? `${isOverdue ? 'Was due' : 'Due'} ${fmtDue(due)}` : 'Pay when you can';
                 return (
                   <SwipeableRow
                     key={debt.id}
@@ -566,10 +570,11 @@ export default function DebtsScreen({ openDebtId, openDebtNonce, onOpenHandled, 
                       addedBy={debt.addedBy}
                       icon="people-outline"
                       title={debt.creditorOrPerson || 'Debt'}
-                      sub={due ? `${isOverdue ? 'Was due' : 'Due'} ${fmtDue(due)}` : 'Pay when you can'}
+                      sub={shown.isMinimum ? `${dueText} · pay at least` : dueText}
                       badge={isOverdue ? { text: 'Overdue', tone: 'overdue' } : due && days <= 7 && days >= 0 ? { text: days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `In ${days} days`, tone: 'soon' } : undefined}
                       priority={debt.priority}
-                      amount={formatPeso(debtAmount(debt))}
+                      amount={formatPeso(shown.isMinimum ? shown.amount : debtAmount(debt))}
+                      amountNote={shown.isMinimum ? `of ${formatPeso(shown.full)}` : undefined}
                       amountColor={isOverdue ? colors.negative : colors.ink}
                       divider={rowIndex > 0}
                       onPress={() => openDebt(debt)}

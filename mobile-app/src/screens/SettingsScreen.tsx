@@ -14,6 +14,7 @@ import { notSaved, notDeleted, alertNotSaved, alertDidntWork, TRY_AGAIN } from '
 import { showLeafTick } from '../components/LeafTick';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { usePaydayNudgeTime, setPaydayNudgeTime, formatClock, type ClockTime } from '../paydayTime';
+import { useCheckInTime, setCheckInTime } from '../checkInStore';
 import AppSwitch from '../components/AppSwitch';
 import { removeFingerprintCopy, removePinCopy, saveFingerprintCopyIfPossible } from '../quickUnlock';
 import { updateSessionPassword } from '../staySignedIn';
@@ -145,6 +146,15 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
   const paydayTime = usePaydayNudgeTime();
   const [paydayTimeOpen, setPaydayTimeOpen] = useState(false);
   const [paydayPickerOpen, setPaydayPickerOpen] = useState(false);
+  // Cath, 2026-11-24: the daily check-in's time, per phone.
+  const checkInTime = useCheckInTime();
+  const [checkInTimeOpen, setCheckInTimeOpen] = useState(false);
+  const [checkInPickerOpen, setCheckInPickerOpen] = useState(false);
+  function pickCheckInTime(t: ClockTime) {
+    setCheckInTime(t).then(() => {
+      if (model) rescheduleBillNotifications(model).catch(() => {});
+    });
+  }
   function pickPaydayTime(t: ClockTime) {
     setPaydayNudgeTime(t).then(() => {
       if (model) rescheduleBillNotifications(model).catch(() => {});
@@ -1638,6 +1648,47 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             onChange={(event: any, d?: Date) => {
               setPaydayPickerOpen(false);
               if (event?.type !== 'dismissed' && d) pickPaydayTime({ hour: d.getHours(), minute: d.getMinutes() });
+            }}
+          />
+        )}
+
+        <SettingsGroup label="Daily check-in" plain footer={`"Quiet day?" at ${formatClock(checkInTime)}, only on a day nothing was logged by anyone in the household. "Nothing today" quiets it until tomorrow. The time is only for this phone.`}>
+          <PlainRow
+            title="Daily check-in"
+            right={settingSwitch(model.settings.dailyCheckInEnabled !== false, (on) => saveModel({ ...model, settings: { ...model.settings, dailyCheckInEnabled: on } }), 'settings-daily-check-in')}
+          />
+          {model.settings.dailyCheckInEnabled !== false && (
+            <PlainRow title="Remind me at" value={formatClock(checkInTime)} onPress={() => { animateNextLayout(); setCheckInTimeOpen((o) => !o); }} testID="settings-check-in-time" />
+          )}
+          {model.settings.dailyCheckInEnabled !== false && checkInTimeOpen && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingBottom: 14, paddingTop: 4 }}>
+              {[18, 20, 21, 22].map((h) => {
+                const on = checkInTime.hour === h && checkInTime.minute === 0;
+                return (
+                  <TouchableOpacity
+                    key={h}
+                    onPress={() => pickCheckInTime({ hour: h, minute: 0 })}
+                    style={{ paddingHorizontal: 13, paddingVertical: 7, borderRadius: 999, backgroundColor: on ? colors.buttonFill : colors.accentTint }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                  >
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: on ? colors.onButton : colors.gold }}>{formatClock({ hour: h, minute: 0 })}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+              <TouchableOpacity onPress={() => setCheckInPickerOpen(true)} style={{ paddingHorizontal: 13, paddingVertical: 7, borderRadius: 999, backgroundColor: colors.accentTint }} accessibilityRole="button">
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.gold }}>Pick a time</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </SettingsGroup>
+        {checkInPickerOpen && (
+          <DateTimePicker
+            mode="time"
+            value={new Date(2026, 0, 1, checkInTime.hour, checkInTime.minute)}
+            onChange={(event: any, d?: Date) => {
+              setCheckInPickerOpen(false);
+              if (event?.type !== 'dismissed' && d) pickCheckInTime({ hour: d.getHours(), minute: d.getMinutes() });
             }}
           />
         )}

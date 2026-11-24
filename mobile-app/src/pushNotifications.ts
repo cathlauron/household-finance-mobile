@@ -18,6 +18,8 @@
 
 import * as Notifications from 'expo-notifications';
 import { getPaydayNudgeTime } from './paydayTime';
+import { CHECK_IN_BODY, CHECK_IN_CATEGORY, CHECK_IN_TITLE, checkInTimes } from './checkIn';
+import { getCheckInTime, getQuietDay } from './checkInStore';
 import { currentCycle } from './billPayments';
 import { SchedulableTriggerInputTypes } from 'expo-notifications';
 import { Platform } from 'react-native';
@@ -49,6 +51,11 @@ export async function ensureNotificationChannel(): Promise<void> {
       importance: Notifications.AndroidImportance.DEFAULT,
     });
   }
+  // Cath, 2026-11-24: the daily check-in's two buttons.
+  await Notifications.setNotificationCategoryAsync(CHECK_IN_CATEGORY, [
+    { identifier: 'add', buttonTitle: 'Add a transaction', options: { opensAppToForeground: true } },
+    { identifier: 'quiet', buttonTitle: 'Nothing today', options: { opensAppToForeground: false } },
+  ]).catch(() => {});
 }
 
 // Asks the phone for permission to show notifications. Returns whether it was
@@ -444,6 +451,23 @@ async function rescheduleNow(model: HouseholdModel): Promise<void> {
           scheduled++;
         }
       }
+    }
+  }
+
+  // ============================================================
+  // Daily check-in (Cath, 2026-11-24, wording C)
+  // ============================================================
+  // "Quiet day?" at the time picked on this phone (8:00 PM), only on a day nothing was logged.
+  // A week ahead is set up; every save (yours or your partner's, when it reaches this phone)
+  // sets them up again, so today's goes away as soon as something is logged.
+  if (billRemindersOn && model.settings.dailyCheckInEnabled !== false) {
+    const at = await getCheckInTime();
+    const quiet = await getQuietDay();
+    for (const when of checkInTimes(model, now, at, quiet)) {
+      await Notifications.scheduleNotificationAsync({
+        content: { title: CHECK_IN_TITLE, body: CHECK_IN_BODY, data: { type: 'checkIn' }, categoryIdentifier: CHECK_IN_CATEGORY },
+        trigger: { type: SchedulableTriggerInputTypes.DATE, date: when, channelId: 'bill-alerts' },
+      });
     }
   }
 

@@ -8,11 +8,13 @@ type Cycle = {
   dueDate?: string;
   amountDue?: number | string;
   amountPaid?: number | string;
+  carriedIn?: number | string;
 };
 type CycleRecord = {
   id: string;
   name?: string;
   creditorOrPerson?: string;
+  minPayment?: number | string;
   cycles?: Cycle[];
 };
 
@@ -23,6 +25,8 @@ export type OverdueItem = {
   name: string;
   dueDate: string;
   amountOwed: number;
+  // Cath, 2026-11-24: a debt with a minimum is overdue by its minimum; this is all it still owes.
+  fullOwed?: number;
   key: string; // used by the bell's read-state file
 };
 
@@ -40,13 +44,16 @@ function scanCycles(records: CycleRecord[] | undefined, kind: 'bill' | 'debt', t
       if (!c.dueDate || c.dueDate >= today) return;
       const owed = num(c.amountDue) - num(c.amountPaid);
       if (owed <= 0) return;
+      const min = kind === 'debt' ? num(r.minPayment) : 0;
+      const shown = min > 0 ? Math.min(owed, Math.round((min + num(c.carriedIn)) * 100) / 100) : owed;
       out.push({
         kind,
         id: r.id,
         cycleId: c.id,
         name: (kind === 'bill' ? r.name : r.creditorOrPerson) || (kind === 'bill' ? 'Bill' : 'Debt'),
         dueDate: c.dueDate,
-        amountOwed: owed,
+        amountOwed: shown,
+        ...(shown < owed ? { fullOwed: owed } : {}),
         key: `overdue:${kind}:${r.id}:${c.id}`,
       });
     });

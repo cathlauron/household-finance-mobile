@@ -31,6 +31,7 @@ import GradientFill from '../components/GradientFill';
 import { CURRENCIES, HOME, currencySymbol, foreignBalance, isForeign, lastRate, pesoFor, showMoney, suggestedRate } from '../fx';
 import { trace } from '../trace';
 import { animateNextLayout } from '../animateLayout';
+import { HIDDEN_AMOUNT, useHideAmounts } from '../hideAmounts';
 import Guided, { useFieldErrors } from '../components/Guided';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -59,6 +60,7 @@ function makeId(): string {
 export default function AccountsScreen({ formOnly, editGroup, editAccountId, onFormClosed }: { formOnly?: boolean; editGroup?: AccountGroup; editAccountId?: string; onFormClosed?: () => void } = {}) {
   const { colors, isDark } = useTheme();
   const { model, saveModel, username, getModel } = useData();
+  const { hidden } = useHideAmounts();
   const styles = makeStyles(colors);
 
   // View mode: 'stacked' (Apple Wallet style, default) vs 'list' (flat cards)
@@ -397,7 +399,9 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
 
   const totalBalance = totalCurrentBalance(model);
   // Money colours: green for money you have, red for money owed, grey for nothing.
-  const moneyColor = (n: number) => (n > 0.004 ? colors.positive : n < -0.004 ? colors.negative : colors.inkDim);
+  // Cath, 2026-11-24 (H-86): Home's eye covers this list too (no amounts, no red that gives a minus away).
+  const moneyColor = (n: number) => (hidden ? colors.inkDim : n > 0.004 ? colors.positive : n < -0.004 ? colors.negative : colors.inkDim);
+  const hp = (n: number) => (hidden ? HIDDEN_AMOUNT : formatPeso(n));
   const accountCount = GROUPS.reduce((n, g) => n + model.balanceAccounts[g].length, 0);
   const creditOwed = model.balanceAccounts.credit
     .map((a) => accountCurrentBalance(model, 'credit', a))
@@ -421,11 +425,11 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
           <GradientFill match={styles.totalCard} />
           <View style={styles.totalTop}>
             <Text style={styles.balanceBannerLabel}>TOTAL BALANCE</Text>
-            <Text style={[styles.balanceBannerAmount, { color: moneyColor(totalBalance) }]}>{formatPeso(totalBalance)}</Text>
+            <Text style={[styles.balanceBannerAmount, { color: moneyColor(totalBalance) }]}>{hp(totalBalance)}</Text>
             <Text style={styles.totalSub}>
               {`Across ${accountCount} ${accountCount === 1 ? 'account' : 'accounts'}`}
               {creditOwed > 0 ? ' · Credit owed ' : ''}
-              {creditOwed > 0 ? <Text style={{ color: colors.negative, fontWeight: '700' }}>{formatPeso(creditOwed)}</Text> : null}
+              {creditOwed > 0 ? <Text style={{ color: hidden ? colors.inkDim : colors.negative, fontWeight: '700' }}>{hp(creditOwed)}</Text> : null}
             </Text>
           </View>
           <TouchableOpacity
@@ -443,7 +447,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
                 {nextPay ? `Next payday ${formatShortDate(nextPay.date)}` : (model.income || []).length === 0 ? 'Add where your money comes from' : 'No payday scheduled'}
               </Text>
             </View>
-            {!!nextPay && <Text style={[styles.incomeAmount, { color: toneUnlessZero(nextPay.amount, colors.planned, colors) }]}>+{formatPeso(nextPay.amount)}</Text>}
+            {!!nextPay && <Text style={[styles.incomeAmount, { color: toneUnlessZero(nextPay.amount, colors.planned, colors) }]}>{hidden ? HIDDEN_AMOUNT : `+${formatPeso(nextPay.amount)}`}</Text>}
             <Ionicons name="chevron-forward" size={17} color={colors.inkFaint} />
           </TouchableOpacity>
         </View>
@@ -456,7 +460,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
             <View key={group} style={styles.section}>
               <View style={styles.sectionHeaderRow}>
                 <Text style={styles.sectionTitle}>{GROUP_LABELS[group].toUpperCase()}</Text>
-                <Text style={styles.sectionTotal}>{formatPeso(groupTotal)}</Text>
+                <Text style={styles.sectionTotal}>{hp(groupTotal)}</Text>
               </View>
               <View style={styles.listGroup}>
                 <GradientFill match={styles.listGroup} />
@@ -480,7 +484,7 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
                         onPress={() => navigation.navigate('CardDetail', { group, id: account.id, backTitle: 'Accounts' })}
                         onLongPress={() => openEditModal(group, account)}
                         accessibilityRole="button"
-                        accessibilityLabel={`${account.name}, ${showMoney(account, bal)}`}
+                        accessibilityLabel={`${account.name}, ${hidden ? 'amount hidden' : showMoney(account, bal)}`}
                       >
                         <View style={[styles.accountChip, cardFaceColors(tint, isDark)]}>
                           <CardFaceFill color={tint} radius={6} />
@@ -490,8 +494,8 @@ export default function AccountsScreen({ formOnly, editGroup, editAccountId, onF
                           <Text style={styles.accountSub} numberOfLines={1}>{isForeign(account) ? CURRENCIES.find((c) => c.code === account.currency)?.name || account.currency : GROUP_LABELS[group]}</Text>
                         </View>
                         <View style={{ alignItems: 'flex-end', flexShrink: 1 }}>
-                          <Text style={[styles.accountAmount, { color: moneyColor(bal) }]}>{showMoney(account, bal)}</Text>
-                          {isForeign(account) && (
+                          <Text style={[styles.accountAmount, { color: moneyColor(bal) }]}>{hidden ? HIDDEN_AMOUNT : showMoney(account, bal)}</Text>
+                          {isForeign(account) && !hidden && (
                             <Text style={styles.accountSub} numberOfLines={1}>{`about ${formatPeso(bal)} · ${currencySymbol(account.currency)}1 = ₱${account.fxRate}`}</Text>
                           )}
                         </View>

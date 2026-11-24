@@ -12,7 +12,7 @@ import { useTheme } from '../ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../DataContext';
 import { computeRunningBalances, formatPeso, computeMonthEvents, CalendarEvent } from '../balanceProjection';
-import { newEventIndex, withEverythingDated } from '../calendarAll';
+import { findNewDay, newEventIndex, withEverythingDated } from '../calendarAll';
 import ArrivalGlow from '../components/ArrivalGlow';
 import {
   CalendarViewMode,
@@ -25,7 +25,7 @@ import {
   getCalendarShowBalance,
   setCalendarShowBalance,
 } from '../calendarSettings';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import BottomSheet, { startSheetHandoff } from '../components/BottomSheet';
 import TransactionsScreen from './TransactionsScreen';
 import BillsScreen from './BillsScreen';
@@ -77,9 +77,15 @@ function eventColor(ev: CalendarEvent, colors: any): string {
   }
 }
 
+// Cath, 2026-11-24: a debt shown at its minimum says so, with "of" the full amount under it.
+export function calendarRowParts(ev: CalendarEvent): { sub: string; of: string } {
+  return { sub: eventKind(ev), of: typeof ev.full === 'number' && ev.full > ev.amount ? `of ${formatPeso(ev.full)}` : '' };
+}
+
 // The small grey second line under each item in the day panel.
 function eventKind(ev: CalendarEvent): string {
   if (ev.sub) return ev.sub;
+  if (ev.type === 'debt' && typeof ev.full === 'number' && ev.full > ev.amount) return 'Debt · minimum';
   if (ev.tripId) return `${ev.tripName || 'Trip'} trip · due`;
   switch (ev.type) {
     case 'bill':
@@ -600,6 +606,19 @@ export default function CalendarScreen() {
     [pages]
   );
 
+  // Cath, 2026-11-24: a day tapped on a calendar widget opens that day, as if tapped here.
+  const route = useRoute<any>();
+  const openDate: string | undefined = route.params?.openDate;
+  const openNonce: number | undefined = route.params?.openNonce;
+  useEffect(() => {
+    if (!openDate || !/^\d{4}-\d{2}-\d{2}$/.test(openDate)) return;
+    const [y, m, d] = openDate.split('-').map(Number);
+    if (pages.findIndex((p) => p.year === y && p.month === m - 1) < 0) return;
+    onDayPress(y, m - 1, d);
+    // Only when a widget sends a new day.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openDate, openNonce]);
+
   // Cath, 2026-11-06: a greyed day moves to its month with that day picked (no day list).
   const scrollRef = useRef<(i: number) => void>(() => {});
   const onGreyPress = useCallback(
@@ -699,6 +718,18 @@ export default function CalendarScreen() {
   // opens right here over the calendar, starting on the picked day. Only after Add does
   // the app go to Transactions or To-Pay, where the new one slides in and glows.
   const dayBefore = useRef<string[]>([]);
+  // H-71: what was on every day around it, to find where something added really landed.
+  const around = useRef<Record<string, string[]>>({});
+  const AROUND_MONTHS = 13; // the picked month, the one before, and the next 11
+  function labelsAround(m: any, y: number, mo: number): Record<string, string[]> {
+    const out: Record<string, string[]> = {};
+    for (let k = -1; k < AROUND_MONTHS - 1; k++) {
+      const first = new Date(y, mo + k, 1);
+      const ev = monthEventsFor(m, first.getFullYear(), first.getMonth());
+      for (const [d, list] of Object.entries(ev)) out[isoOf(first.getFullYear(), first.getMonth(), Number(d))] = (list as CalendarEvent[]).map((e) => e.label);
+    }
+    return out;
+  }
   const [arrived, setArrived] = useState<string | null>(null); // the day something was just added on
   const arrivedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [formHosts, setFormHosts] = useState<{ kind: FormKind; date: string; nonce: number }[]>([]);
@@ -718,6 +749,7 @@ export default function CalendarScreen() {
     const date = isoOf(page.year, page.month, selDay);
     const m = getModel();
     dayBefore.current = m ? (monthEventsFor(m, page.year, page.month)[selDay] || []).map((e) => e.label) : [];
+    around.current = m ? labelsAround(m, page.year, page.month) : {};
     // The form takes this sheet's place (no close and reopen).
     startSheetHandoff(() => {
       setAddOpen(false);
@@ -728,12 +760,24 @@ export default function CalendarScreen() {
   // Cath, 2026-11-06 (mockup C, "a little bit of both"; replaces 2026-10-23 "straight to the
   // right screen"): you stay on the Calendar. Compact and Details show the month and the day
   // gives a small pop; List, or a day's list that is open, glows the new row.
-  function afterFormAdded(date: string) {
+  function afterFormAdded(picked: string) {
+    // H-71 (Cath, 2026-11-24): the date may have been changed in the form; go to the day it
+    // really landed on (and its month), and mark only a day that really got something new.
+    const latest = getModel();
+    const [py, pm] = picked.split('-').map(Number);
+    const landed = latest ? findNewDay(around.current, labelsAround(latest, py, pm - 1), picked) : null;
+    const date = landed ?? picked;
     const [y, m, d] = date.split('-').map(Number);
     setSelected({ year: y, month: m - 1, day: d });
-    // The date may have been changed in the form: only mark a day that really got something new.
-    const latest = getModel();
-    if (!latest || newEventIndex(dayBefore.current, (monthEventsFor(latest, y, m - 1)[d] || []).map((e) => e.label)) < 0) return;
+    if (landed && landed !== picked) {
+      dayBefore.current = around.current[landed] || [];
+      const i = pages.findIndex((p) => p.year === y && p.month === m - 1);
+      if (i >= 0) {
+        setIndex(i);
+        scrollToPage(i);
+      }
+    }
+    if (!landed) return;
     setArrived(date);
     if (arrivedTimer.current) clearTimeout(arrivedTimer.current);
     arrivedTimer.current = setTimeout(() => setArrived(null), ARRIVED_MS);
@@ -914,7 +958,10 @@ export default function CalendarScreen() {
             <Text style={s.rowTitle} numberOfLines={1}>{ev.label}</Text>
             <Text style={s.rowSub} numberOfLines={1}>{eventKind(ev)}</Text>
           </View>
-          <Text style={[s.rowAmt, { color: amt.color }]}>{amt.text}</Text>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={[s.rowAmt, { color: amt.color }]}>{amt.text}</Text>
+            {!!calendarRowParts(ev).of && <Text style={s.rowSub}>{calendarRowParts(ev).of}</Text>}
+          </View>
         </TouchableOpacity>
       );
     });

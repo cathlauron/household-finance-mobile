@@ -111,3 +111,34 @@ test('a trip item due soon is on the widgets\' Due soon list and in what\'s left
   expect(s.due.map((d: any) => d.name)).toContain('Hotel balance');
   expect(s.dueLeft).toMatch(/12,000/);
 });
+
+// Cath, 2026-11-24: the calendar widgets are in the phone's widget list, with their pictures.
+test('every widget is in the phone\'s widget list with a picture that exists', () => {
+  const fs = require('fs');
+  const app = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+  const plugin = app.expo.plugins.find((p: any) => Array.isArray(p) && p[0] === 'react-native-android-widget');
+  const listed = plugin[1].widgets.map((w: any) => w.name);
+  expect(listed).toEqual([...WIDGET_NAMES]);
+  for (const w of plugin[1].widgets) expect(fs.existsSync(w.previewImage)).toBe(true);
+});
+
+test('calendar widgets: the date is worked out when they draw, and a day opens that day', () => {
+  const s = makeWidgetSnapshot(model(), { hidden: false, now: new Date(2026, 9, 30, 12) });
+  expect(s.cal).toBeTruthy();
+  expect(s.cal['2026-10-29'].map((e: any) => e.name)).toContain('Baguio');
+  // Draw it all the way down (each piece is a plain function) and collect the tap links.
+  const links: string[] = [];
+  const walk = (el: any): void => {
+    if (!el || typeof el !== 'object') return;
+    if (Array.isArray(el)) return el.forEach(walk);
+    if (typeof el.type === 'function' && !el.type.__name__) return walk(el.type(el.props)); // our pieces, not the library's
+    if (el.props?.clickActionData?.uri) links.push(el.props.clickActionData.uri);
+    walk(el.props?.children);
+  };
+  walk(widgetFor('CalendarMonth', s));
+  const tree = links.join(' ');
+  expect(links.length).toBeGreaterThan(28);
+  expect(tree).toMatch(/financeflow:\/\/calendar\/\d{4}-\d{2}-\d{2}/);
+  const app = require('fs').readFileSync('App.tsx', 'utf8');
+  expect(app).toMatch(/navigationRef\.navigate\('Calendar', day \? \{ openDate: day/);
+});

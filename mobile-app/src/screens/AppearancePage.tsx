@@ -198,7 +198,7 @@ export default function AppearancePage({
                   setWeatherKey((k) => k + 1);
                   Alert.alert(
                     'Location is off',
-                    "Finance Flow can't see your location, so the sky follows the clock instead. You can allow location for Finance Flow in your phone's settings."
+                    "Finance Flow can't see your location, so the sky follows the clock instead. Turn on your phone's location, and allow it for Finance Flow in your phone's settings."
                   );
                 }
               }}

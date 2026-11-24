@@ -17,7 +17,7 @@ import { pinWidget, widgetsOnHomeScreen } from '../widgets/pinWidget';
 // phone shows its own "Add to home screen?" box). Coming back to the app, widgets that are really
 // on the home screen say so.
 
-const WIDGET_NAMES: readonly WidgetName[] = ['LeftToSpend', 'SpendSay', 'DueSoon', 'Month', 'Trip'];
+const WIDGET_NAMES: readonly WidgetName[] = ['LeftToSpend', 'SpendSay', 'DueSoon', 'Month', 'Trip', 'CalendarToday', 'CalendarMonth', 'Calendar'];
 const HERO = { from: '#2C5E48', to: '#122B21' }; // the widgets' green (FFWidgets widgetColours('good'))
 
 const INFO: Record<WidgetName, { title: string; sub: string; short: string; look: 'hero' | 'paper' | 'trip' }> = {
@@ -26,6 +26,10 @@ const INFO: Record<WidgetName, { title: string; sub: string; short: string; look
   DueSoon: { title: 'Due soon', sub: 'Medium · your next bills', short: 'DUE', look: 'paper' },
   Month: { title: 'Month at a glance', sub: 'Large · budgets and bills', short: 'MON', look: 'paper' },
   Trip: { title: 'Trip', sub: 'Medium · while a trip is on', short: 'TRIP', look: 'trip' },
+  // Cath, 2026-11-24: calendar widgets laid out like the iPhone's.
+  CalendarToday: { title: 'Calendar: today', sub: "Small · the date and what's next", short: 'DAY', look: 'paper' },
+  CalendarMonth: { title: 'Calendar: month', sub: 'Small · the month at a glance', short: 'CAL', look: 'paper' },
+  Calendar: { title: 'Calendar', sub: 'Medium · today and the month together', short: 'CAL', look: 'paper' },
 };
 
 export default function WidgetsScreen() {

@@ -97,7 +97,49 @@ export function removeBorrowedRef(model: HouseholdModel, txnId: string): Househo
 
 // After the transaction was edited: who it is from and how much carry over. A debt round
 // that is already paid keeps its amount.
-export function syncBorrowed(model: HouseholdModel, txnId: string): HouseholdModel {
+// Cath, 2026-11-24 (H-87): once something was paid on its loan or debt, a Borrowed (or Lent)
+// transaction keeps its side: Money in / Money out is locked while editing it.
+export function lendingLocked(model: HouseholdModel, txnId: string): boolean {
+  return !!linked(model, txnId)?.paid;
+}
+
+// Cath, 2026-11-24 (H-87): money in = you borrowed it, money out = you lent it. Edited to the other
+// side, its loan flips between I borrowed and I lent; a debt (Debts has no "lent" side) is
+// replaced by a loan you lent, with the same person, amount and date.
+function flipSide(model: HouseholdModel, txnId: string): HouseholdModel {
+  const l = linked(model, txnId);
+  if (!l || l.paid) return model;
+  const lent = l.txn.direction === 'out';
+  const category = lent ? 'Lent' : 'Borrowed';
+  const setTxn = (m: HouseholdModel, patch: Partial<ManualTransaction>) => ({ ...m, manualTransactions: m.manualTransactions.map((t) => (t.id === txnId ? { ...t, ...patch } : t)) });
+  if (l.loan) {
+    const want = lent ? 'lent' : 'borrowed';
+    if (l.loan.direction === want && l.txn.category === category) return model;
+    trace('borrowed', 'side changed', { to: want });
+    return setTxn({ ...model, loans: model.loans.map((x) => (x.id === l.loan!.id ? { ...x, direction: want } : x)) }, { category });
+  }
+  if (!lent) return model.manualTransactions.find((t) => t.id === txnId)?.category === category ? model : setTxn(model, { category });
+  const debt = l.debt as Debt;
+  const due = debt.cycles?.[0]?.dueDate || (typeof debt.dueDate?.date === 'string' ? debt.dueDate.date : '');
+  const loan: Loan = {
+    id: makeId('loan'),
+    name: debt.creditorOrPerson,
+    loanType: '',
+    totalAmount: typeof l.txn.amount === 'number' ? l.txn.amount : '',
+    expectedPayment: '',
+    actualPayments: [],
+    owner: debt.owner || 'shared',
+    direction: 'lent',
+    recurringType: 'onetime',
+    dueDate: due ? { date: due } : {},
+    createdAt: Date.now(),
+  };
+  trace('borrowed', 'debt became lent loan');
+  return setTxn({ ...model, debts: model.debts.filter((x) => x.id !== debt.id), loans: [...(model.loans || []), loan] }, { category, borrowed: { kind: 'loan', id: loan.id } });
+}
+
+export function syncBorrowed(start: HouseholdModel, txnId: string): HouseholdModel {
+  const model = flipSide(start, txnId);
   const l = linked(model, txnId);
   if (!l) return model;
   const amount = typeof l.txn.amount === 'number' ? l.txn.amount : 0;

@@ -497,3 +497,34 @@ widget list (hold the home screen › Widgets › Finance Flow) the previews are
 32. Spend something from an account, open that account's page › Edit account: the Balance box shows what the account has now. Change only the name and Save: the balance did not move.
 33. Type half a transaction, tap outside. Sign out and sign in again: the form opens empty.
 34. Accounts › Add › Cash › Currency: pick a currency you already have a wallet in: it says you already have one.
+
+## 36. Minimum payment, daily check-in, calendar widgets (2026-11-24)
+Minimum payment (Expo Go is fine):
+1. A debt with "Pay at least" ₱1,000 and ₱5,000 to pay, due this month. To-Pay › Debts: its row says ₱1,000.00 with "of ₱5,000.00" under it, and "Due … · pay at least". The card on top: Still to pay this month counts ₱1,000, with "minimums · ₱5,000.00 in all" under it.
+2. The Calendar on its due date: "Debt · minimum", ₱1,000.00, with "of ₱5,000.00" under it. Home's Due soon shows ₱1,000.
+3. Left to Spend (tap it): that debt takes off ₱1,000, not ₱5,000.
+4. Open the debt and pay: the Minimum and Full buttons are as before.
+5. A debt with no "Pay at least": everything shows the full amount, as before.
+Daily check-in (Expo Go is fine; Notify me on this phone must be on):
+6. Settings › Notifications: "Daily check-in" is on, "Remind me at" says 8:00 PM. Pick another time a few minutes from now to try it.
+7. Log nothing today: at that time "Quiet day?" arrives with Add a transaction and Nothing today.
+8. Add a transaction: it opens New transaction. Nothing today: it goes away.
+9. Log something, then set the time a few minutes ahead again: nothing comes today.
+10. Set the time back to 8:00 PM.
+Calendar widgets (needs the installed build, not Expo Go):
+11. Settings › Widgets: Calendar: today, Calendar: month and Calendar are listed. Add each.
+12. Today: the day name in the app's colour, the big date, the next two things with a coloured line. Month: today circled in the app's colour, a small dot under days with something.
+13. The medium one shows both side by side, like the picture.
+14. Tap a day in the month: the Calendar opens on that day's page. Tap elsewhere: the Calendar opens.
+15. Close Home's eye: the widgets show ₱ •••• instead of amounts.
+16. The next morning, without opening the app: the widgets show the new date.
+Lending, eye, fade and the older items:
+17. Add Borrowed › Loan from someone. Open it and switch it to Money out, Save: the account goes down instead of up, and To-Pay › Loans › Lent has it as owed to you. Switch it back to Money in: it is borrowed again.
+18. Do the same with Borrowed › Debt: switched to Money out, the debt leaves Debts and shows in Loans › Lent.
+19. Pay part of a Borrowed loan, then open its transaction: only one side shows, with "already paid on".
+20. Lending money is not counted in Home's month Out total.
+21. Close Home's eye and open Settings › Accounts: every amount is ₱ *****.
+22. New transaction: tap Money out / Money in / Borrowed: the highlight moves at once and the boxes below fade, like Bill / Debt / Loan.
+23. A trip: turn Save for this trip in Savings on and off: nothing you added to the trip just before is lost.
+24. Calendar › + on a day › change the date in the form › Add: the Calendar goes to the new date and its row glows.
+25. Live weather on, then switch the phone's location off and come back to the app: Live weather is Off. Turning it on says to turn the location on.

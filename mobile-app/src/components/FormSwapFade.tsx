@@ -11,11 +11,12 @@ import { CURVE, CURVE_OUT, DIP_MS, FADE_IN_MS } from '../motion';
 // is rebuilt (the amount box keeps its place and the keyboard stays up). With the phone
 // set to remove animations the change simply happens.
 //
-// Channels: 'kind' = Bill / Debt / Loan, 'detail' = I borrowed / I lent.
+// Channels: 'kind' = Bill / Debt / Loan, 'detail' = I borrowed / I lent,
+// 'direction' = Money out / Money in / Borrowed in the transaction form (Cath, 2026-11-24).
 
-export type FormChannel = 'kind' | 'detail';
-const values: Record<FormChannel, Animated.Value> = { kind: new Animated.Value(1), detail: new Animated.Value(1) };
-const waitingToShow: Record<FormChannel, boolean> = { kind: false, detail: false };
+export type FormChannel = 'kind' | 'detail' | 'direction';
+const values: Record<FormChannel, Animated.Value> = { kind: new Animated.Value(1), detail: new Animated.Value(1), direction: new Animated.Value(1) };
+const waitingToShow: Record<FormChannel, boolean> = { kind: false, detail: false, direction: false };
 const SAFETY_MS = 600; // if the new fields never report in, they fade in anyway
 
 // While a form switch is happening, the pop-up sheet glides to the new form's height

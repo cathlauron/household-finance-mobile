@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lent Choice</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--t:#111;--m:#636366;--f:#AEAEB2;--l:#D1D1D6;--s:#F2F2F7;--c:#fff;--a:#B0234F;--at:#F6E3EA;--g:#1F7A3D;--gt:#E3F1E7;--r:#D70015;--rt:#FBE5E7;--bl:#1D63B8;--page:#E9E9EE;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--t:#fff;--m:#AEAEB2;--f:#636366;--l:#38383A;--s:#000;--c:#1C1C1E;--a:#F0668F;--at:#3A1A25;--g:#5FC48A;--gt:#15291D;--r:#FF6961;--rt:#3A1515;--bl:#6FB1F5;--page:#111113;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--t);font-family:'Nunito',sans-serif;line-height:1.4}
+main{max-width:1060px;margin:0 auto;padding:28px 16px 56px}
+h1{font-size:28px;margin:0 0 6px;font-weight:800}
+.lead{color:var(--m);margin:0 0 8px;max-width:70ch}
+section{margin-top:40px}
+section>h2{font-size:22px;margin:0 0 4px;font-weight:800}
+section>p{color:var(--m);margin:0 0 16px;max-width:70ch}
+.flow{display:flex;flex-wrap:wrap;gap:22px}
+.step{width:300px;max-width:100%}
+.step h3{font-size:14px;font-weight:800;margin:0 0 8px}
+.ph{position:relative;height:600px;background:var(--s);border:0.5px solid var(--l);border-radius:24px;overflow:hidden}
+.bar{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 8px;font-size:16px}
+.bar b{font-weight:700}.lk{color:var(--a)}
+.seg{display:flex;margin:4px 16px 10px;background:rgba(127,127,127,.14);border-radius:9px;padding:2px}
+.seg span{flex:1;text-align:center;font-size:13px;padding:5px 0;border-radius:7px;color:var(--t)}
+.seg .on{background:var(--c);font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.amt{text-align:center;font-size:12px;color:var(--m)}
+.big{text-align:center;font-size:34px;font-weight:700;margin:2px 0 10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 10px}
+.chip{font-size:13px;padding:5px 10px;border-radius:14px;background:rgba(127,127,127,.12)}
+.chip.on{background:var(--at);color:var(--a);font-weight:700}
+.lbl{font-size:12px;color:var(--m);padding:4px 16px 4px}
+.grp{margin:0 14px 10px;background:var(--c);border-radius:12px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;font-size:14px;gap:8px}
+.row+.row{border-top:0.5px solid var(--l)}
+.row .v{color:var(--m);text-align:right}
+.note{font-size:12px;color:var(--m);padding:0 18px 10px}
+.hint{font-size:12px;color:var(--g);font-weight:700}
+.warn{font-size:12px;color:var(--r);font-weight:700}
+.acct{display:flex;flex-wrap:wrap;gap:6px}
+.ac{border:1.5px solid var(--l);border-radius:10px;padding:5px 8px;font-size:13px;min-width:90px}
+.ac small{display:block;color:var(--m);font-size:11.5px}
+.ac.on{border-color:var(--a);background:var(--at)}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.35)}
+.sheet{position:absolute;left:0;right:0;bottom:0;top:120px;background:var(--s);border-radius:16px 16px 0 0}
+.tap{position:absolute;top:56px;left:50%;transform:translateX(-50%);background:var(--c);color:var(--t);font-size:12px;font-weight:700;padding:6px 10px;border-radius:14px}
+.banner{margin:0 14px 10px;padding:9px 12px;border-radius:10px;background:var(--gt);font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.banner .lk{font-weight:700}
+.list .it{display:flex;align-items:center;gap:10px;padding:10px 0;margin:0 16px;font-size:14px}
+.list .it+.it{border-top:0.5px solid var(--l)}
+.list .it i{width:9px;height:9px;border-radius:50%;flex:none}
+.list .it div{flex:1}.list .it small{display:block;color:var(--m);font-size:12px}
+.list .it span{font-weight:700}
+.q{margin:14px 0 0;padding:12px 14px;background:var(--c);border-radius:12px;max-width:70ch;font-size:14.5px}
+.q b{font-weight:800}
+.pick{display:inline-block;font-size:12px;font-weight:800;color:var(--a);margin-left:6px}
+.sw{width:38px;height:22px;border-radius:11px;background:var(--g);position:relative;flex:none}.sw::after{content:'';position:absolute;right:2px;top:2px;width:18px;height:18px;border-radius:50%;background:#fff}
+.ph{height:auto;padding-bottom:14px}.hl{outline:2px solid var(--a);outline-offset:2px;border-radius:10px}.seg span{font-size:12px}</style></head><body><main>
+<h1>Lending money from New transaction</h1>
+<p class="lead">Two ways to log money you lend someone. Either way it comes out of the account, isn't spending, and goes to To-Pay › Loans › Lent as money owed to you. Samples only. Nothing is built.</p>
+<section><h2>Option A: a fourth choice, "Lent"</h2><p>Right beside Borrowed. One tap, but four words share the bar, so each is smaller.</p>
+<div class="flow"><div class="step"><h3>Lent picked</h3><div class="ph">
+  <div class="bar"><span class="lk">Cancel</span><b>New transaction</b><span class="lk"><b>Add</b></span></div>
+  <div class="seg hl" style="margin:4px 16px 10px"><span class="">Money out</span><span class="">Money in</span><span class="">Borrowed</span><span class="on">Lent</span></div>
+  <div class="amt">Amount</div><div class="big">₱2,000.00</div>
+  
+  <div class="grp"><div class="row"><span>To whom</span><span class="v">Kuya Ben</span></div><div class="row"><span>Account</span><span class="v">BPI Savings</span></div><div class="row"><span>Pay back by</span><span class="v">Dec 15</span></div></div>
+  <div class="note">Added to To-Pay › Loans › Lent. Lending money is not spending.</div>
+</div></div>
+<div class="step"><h3>Borrowed picked (as now)</h3><div class="ph">
+  <div class="bar"><span class="lk">Cancel</span><b>New transaction</b><span class="lk"><b>Add</b></span></div>
+  <div class="seg " style="margin:4px 16px 10px"><span class="">Money out</span><span class="">Money in</span><span class="on">Borrowed</span><span class="">Lent</span></div>
+  <div class="amt">Amount</div><div class="big">₱2,000.00</div>
+  <div class="seg" style="margin:0 16px 10px"><span class="on">Debt</span><span>Loan</span></div>
+  <div class="grp"><div class="row"><span>From whom</span><span class="v">Kuya Ben</span></div><div class="row"><span>Account</span><span class="v">BPI Savings</span></div><div class="row"><span>Pay back by</span><span class="v">Dec 15</span></div></div>
+  <div class="note">Added to To-Pay › Debts. Borrowed money is not income.</div>
+</div></div></div></section>
+<section><h2>Option B: "Borrow or lend", then pick which <span class="pick">My suggestion</span></h2><p>The bar keeps three roomy choices. The third opens I borrowed / I lent, like the switch in New loan.</p>
+<div class="flow"><div class="step"><h3>I lent picked</h3><div class="ph">
+  <div class="bar"><span class="lk">Cancel</span><b>New transaction</b><span class="lk"><b>Add</b></span></div>
+  <div class="seg " style="margin:4px 16px 10px"><span class="">Money out</span><span class="">Money in</span><span class="on">Borrow or lend</span></div>
+  <div class="amt">Amount</div><div class="big">₱2,000.00</div>
+  <div class="seg hl" style="margin:0 16px 10px"><span>I borrowed</span><span class="on">I lent</span></div>
+  <div class="grp"><div class="row"><span>To whom</span><span class="v">Kuya Ben</span></div><div class="row"><span>Account</span><span class="v">BPI Savings</span></div><div class="row"><span>Pay back by</span><span class="v">Dec 15</span></div></div>
+  <div class="note">Added to To-Pay › Loans › Lent. Lending money is not spending.</div>
+</div></div>
+<div class="step"><h3>I borrowed picked</h3><div class="ph">
+  <div class="bar"><span class="lk">Cancel</span><b>New transaction</b><span class="lk"><b>Add</b></span></div>
+  <div class="seg " style="margin:4px 16px 10px"><span class="">Money out</span><span class="">Money in</span><span class="on">Borrow or lend</span></div>
+  <div class="amt">Amount</div><div class="big">₱2,000.00</div>
+  <div class="seg" style="margin:0 16px 6px"><span class="on">I borrowed</span><span>I lent</span></div><div class="seg" style="margin:0 16px 10px"><span class="on">Debt</span><span>Loan</span></div>
+  <div class="grp"><div class="row"><span>From whom</span><span class="v">Kuya Ben</span></div><div class="row"><span>Account</span><span class="v">BPI Savings</span></div><div class="row"><span>Pay back by</span><span class="v">Dec 15</span></div></div>
+  <div class="note">Added to To-Pay › Debts. Borrowed money is not income.</div>
+</div></div></div></section>
+<div class="q"><b>Your pick:</b> A or B.</div>
+</main></body></html>

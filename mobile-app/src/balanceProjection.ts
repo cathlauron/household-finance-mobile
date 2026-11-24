@@ -25,7 +25,7 @@
 
 import type { HouseholdModel, Bill, Debt, Loan, IncomeSource, PaymentMethod, BalanceAccountEntry } from './types';
 import { accountEffect as investmentAccountEffect } from './investments';
-import { isCyclePaid, lastPaidDueDate } from './billPayments';
+import { debtShownAmount, isCyclePaid, lastPaidDueDate } from './billPayments';
 import { customOccurrencesInMonth, stripTime } from './recurrence';
 import { computeNextPayDate } from './income';
 import { leftToSpendAmount } from './leftToSpendExtras';
@@ -48,6 +48,8 @@ export type CalendarEvent = {
   // Cath, 2026-11-06 (mockup A): a trip or event shows as a ribbon. first and last mean the
   // ribbon really starts or ends on this day (calendarBands.ts).
   band?: { kind: 'trip' | 'event'; key: string; first: boolean; last: boolean };
+  // Cath, 2026-11-24: a debt shown at its minimum: the full amount still to pay (shown small).
+  full?: number;
 };
 
 function toNumber(v: number | '' | undefined): number {
@@ -503,9 +505,11 @@ function computeMonthEventsNow(
   });
 
   model.debts.forEach((debt) => {
-    const amount = Math.max(0, outstandingBalance(debt));
+    // Cath, 2026-11-24: its minimum when it has one (debtShownAmount), the full amount beside it.
+    const shown = debtShownAmount(debt);
+    const amount = Math.max(0, shown.amount);
     dueDaysInMonth(debt, year, monthIndex).forEach((day) => {
-      push(day, { type: 'debt', label: debt.creditorOrPerson || 'Debt', amount, id: debt.id });
+      push(day, { type: 'debt', label: debt.creditorOrPerson || 'Debt', amount, id: debt.id, ...(shown.isMinimum ? { full: shown.full } : {}) });
     });
   });
 

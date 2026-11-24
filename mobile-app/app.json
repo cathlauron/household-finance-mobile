@@ -3,7 +3,7 @@
     "name": "Finance Flow",
     "slug": "mobile-app",
     "scheme": "financeflow",
-    "version": "3.9.0",
+    "version": "3.10.0",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -32,7 +32,7 @@
     },
     "android": {
       "package": "com.cathlauron.householdfinance",
-      "versionCode": 14,
+      "versionCode": 15,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#122b21"
@@ -150,6 +150,39 @@
               "targetCellHeight": 2,
               "updatePeriodMillis": 1800000,
               "previewImage": "./assets/widget-preview/trip.png"
+            },
+            {
+              "name": "CalendarToday",
+              "label": "Calendar: today",
+              "description": "The date and what's next",
+              "minWidth": "110dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "updatePeriodMillis": 1800000,
+              "previewImage": "./assets/widget-preview/calendar-today.png"
+            },
+            {
+              "name": "CalendarMonth",
+              "label": "Calendar: month",
+              "description": "The month at a glance",
+              "minWidth": "110dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "updatePeriodMillis": 1800000,
+              "previewImage": "./assets/widget-preview/calendar-month.png"
+            },
+            {
+              "name": "Calendar",
+              "label": "Calendar",
+              "description": "Today and the month together",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "updatePeriodMillis": 1800000,
+              "previewImage": "./assets/widget-preview/calendar.png"
             }
           ]
         }

@@ -158,3 +158,13 @@ test('Only one wallet per currency', async () => {
   expect(mockSaved).toHaveLength(0);
   expect(screen.getByText(/already have a wallet in THB/)).toBeTruthy();
 });
+
+// Cath, 2026-11-24 (H-86): Home's eye covers the Accounts list too: no amount, no rate.
+test('Accounts list: with the eye closed, no amount shows', async () => {
+  const { hideAmountsNow } = require('../src/hideAmounts');
+  await act(async () => { hideAmountsNow(); });
+  await openAccounts();
+  expect(screen.queryByText(/\d,\d{3}|\d\.\d{2}/)).toBeNull();
+  expect(screen.getAllByText('₱ *****').length).toBeGreaterThan(3);
+  expect(screen.getByLabelText(/^Cash \(THB\), /).props.accessibilityLabel).toBe('Cash (THB), amount hidden');
+});

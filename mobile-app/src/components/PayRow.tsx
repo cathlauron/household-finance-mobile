@@ -18,6 +18,8 @@ type Props = {
   sub: string;
   amount: string;
   amountColor: string;
+  // Cath, 2026-11-24: a small line under the amount ("of ₱5,000.00" for a debt shown at its minimum).
+  amountNote?: string;
   badge?: { text: string; tone: 'overdue' | 'soon' | 'info' | 'paid' };
   divider?: boolean;
   // Version 2.2 (canvas K3): a small High / Medium / Low tag after the name.
@@ -33,7 +35,7 @@ type Props = {
   paid?: boolean;
 };
 
-export default function PayRow({ icon, title, sub, amount, amountColor, badge, divider, priority, onPress, testID, addedBy, glow, paid }: Props) {
+export default function PayRow({ icon, title, sub, amount, amountColor, amountNote, badge, divider, priority, onPress, testID, addedBy, glow, paid }: Props) {
   const { colors } = useTheme();
   // Where the name's line sits, so the paid line goes through its middle.
   const [nameMid, setNameMid] = useState(11);
@@ -77,6 +79,7 @@ export default function PayRow({ icon, title, sub, amount, amountColor, badge, d
       </View>
       <View style={styles.right}>
         <Text style={[styles.amount, { color: amountColor }]}>{amount}</Text>
+        {!!amountNote && <Text style={[styles.amountNote, { color: colors.inkDim }]}>{amountNote}</Text>}
         {badge && tone && <Text style={[styles.badge, { color: tone.color, backgroundColor: tone.bg }]}>{badge.text}</Text>}
       </View>
       {paid && <View pointerEvents="none" testID={testID ? `${testID}-paid-line` : undefined} style={[styles.paidLine, { top: nameMid - 0.75, backgroundColor: colors.ink }]} />}
@@ -100,5 +103,6 @@ const styles = StyleSheet.create({
   sub: { fontSize: 13, marginTop: 1 },
   right: { alignItems: 'flex-end' },
   amount: { fontSize: 17, fontWeight: '600' },
+  amountNote: { fontSize: 12, marginTop: 1 },
   badge: { marginTop: 3, fontSize: 12, fontWeight: '600', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, overflow: 'hidden' },
 });

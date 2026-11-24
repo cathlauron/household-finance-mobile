@@ -2,6 +2,7 @@
 import React from 'react';
 import { FlexWidget, SvgWidget, TextWidget } from 'react-native-android-widget';
 import type { WidgetSnapshot } from './widgetData';
+import { calendarWidgetView, type CalendarWidgetView, type WidgetDayItem } from './calendarWidget';
 
 // Home screen widgets (mockup W2, approved by Cath 2026-10-30), drawn with the widget
 // library's own pieces (not app screens). Colours are the app's: the crimson Left-to-spend
@@ -9,7 +10,8 @@ import type { WidgetSnapshot } from './widgetData';
 // a new transaction, anywhere else opens the app.
 
 // Voice entry was removed (Cath, 2026-11-04): no Say it widget; the others keep + Add.
-export const WIDGET_NAMES = ['LeftToSpend', 'SpendSay', 'DueSoon', 'Month', 'Trip'] as const;
+// Cath, 2026-11-24: three calendar widgets (today, the month, and both side by side).
+export const WIDGET_NAMES = ['LeftToSpend', 'SpendSay', 'DueSoon', 'Month', 'Trip', 'CalendarToday', 'CalendarMonth', 'Calendar'] as const;
 export type WidgetName = (typeof WIDGET_NAMES)[number];
 
 // 2026-10-31 (Cath): green by default, like the Left to Spend card, and following the mood like
@@ -32,6 +34,7 @@ export function widgetColours(mood?: Mood | null) {
 const BLUE = { from: '#5C8DE8', to: '#1D3C86', orientation: 'TR_BL' } as const;
 
 export const ADD_URI = 'financeflow://add';
+export const CALENDAR_URI = 'financeflow://calendar';
 
 const T = (text: string, size: number, color: string, weight: any = '700', extra: object = {}) => (
   <TextWidget text={text} style={{ fontSize: size, color: color as any, fontWeight: weight, ...extra }} />
@@ -192,6 +195,99 @@ export function TripWidget({ s }: { s: WidgetSnapshot }) {
   );
 }
 
+// ---- Calendar widgets (Cath, 2026-11-24; mockups three-updates part 1, calendar-widget-medium) ----
+// Laid out like the iPhone's: the day name in the mood colour, a big date, what's next with a
+// coloured line, and the month with today circled. A tap on a day opens that day in the app.
+const KIND_COLOUR: Record<WidgetDayItem['kind'], Hex> = { bill: '#E0322B', debt: '#C25412', loan: '#A04208', income: '#2E6B47', trip: '#1D63B8', event: '#7B4BB8', other: '#8E8E93' };
+const WHITE = { from: '#FFFFFF', to: '#FFFFFF', orientation: 'TOP_BOTTOM' } as const;
+
+function TodayBlock({ v, accent, max }: { v: CalendarWidgetView; accent: Hex; max: number }) {
+  return (
+    <FlexWidget style={{ flexDirection: 'column', width: 'match_parent' }}>
+      {T(v.dayName, 11, accent, '800', { letterSpacing: 0.3 })}
+      {T(String(v.date), 34, '#111111', '300')}
+      {v.next.length === 0
+        ? T('Nothing coming up', 11, '#6C6C70', '700', { marginTop: 4 })
+        : v.next.slice(0, max).map((e, i) => (
+            <FlexWidget key={i} style={{ flexDirection: 'row', width: 'match_parent', marginTop: 4 }}>
+              <FlexWidget style={{ width: 3, height: 26, borderRadius: 2, backgroundColor: KIND_COLOUR[e.kind] }} />
+              <FlexWidget style={{ flexDirection: 'column', marginLeft: 5, width: 'match_parent' }}>
+                <TextWidget text={e.name} truncate="END" maxLines={1} style={{ fontSize: 11.5, color: '#111111', fontWeight: '700' }} />
+                <TextWidget text={e.sub} truncate="END" maxLines={1} style={{ fontSize: 10, color: '#6C6C70', fontWeight: '500' }} />
+              </FlexWidget>
+            </FlexWidget>
+          ))}
+    </FlexWidget>
+  );
+}
+
+function MonthBlock({ v, accent, cell }: { v: CalendarWidgetView; accent: Hex; cell: number }) {
+  const rows: CalendarWidgetView['cells'][] = [];
+  for (let i = 0; i < v.cells.length; i += 7) rows.push(v.cells.slice(i, i + 7));
+  const size = Math.round(cell * 0.9);
+  return (
+    <FlexWidget style={{ flexDirection: 'column', width: 'match_parent' }}>
+      {T(v.monthName, 11, accent, '800', { letterSpacing: 0.3 })}
+      <FlexWidget style={{ flexDirection: 'row', width: 'match_parent', marginTop: 2 }}>
+        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+          <FlexWidget key={i} style={{ flex: 1, alignItems: 'center' }}>{T(d, 8.5, '#6C6C70', '700')}</FlexWidget>
+        ))}
+      </FlexWidget>
+      {rows.map((r, ri) => (
+        <FlexWidget key={ri} style={{ flexDirection: 'row', width: 'match_parent' }}>
+          {r.map((c) => (
+            <FlexWidget key={c.iso} clickAction="OPEN_URI" clickActionData={{ uri: `${CALENDAR_URI}/${c.iso}` }} style={{ flex: 1, height: cell + 3, flexDirection: 'column', alignItems: 'center' }}>
+              <FlexWidget style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: c.today ? accent : '#00FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
+                {T(String(c.day), cell * 0.5, c.today ? '#FFFFFF' : c.inMonth ? '#111111' : '#C7C7CC', c.today ? '800' : '500')}
+              </FlexWidget>
+              <FlexWidget style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: c.dot && !c.today ? '#8E8E93' : '#00FFFFFF' }} />
+            </FlexWidget>
+          ))}
+        </FlexWidget>
+      ))}
+    </FlexWidget>
+  );
+}
+
+function calView(s: WidgetSnapshot): CalendarWidgetView {
+  return calendarWidgetView(s.cal || {}, new Date());
+}
+
+export function CalendarTodayWidget({ s }: { s: WidgetSnapshot }) {
+  const { C } = widgetColours(s.mood);
+  const v = calView(s);
+  return (
+    <FlexWidget clickAction="OPEN_URI" clickActionData={{ uri: `${CALENDAR_URI}/${v.todayISO}` }} style={{ height: 'match_parent', width: 'match_parent', borderRadius: 24, padding: 13, backgroundGradient: WHITE }}>
+      <TodayBlock v={v} accent={C.rose} max={2} />
+    </FlexWidget>
+  );
+}
+
+export function CalendarMonthWidget({ s }: { s: WidgetSnapshot }) {
+  const { C } = widgetColours(s.mood);
+  return (
+    <FlexWidget clickAction="OPEN_URI" clickActionData={{ uri: CALENDAR_URI }} style={{ height: 'match_parent', width: 'match_parent', borderRadius: 24, padding: 11, backgroundGradient: WHITE }}>
+      <MonthBlock v={calView(s)} accent={C.rose} cell={17} />
+    </FlexWidget>
+  );
+}
+
+export function CalendarWidget({ s }: { s: WidgetSnapshot }) {
+  const { C } = widgetColours(s.mood);
+  const v = calView(s);
+  return (
+    <FlexWidget clickAction="OPEN_URI" clickActionData={{ uri: CALENDAR_URI }} style={{ height: 'match_parent', width: 'match_parent', borderRadius: 24, padding: 13, backgroundGradient: WHITE, flexDirection: 'row' }}>
+      <FlexWidget clickAction="OPEN_URI" clickActionData={{ uri: `${CALENDAR_URI}/${v.todayISO}` }} style={{ flex: 44, height: 'match_parent', paddingRight: 8 }}>
+        <TodayBlock v={v} accent={C.rose} max={2} />
+      </FlexWidget>
+      <FlexWidget style={{ width: 1, height: 'match_parent', backgroundColor: '#E5E5EA' }} />
+      <FlexWidget style={{ flex: 56, height: 'match_parent', paddingLeft: 8 }}>
+        <MonthBlock v={v} accent={C.rose} cell={16} />
+      </FlexWidget>
+    </FlexWidget>
+  );
+}
+
 export function EmptyWidget() {
   const { C, PAPER } = widgetColours('good');
   return (
@@ -215,6 +311,12 @@ export function widgetFor(name: string, s: WidgetSnapshot | null): React.JSX.Ele
       return <MonthWidget s={s} />;
     case 'Trip':
       return <TripWidget s={s} />;
+    case 'CalendarToday':
+      return <CalendarTodayWidget s={s} />;
+    case 'CalendarMonth':
+      return <CalendarMonthWidget s={s} />;
+    case 'Calendar':
+      return <CalendarWidget s={s} />;
     default:
       return <EmptyWidget />;
   }

@@ -213,6 +213,9 @@ until she picks.
 - 2026-11-14: **Borrowed follows its loan or debt** (borrowed.ts): deleting the transaction removes an unpaid loan or debt (the pop-up says so; one with payments stays); editing it carries the name and amount over.
 - 2026-11-14: **Home's eye covers the account's page too.** A bank or cash account is called an account, only a credit card a card.
 - 2026-11-14: **A foreign wallet's rate** stays the wallet's own average rate everywhere, older rows included (her answer to H-82).
+- 2026-11-24: **Minimum payment is what's due.** A debt with "Pay at least" shows its minimum (plus anything carried in) on its due date, in Debts, Due soon, widgets and overdue, with "of" the full amount; Left to Spend counts the minimum (billPayments debtShownAmount). The pay screen's Minimum / Full buttons stay as they are. Loans unchanged.
+- 2026-11-24: **Daily check-in**: "Quiet day?" / "No spending logged today. Tap to add it." at 8:00 PM (per phone), only when nothing was added that day by anyone (checkIn.ts). Buttons: Add a transaction, Nothing today.
+- 2026-11-24: **Calendar widgets** like the iPhone's, in the mood colour: small today, small month, medium both. The widget works out today itself when it draws.
 - 2026-11-14: **Foreign wallets on Accounts** (mockup accounts-foreign, all 3 parts): shown and edited in their own currency with the rate; a new cash account can pick a currency. A wallet keeps the currency it was started with.
 
 ## Same kind of thing, same behaviour

@@ -71,6 +71,18 @@ export function minimumDue(record: CycleRecord, cur: BillCycle | undefined): num
   return Math.min(due, min + num(cur.carriedIn));
 }
 
+// Cath, 2026-11-24 (mockup three-updates, part 3): a debt with "Pay at least" shows that
+// minimum on its due date (and Left to Spend counts it), with the full amount still to pay
+// beside it. Without a minimum, or when what is left is less, it is the full amount.
+export function debtShownAmount(debt: Debt): { amount: number; full: number; isMinimum: boolean } {
+  const full = Math.round((debt.cycles || []).reduce((s, c) => s + Math.max(0, num(c.amountDue) - num(c.amountPaid)), 0) * 100) / 100;
+  const cur = currentCycle(debt);
+  const min = num(debt.minPayment);
+  if (min <= 0 || !cur || isCyclePaid(cur)) return { amount: full, full, isMinimum: false };
+  const amount = Math.min(full, Math.round((min + num(cur.carriedIn)) * 100) / 100);
+  return { amount, full, isMinimum: amount < full };
+}
+
 // Marks the current cycle paid today, and queues the next one if it repeats.
 // `amount` (debts only) can be less than the amount due:
 //  - Repeating debt: the unpaid part of the MINIMUM, plus any late fee, is added to the

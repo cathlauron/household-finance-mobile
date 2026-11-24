@@ -497,10 +497,14 @@ export default function TravelScreen({ formOnly, addDate, addNonce, onFormClosed
     const saved = goal ? goal.contributions.reduce((s2, c) => s2 + (typeof c.amount === 'number' ? c.amount : 0), 0) : 0;
     const apply = async () => {
       hapticSelection();
-      const draft: TravelTrip = { ...trip, trackInSavings: on };
+      // H-69 (Cath's yes, 2026-11-24): built from the newest data, so a save made a moment
+      // before (on this phone or arriving from your partner's) is never lost.
+      const latest = getModel() ?? model;
+      const fresh = (latest.travel || []).find((x) => x.id === trip.id) ?? trip;
+      const draft: TravelTrip = { ...fresh, trackInSavings: on };
       const budget = tripFullChecklistTotal(draft);
-      const { goals, savingsGoalId } = syncTripSavingsGoal(draft, budget, model.savingsGoals ?? []);
-      await saveModel({ ...model, savingsGoals: goals, travel: trips.map((x) => (x.id === trip.id ? { ...draft, savingsGoalId } : x)) });
+      const { goals, savingsGoalId } = syncTripSavingsGoal(draft, budget, latest.savingsGoals ?? []);
+      await saveModel({ ...latest, savingsGoals: goals, travel: (latest.travel || []).map((x) => (x.id === trip.id ? { ...draft, savingsGoalId } : x)) });
     };
     if (!on && goal && saved > 0) {
       // Turning it off removes the pot: ask first when there's money in it.
@@ -561,6 +565,12 @@ export default function TravelScreen({ formOnly, addDate, addNonce, onFormClosed
       return;
     }
     const trip: TravelTrip = { id: makeId('trip'), name, startDate: startDateInput.trim(), endDate: endDateInput.trim(), checklist: [], trackInSavings, budget: 0, createdAt: Date.now() };
+    // H-70 (2026-11-24): the trip page is asked for before the save, so the first draw that has
+    // the new trip already shows its page (the list used to show for one frame behind the sheet).
+    if (!formOnly) {
+      setPageTab('budget');
+      setFeaturedId(trip.id);
+    }
     await saveModel({ ...current, travel: [...(current.travel ?? []), trip] });
     draft.used();
     showLeafTick('Added');
@@ -570,8 +580,6 @@ export default function TravelScreen({ formOnly, addDate, addNonce, onFormClosed
       return;
     }
     closeModal();
-    setPageTab('budget');
-    setFeaturedId(trip.id);
   }
 
   async function performDeleteTripById(id: string) {

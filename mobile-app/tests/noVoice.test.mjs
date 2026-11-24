@@ -31,7 +31,9 @@ test('no "Say it" words left on screen', () => {
 test('widgets: the Say it widget is gone, and no widget opens voice', () => {
   const app = JSON.parse(readFileSync(path.join(root, 'app.json'), 'utf8'));
   const plugin = app.expo.plugins.find((p) => Array.isArray(p) && p[0] === 'react-native-android-widget');
-  assert.deepEqual(plugin[1].widgets.map((w) => w.name), ['LeftToSpend', 'SpendSay', 'DueSoon', 'Month', 'Trip']);
+  // 2026-11-24: Cath's three calendar widgets were added; the list stays exact, and Say it stays out.
+  assert.deepEqual(plugin[1].widgets.map((w) => w.name), ['LeftToSpend', 'SpendSay', 'DueSoon', 'Month', 'Trip', 'CalendarToday', 'CalendarMonth', 'Calendar']);
+  assert.ok(!plugin[1].widgets.some((w) => /say/i.test(w.name) && w.name !== 'SpendSay'));
   const ff = readFileSync(path.join(root, 'src/widgets/FFWidgets.tsx'), 'utf8');
   assert.ok(!/financeflow:\/\/voice|VOICE_URI|'SayIt'/.test(ff));
   assert.ok(!/financeflow:\/\/voice/.test(readFileSync(path.join(root, 'App.tsx'), 'utf8')));

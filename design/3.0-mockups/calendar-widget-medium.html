@@ -1,0 +1,115 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Three Updates</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"><style>
+:root{--t:#111;--m:#636366;--f:#AEAEB2;--l:#D1D1D6;--s:#F2F2F7;--c:#fff;--a:#B0234F;--at:#F6E3EA;--g:#1F7A3D;--gt:#E3F1E7;--r:#D70015;--rt:#FBE5E7;--bl:#1D63B8;--page:#E9E9EE;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--t:#fff;--m:#AEAEB2;--f:#636366;--l:#38383A;--s:#000;--c:#1C1C1E;--a:#F0668F;--at:#3A1A25;--g:#5FC48A;--gt:#15291D;--r:#FF6961;--rt:#3A1515;--bl:#6FB1F5;--page:#111113;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--t);font-family:'Nunito',sans-serif;line-height:1.4}
+main{max-width:1060px;margin:0 auto;padding:28px 16px 56px}
+h1{font-size:28px;margin:0 0 6px;font-weight:800}
+.lead{color:var(--m);margin:0 0 8px;max-width:70ch}
+section{margin-top:40px}
+section>h2{font-size:22px;margin:0 0 4px;font-weight:800}
+section>p{color:var(--m);margin:0 0 16px;max-width:70ch}
+.flow{display:flex;flex-wrap:wrap;gap:22px}
+.step{width:300px;max-width:100%}
+.step h3{font-size:14px;font-weight:800;margin:0 0 8px}
+.ph{position:relative;height:600px;background:var(--s);border:0.5px solid var(--l);border-radius:24px;overflow:hidden}
+.bar{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 8px;font-size:16px}
+.bar b{font-weight:700}.lk{color:var(--a)}
+.seg{display:flex;margin:4px 16px 10px;background:rgba(127,127,127,.14);border-radius:9px;padding:2px}
+.seg span{flex:1;text-align:center;font-size:13px;padding:5px 0;border-radius:7px;color:var(--t)}
+.seg .on{background:var(--c);font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.amt{text-align:center;font-size:12px;color:var(--m)}
+.big{text-align:center;font-size:34px;font-weight:700;margin:2px 0 10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 10px}
+.chip{font-size:13px;padding:5px 10px;border-radius:14px;background:rgba(127,127,127,.12)}
+.chip.on{background:var(--at);color:var(--a);font-weight:700}
+.lbl{font-size:12px;color:var(--m);padding:4px 16px 4px}
+.grp{margin:0 14px 10px;background:var(--c);border-radius:12px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;font-size:14px;gap:8px}
+.row+.row{border-top:0.5px solid var(--l)}
+.row .v{color:var(--m);text-align:right}
+.note{font-size:12px;color:var(--m);padding:0 18px 10px}
+.hint{font-size:12px;color:var(--g);font-weight:700}
+.warn{font-size:12px;color:var(--r);font-weight:700}
+.acct{display:flex;flex-wrap:wrap;gap:6px}
+.ac{border:1.5px solid var(--l);border-radius:10px;padding:5px 8px;font-size:13px;min-width:90px}
+.ac small{display:block;color:var(--m);font-size:11.5px}
+.ac.on{border-color:var(--a);background:var(--at)}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.35)}
+.sheet{position:absolute;left:0;right:0;bottom:0;top:120px;background:var(--s);border-radius:16px 16px 0 0}
+.tap{position:absolute;top:56px;left:50%;transform:translateX(-50%);background:var(--c);color:var(--t);font-size:12px;font-weight:700;padding:6px 10px;border-radius:14px}
+.banner{margin:0 14px 10px;padding:9px 12px;border-radius:10px;background:var(--gt);font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.banner .lk{font-weight:700}
+.list .it{display:flex;align-items:center;gap:10px;padding:10px 0;margin:0 16px;font-size:14px}
+.list .it+.it{border-top:0.5px solid var(--l)}
+.list .it i{width:9px;height:9px;border-radius:50%;flex:none}
+.list .it div{flex:1}.list .it small{display:block;color:var(--m);font-size:12px}
+.list .it span{font-weight:700}
+.q{margin:14px 0 0;padding:12px 14px;background:var(--c);border-radius:12px;max-width:70ch;font-size:14.5px}
+.q b{font-weight:800}
+.pick{display:inline-block;font-size:12px;font-weight:800;color:var(--a);margin-left:6px}
+.sw{width:38px;height:22px;border-radius:11px;background:var(--g);position:relative;flex:none}.sw::after{content:'';position:absolute;right:2px;top:2px;width:18px;height:18px;border-radius:50%;background:#fff}
+
+.ph{height:auto;min-height:0}
+.home{position:relative;width:330px;max-width:100%;border-radius:28px;padding:18px 14px 22px;background:linear-gradient(160deg,#6E8FB8,#3B5C7E 55%,#24384F);overflow:hidden}
+.home .clock{color:#fff;text-align:center;font-size:13px;opacity:.85;margin-bottom:12px}
+.wgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.w{background:#fff;color:#111;border-radius:22px;padding:12px 13px;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.w.sm{aspect-ratio:1/1}
+.w.md{grid-column:1/3;min-height:140px}
+.w.lg{grid-column:1/3}
+.wday{color:#E0322B;font-weight:800;font-size:12px;letter-spacing:.3px}
+.wbig{font-size:38px;font-weight:300;line-height:1;margin:2px 0 6px}
+.ev{display:flex;gap:6px;margin-top:5px;font-size:11.5px;line-height:1.25}
+.ev i{width:3px;border-radius:2px;flex:none}
+.ev b{display:block;font-weight:700}
+.ev small{display:block;color:#6C6C70;font-size:10.5px}
+.mini{display:grid;grid-template-columns:repeat(7,1fr);gap:1px 0;text-align:center;font-size:9.5px}
+.mini span{height:16px;line-height:16px;position:relative}
+.mini .h{color:#6C6C70;font-weight:700;font-size:8.5px}
+.mini .t{background:#E0322B;color:#fff;border-radius:50%;font-weight:800;width:16px;margin:0 auto}
+.mini .nx{color:#C7C7CC}
+.mini .dot::after{content:'';position:absolute;left:50%;bottom:0;width:3px;height:3px;border-radius:50%;background:#8E8E93;transform:translateX(-50%)}
+.lgmini{display:grid;grid-template-columns:repeat(7,1fr);gap:2px 0;text-align:center;font-size:12px}
+.lgmini span{height:24px;line-height:24px;position:relative}
+.lgmini .h{color:#6C6C70;font-weight:700;font-size:10px;height:16px;line-height:16px}
+.lgmini .t{background:#E0322B;color:#fff;border-radius:50%;font-weight:800;width:24px;margin:0 auto}
+.lgmini .dot::after{content:'';position:absolute;left:50%;bottom:1px;width:4px;height:4px;border-radius:50%;background:#8E8E93;transform:translateX(-50%)}
+.lgmini .nx{color:#C7C7CC}
+.green .wday{color:#2E6B47}.green .mini .t,.green .lgmini .t{background:#2E6B47}
+.lock{width:330px;max-width:100%;border-radius:28px;padding:22px 12px 26px;background:linear-gradient(170deg,#2B3A4E,#121A26);color:#fff}
+.lock .time{text-align:center;font-size:52px;font-weight:300;line-height:1}
+.lock .date{text-align:center;font-size:13px;opacity:.8;margin:4px 0 18px}
+.notif{background:rgba(255,255,255,.92);color:#111;border-radius:18px;padding:10px 12px;font-size:13px}
+.notif .top{display:flex;align-items:center;gap:6px;font-size:11px;color:#6C6C70;margin-bottom:3px}
+.notif .ic{width:16px;height:16px;border-radius:5px;background:#2E6B47;display:inline-block}
+.notif b{display:block;font-size:13.5px}
+.acts{display:flex;gap:8px;margin-top:8px}
+.acts span{flex:1;text-align:center;background:rgba(0,0,0,.06);border-radius:10px;padding:6px 0;font-weight:700;font-size:12px;color:#2E6B47}
+.opt{margin-top:10px}
+.hl{outline:2px solid var(--a);outline-offset:2px;border-radius:10px}
+.row small{display:block;color:var(--m);font-size:11.5px}
+.it .rt{text-align:right;flex:none}.it .rt span{display:block}.it .rt small{display:block;color:var(--m);font-size:11.5px;font-weight:400}
+</style></head><body><main>
+<h1>Medium calendar widget: today and the month together</h1>
+<p class="lead">Your two small widgets side by side in one medium widget: today with what's next on the left, the month on the right. The small ones stay as two separate choices. Colour follows the app's mood, like your other widgets. Samples only. Nothing is built.</p>
+<section><div class="flow">
+  <div class="step" style="width:340px"><h3>Mood: on track (green)</h3><div class="home green" style=""><div class="clock">Home screen</div><div class="wgrid">
+  <div class="w md" style="display:flex;gap:12px;align-items:stretch">
+    <div style="width:44%"><div class="wday" style="color:#2E6B47">TUESDAY</div><div class="wbig">24</div><div class="ev"><i style="background:#E0322B"></i><div><b>Meralco</b><small>Due today · ₱2,350</small></div></div><div class="ev"><i style="background:#2E6B47"></i><div><b>Payday</b><small>Wed · +₱25,000</small></div></div></div>
+    <div style="flex:1;border-left:0.5px solid #E5E5EA;padding-left:10px"><div class="wday" style="color:#2E6B47">NOVEMBER</div><div class="mini" style="--t:#2E6B47"><span class="h">S</span><span class="h">M</span><span class="h">T</span><span class="h">W</span><span class="h">T</span><span class="h">F</span><span class="h">S</span><span class="">1</span><span class="">2</span><span class="dot">3</span><span class="">4</span><span class="dot">5</span><span class="">6</span><span class="">7</span><span class="">8</span><span class="">9</span><span class="dot">10</span><span class="">11</span><span class="">12</span><span class="">13</span><span class="">14</span><span class="dot">15</span><span class="">16</span><span class="">17</span><span class="">18</span><span class="">19</span><span class="dot">20</span><span class="">21</span><span class="">22</span><span class="">23</span><span class="t">24</span><span class="">25</span><span class="dot">26</span><span class="">27</span><span class="dot">28</span><span class="">29</span><span class="dot">30</span><span class="nx">1</span><span class="nx">2</span><span class="nx">3</span><span class="nx">4</span><span class="nx">5</span></div></div>
+  </div></div></div></div>
+  <div class="step" style="width:340px"><h3>Mood: running low (orange)</h3><div class="home green" style=""><div class="clock">Home screen</div><div class="wgrid">
+  <div class="w md" style="display:flex;gap:12px;align-items:stretch">
+    <div style="width:44%"><div class="wday" style="color:#A04208">TUESDAY</div><div class="wbig">24</div><div class="ev"><i style="background:#E0322B"></i><div><b>Meralco</b><small>Due today · ₱2,350</small></div></div><div class="ev"><i style="background:#2E6B47"></i><div><b>Payday</b><small>Wed · +₱25,000</small></div></div></div>
+    <div style="flex:1;border-left:0.5px solid #E5E5EA;padding-left:10px"><div class="wday" style="color:#A04208">NOVEMBER</div><div class="mini" style="--t:#A04208"><span class="h">S</span><span class="h">M</span><span class="h">T</span><span class="h">W</span><span class="h">T</span><span class="h">F</span><span class="h">S</span><span class="">1</span><span class="">2</span><span class="dot">3</span><span class="">4</span><span class="dot">5</span><span class="">6</span><span class="">7</span><span class="">8</span><span class="">9</span><span class="dot">10</span><span class="">11</span><span class="">12</span><span class="">13</span><span class="">14</span><span class="dot">15</span><span class="">16</span><span class="">17</span><span class="">18</span><span class="">19</span><span class="dot">20</span><span class="">21</span><span class="">22</span><span class="">23</span><span class="t" style="background:#A04208">24</span><span class="">25</span><span class="dot">26</span><span class="">27</span><span class="dot">28</span><span class="">29</span><span class="dot">30</span><span class="nx">1</span><span class="nx">2</span><span class="nx">3</span><span class="nx">4</span><span class="nx">5</span></div></div>
+  </div></div></div></div>
+  <div class="step" style="width:340px"><h3>Mood: over (red)</h3><div class="home green" style=""><div class="clock">Home screen</div><div class="wgrid">
+  <div class="w md" style="display:flex;gap:12px;align-items:stretch">
+    <div style="width:44%"><div class="wday" style="color:#B4234A">TUESDAY</div><div class="wbig">24</div><div class="ev"><i style="background:#E0322B"></i><div><b>Meralco</b><small>Due today · ₱2,350</small></div></div><div class="ev"><i style="background:#2E6B47"></i><div><b>Payday</b><small>Wed · +₱25,000</small></div></div></div>
+    <div style="flex:1;border-left:0.5px solid #E5E5EA;padding-left:10px"><div class="wday" style="color:#B4234A">NOVEMBER</div><div class="mini" style="--t:#B4234A"><span class="h">S</span><span class="h">M</span><span class="h">T</span><span class="h">W</span><span class="h">T</span><span class="h">F</span><span class="h">S</span><span class="">1</span><span class="">2</span><span class="dot">3</span><span class="">4</span><span class="dot">5</span><span class="">6</span><span class="">7</span><span class="">8</span><span class="">9</span><span class="dot">10</span><span class="">11</span><span class="">12</span><span class="">13</span><span class="">14</span><span class="dot">15</span><span class="">16</span><span class="">17</span><span class="">18</span><span class="">19</span><span class="dot">20</span><span class="">21</span><span class="">22</span><span class="">23</span><span class="t" style="background:#B4234A">24</span><span class="">25</span><span class="dot">26</span><span class="">27</span><span class="dot">28</span><span class="">29</span><span class="dot">30</span><span class="nx">1</span><span class="nx">2</span><span class="nx">3</span><span class="nx">4</span><span class="nx">5</span></div></div>
+  </div></div></div></div>
+</div>
+<div class="q"><b>Your pick:</b> yes to this medium widget? The large one stays as in the first mockup (month on top, the list under it), in the mood colour.</div></section>
+</main></body></html>

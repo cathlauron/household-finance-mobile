@@ -154,3 +154,11 @@ export function newEventIndex(before: string[], after: string[]): number {
   }
   return -1;
 }
+
+// H-71 (Cath, 2026-11-24): after adding from the Calendar, the day something new really landed on
+// (the date may have been changed in the form). The picked day first, then the earliest other day.
+export function findNewDay(before: Record<string, string[]>, after: Record<string, string[]>, picked: string): string | null {
+  const grew = (day: string) => newEventIndex(before[day] || [], after[day] || []) >= 0;
+  if (grew(picked)) return picked;
+  return Object.keys(after).sort().find(grew) ?? null;
+}

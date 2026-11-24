@@ -8,6 +8,7 @@ import { computeEnvelopes } from '../envelopes';
 import { getUpcomingDue } from '../screens/DashboardScreen';
 import { getOverdueItems } from '../overdue';
 import { tripItemsDue } from '../tripDue';
+import { calendarWidgetDays, type WidgetDays } from './calendarWidget';
 
 export type WidgetSnapshot = {
   at: number;
@@ -24,6 +25,8 @@ export type WidgetSnapshot = {
   dueLeft: string;
   budgets: { name: string; pct: number; spent: string }[];
   trip: { name: string; dayText: string; spent: string; budget: string; left: string; pct: number } | null;
+  // Cath, 2026-11-24: what is on each day this month and next, for the calendar widgets.
+  cal?: WidgetDays;
 };
 
 const MASK = '₱ ••••';
@@ -111,5 +114,6 @@ export function makeWidgetSnapshot(model: HouseholdModel, opts: { hidden: boolea
     dueLeft: m(dueLeft),
     budgets,
     trip: tripOut,
+    cal: calendarWidgetDays(model, { hidden: opts.hidden, now }),
   };
 }

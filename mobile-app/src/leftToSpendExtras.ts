@@ -102,7 +102,10 @@ export function leftToSpendItems(model: HouseholdModel, today: Date, target: Dat
     for (const rec of list as any[]) {
       for (const c of rec.cycles || []) {
         if (!c.dueDate || c.dueDate >= todayISO) continue;
-        const owed = num(c.amountDue) - num(c.amountPaid);
+        const unpaid = num(c.amountDue) - num(c.amountPaid);
+        // Cath, 2026-11-24: a debt with a minimum counts its minimum.
+        const min = kind === 'debt' ? num(rec.minPayment) : 0;
+        const owed = min > 0 ? Math.min(unpaid, min + num(c.carriedIn)) : unpaid;
         if (owed > 0.005) push({ group: 'Past due', name: rec.name || rec.creditorOrPerson || (kind === 'bill' ? 'Bill' : 'Debt'), sub: `Past due · was due ${short(c.dueDate)}`, amount: -owed, date: c.dueDate, ref: { kind, id: rec.id } });
       }
     }

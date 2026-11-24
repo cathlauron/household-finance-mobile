@@ -15,11 +15,13 @@ const mockRequest = jest.fn();
 const mockGet = jest.fn();
 const mockLast = jest.fn();
 const mockCurrent = jest.fn();
+const mockServices = jest.fn();
 jest.mock('expo-location', () => ({
   requestForegroundPermissionsAsync: (...a: any[]) => mockRequest(...a),
   getForegroundPermissionsAsync: (...a: any[]) => mockGet(...a),
   getLastKnownPositionAsync: (...a: any[]) => mockLast(...a),
   getCurrentPositionAsync: (...a: any[]) => mockCurrent(...a),
+  hasServicesEnabledAsync: (...a: any[]) => mockServices(...a),
   Accuracy: { Low: 2 },
 }));
 
@@ -46,7 +48,8 @@ beforeEach(() => {
   jest.doMock('react', () => mockReact);
   jest.doMock('react-native', () => mockRN);
   Object.keys(mockStore).forEach((k) => delete mockStore[k]);
-  [mockRequest, mockGet, mockLast, mockCurrent].forEach((m) => m.mockReset());
+  [mockRequest, mockGet, mockLast, mockCurrent, mockServices].forEach((m) => m.mockReset());
+  mockServices.mockResolvedValue(true);
   mockRequest.mockResolvedValue({ status: 'granted' });
   mockGet.mockResolvedValue({ status: 'granted' });
   mockLast.mockResolvedValue(POS);
@@ -146,4 +149,31 @@ test('the rainfall and cloud amounts are asked for, and a dry drizzle reading sh
   await settle();
   expect(fetchMock.mock.calls[0][0]).toContain('current=weather_code,precipitation,cloud_cover');
   expect(result.current).toBe('clear');
+});
+
+// H-73 (Cath, 2026-11-24: close the open items): the phone's location switched off (the app still
+// allowed) used to leave Live weather On with a clear sky and no word. Now it is the same as no
+// permission: turning it on says so and stays Off; one already on goes back to Off.
+test('location switched off on the phone: turning it on stays Off', async () => {
+  mockServices.mockResolvedValue(false);
+  const sky = await load();
+  let ok: boolean | undefined;
+  await act(async () => { ok = await sky.setLiveWeatherOn(true); });
+  await settle();
+  expect(ok).toBe(false);
+  expect(renderHook(() => sky.useSkyPrefs()).result.current.liveWeatherOn).toBe(false);
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test('location switched off later: Live weather goes back to Off and shows no weather', async () => {
+  saved({ on: true, rain: true, place: true });
+  mockServices.mockResolvedValue(false);
+  const sky = await load();
+  const prefs = renderHook(() => sky.useSkyPrefs());
+  const weather = renderHook(() => sky.useSkyWeather());
+  renderHook(() => sky.useSkyPhase());
+  await settle();
+  expect(prefs.result.current.liveWeatherOn).toBe(false);
+  expect(weather.result.current).toBe('clear');
+  expect(fetchMock).not.toHaveBeenCalled();
 });

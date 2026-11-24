@@ -1,6 +1,7 @@
 import { firstTimeOpen } from '../handledOpen';
 import { transfersForList, investmentMovesForList, TransferRow } from '../transfersList';
 import { animateNextLayout } from '../animateLayout';
+import FormSwapFade, { dipFormFields } from '../components/FormSwapFade';
 import { redUnlessZero, isZeroAmount, toneUnlessZero } from '../moneyColor';
 import { friendlyError } from '../friendlyError';
 import ErrorNote from '../components/ErrorNote';
@@ -27,7 +28,7 @@ import { PullToRefreshScrollView } from '../PullToRefreshScrollView';
 import { usePullDownToOpen } from '../pullDownToOpen';
 import { INCOME_KINDS, IncomeKind, incomeKindLabel } from '../incomeKinds';
 import AccountPicker, { accountProblem } from '../components/AccountPicker';
-import { addBorrowed, borrowedDeleteNote, syncBorrowed } from '../borrowed';
+import { addBorrowed, borrowedDeleteNote, lendingLocked, syncBorrowed } from '../borrowed';
 import { isBackDated, reapplyForEdit, takeOffForTxn } from '../backDated';
 import { dateText } from '../dateUtils';
 import { usePageActive } from '../pageActive';
@@ -329,6 +330,9 @@ export default function TransactionsScreen({
   // in, and a loan or a debt is added to To-Pay (borrowed.ts).
   const [borrowedOn, setBorrowedOn] = useState(false);
   const [borrowedKind, setBorrowedKind] = useState<'loan' | 'debt'>('debt'); // Cath, 2026-11-14: Debt first, like To-Pay
+  // Cath, 2026-11-24: Money out / Money in / Borrowed works like the app's other form switches:
+  // the highlight glides at once, the fields below fade out, change, and fade back in.
+  const [dirPick, setDirPick] = useState<'out' | 'in' | 'saving' | 'borrowed' | null>(null);
   const [payBackInput, setPayBackInput] = useState('');
   // Cath, 2026-11-13: the form opened with what was typed last time (formDrafts.ts).
   const [resumed, setResumed] = useState(false);
@@ -422,6 +426,8 @@ export default function TransactionsScreen({
   const totals = useMemo(() => transactionTotals(transactions), [transactions]);
   const editingRawTxn = editingId ? (model?.manualTransactions || []).find((m) => m.id === editingId) : undefined;
   const alreadyRefunded = !!editingRawTxn?.refundTransactionId;
+  // Cath, 2026-11-24 (H-87): a Borrowed or Lent one already paid on keeps its side.
+  const sideLocked = !!editingId && !!model && !!editingRawTxn?.borrowed && lendingLocked(model, editingId);
   const walletNow = foreignWallet(paymentMethodInput);
   // Salary goes through paydays (its own flow), so it is not asked here.
   const backDatedNow = !!model && !editingId && !!paymentMethodInput && isBackDated(model, dateInput) && !(directionInput === 'in' && incomeKindInput === 'salary' && !borrowedOn);
@@ -1357,18 +1363,26 @@ export default function TransactionsScreen({
         <SegmentedControl<'out' | 'in' | 'saving' | 'borrowed'>
           accessibilityLabel="Direction"
           options={[
-            { id: 'out', label: 'Money out', testID: 'txn-dir-out' },
-            { id: 'in', label: 'Money in', testID: 'txn-dir-in' },
+            ...(!sideLocked || directionInput === 'out' ? [{ id: 'out' as const, label: 'Money out', testID: 'txn-dir-out' }] : []),
+            ...(!sideLocked || directionInput === 'in' ? [{ id: 'in' as const, label: 'Money in', testID: 'txn-dir-in' }] : []),
             ...(!editingId ? [{ id: 'borrowed' as const, label: 'Borrowed', testID: 'txn-dir-borrowed' }] : []),
             ...(directionInput === 'saving' ? [{ id: 'saving' as const, label: 'Saved' }] : []),
           ]}
-          value={borrowedOn ? 'borrowed' : directionInput}
+          value={dirPick ?? (borrowedOn ? 'borrowed' : directionInput)}
           onChange={(v) => {
-            setBorrowedOn(v === 'borrowed');
-            setDirectionInput(v === 'borrowed' ? 'in' : v);
-            if (v === 'borrowed') trace('borrowed', 'picked');
+            if (dirPick) return;
+            setDirPick(v);
+            dipFormFields('direction', () => {
+              setBorrowedOn(v === 'borrowed');
+              setDirectionInput(v === 'borrowed' ? 'in' : v);
+              setDirPick(null);
+              if (v === 'borrowed') trace('borrowed', 'picked');
+            });
           }}
         />
+        {sideLocked && (
+          <Text style={[styles.formFooter, { textAlign: 'center' }]}>{directionInput === 'out' ? 'Lent' : 'Borrowed'} and already paid on, so it stays {directionInput === 'out' ? 'money you lent' : 'money you borrowed'}.</Text>
+        )}
 
         <Guided {...fieldErrors.props('amount')} focusRef={amountRef} inset={false} radius={22}>
           {/* Cath, 2026-10-23: every field says if it's required (*) or optional. */}
@@ -1384,6 +1398,7 @@ export default function TransactionsScreen({
             prefix={walletNow ? currencySymbol(walletNow.currency) : undefined}
           />
         </Guided>
+        <FormSwapFade channels={['direction']} swapKey={`txn-${borrowedOn ? 'borrowed' : directionInput}`}>
         {walletNow && (
           <Text style={[styles.formFooter, { textAlign: 'center' }]} testID="txn-foreign-note">
             {typeof amountInput === 'number' && amountInput > 0 ? `About ${formatPeso(pesoFor(amountInput, walletNow.fxRate as number))} at your rate. ` : ''}Typed in {walletNow.currency}, because {walletNow.name} is in {walletNow.currency}.
@@ -1711,6 +1726,8 @@ export default function TransactionsScreen({
             <ReceiptField sunk photo={receiptPhoto} onChange={setReceiptPhoto} testID="txn-receipt" style={{ marginTop: 14, marginBottom: 14 }} />
           </>
         )}
+
+        </FormSwapFade>
 
         <ErrorNote text={errorMsg} />
 

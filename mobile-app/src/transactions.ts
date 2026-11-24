@@ -37,7 +37,8 @@ export type TransactionEntry = {
   // second within a day. Missing on very old entries (they sort as the oldest of their day).
   at?: number;
   // Cath, 2026-11-13: money borrowed (a loan or a debt). It is money in an account, but never
-  // income, so the In totals leave it out.
+  // income, so the In totals leave it out. 2026-11-24: money lent (the same link, as money out)
+  // is never spending, so the Out totals leave it out too.
   borrowed?: boolean;
 };
 
@@ -187,7 +188,7 @@ export function sortTransactions(
 
 export function transactionTotals(list: TransactionEntry[]) {
   const totalIn = list.filter((t) => t.direction === 'in' && !t.borrowed).reduce((s, t) => s + t.amount, 0);
-  const totalOut = list.filter((t) => t.direction === 'out').reduce((s, t) => s + t.amount, 0);
+  const totalOut = list.filter((t) => t.direction === 'out' && !t.borrowed).reduce((s, t) => s + t.amount, 0);
   const totalSaving = list.filter((t) => t.direction === 'saving').reduce((s, t) => s + t.amount, 0);
   return { totalIn, totalOut, totalSaving, net: totalIn - totalOut - totalSaving };
 }

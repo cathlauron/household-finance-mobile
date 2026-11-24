@@ -1,3 +1,4 @@
+import { debtShownAmount } from './billPayments';
 import type { Debt, HouseholdModel } from './types';
 import { currentCycle, isCyclePaid, wasPaidThisMonth } from './billPayments';
 import { getNextDueDate } from './recurrence';
@@ -24,7 +25,8 @@ export function debtDue(d: Debt): Date | null {
 export type DebtSections = {
   sections: { title: string; items: Debt[] }[];
   paidThisMonth: Debt[];
-  stillToPay: number;
+  stillToPay: number; // Cath, 2026-11-24: the minimums, where a debt has one
+  stillToPayFull: number; // everything still owed on those debts
   noDateTotal: number;
   paidCount: number;
   dueCount: number;
@@ -62,7 +64,8 @@ export function debtSections(model: Pick<HouseholdModel, 'debts'>, today: Date, 
   return {
     sections,
     paidThisMonth,
-    stillToPay: sum(dueThisMonth),
+    stillToPay: Math.round(dueThisMonth.reduce((s, d) => s + debtShownAmount(d).amount, 0) * 100) / 100,
+    stillToPayFull: Math.round(dueThisMonth.reduce((s, d) => s + debtShownAmount(d).full, 0) * 100) / 100,
     noDateTotal: sum(noDate),
     paidCount: paidThisMonth.length,
     dueCount: paidThisMonth.length + dueThisMonth.length,
