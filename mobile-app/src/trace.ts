@@ -4,7 +4,7 @@
 declare const __DEV__: boolean | undefined;
 const on = (typeof __DEV__ !== 'undefined' && !!__DEV__) || process.env.EXPO_PUBLIC_WALK_FIXTURE === '1';
 
-export type Flow = 'borrowed' | 'draft' | 'move' | 'withdraw' | 'fx';
+export type Flow = 'borrowed' | 'draft' | 'move' | 'withdraw' | 'fx' | 'claude';
 
 export function trace(flow: Flow, step: string, data?: Record<string, unknown>): void {
   if (!on) return;

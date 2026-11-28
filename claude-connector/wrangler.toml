@@ -1,0 +1,10 @@
+name = "finance-flow-claude"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+workers_dev = true
+
+[vars]
+FIREBASE_PROJECT_ID = "household-finance-mobile"
+# Set these as secrets (never in this file): see README.md
+#   CONNECTOR_SECRET, FIREBASE_SERVICE_ACCOUNT, FINANCE_FLOW_UID
+#   optional: SENTRY_TOKEN, SENTRY_ORG, SENTRY_PROJECT

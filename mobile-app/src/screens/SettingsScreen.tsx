@@ -16,6 +16,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { usePaydayNudgeTime, setPaydayNudgeTime, formatClock, type ClockTime } from '../paydayTime';
 import { useCheckInTime, setCheckInTime } from '../checkInStore';
 import AppSwitch from '../components/AppSwitch';
+import ClaudeLinkSettings from '../components/ClaudeLinkSettings';
 import { removeFingerprintCopy, removePinCopy, saveFingerprintCopyIfPossible } from '../quickUnlock';
 import { updateSessionPassword } from '../staySignedIn';
 import { updateRecentAccountIfPresent } from '../recentAccounts';
@@ -1947,6 +1948,9 @@ export default function SettingsScreen({ onSignOut, onSwitchAccount }: { onSignO
             value={storageUsed > 0 ? `${Math.max(1, Math.round(storageUsed * 100))}%` : 'Shown after your next save'}
           />
         </SettingsGroup>
+
+        {/* Claude connector (Cath, 2026-11-28): off until she turns it on. */}
+        <ClaudeLinkSettings />
 
         <ClearAllData
           role={clearRole}

@@ -144,3 +144,32 @@ test('K4: a recovery request lasts at most 15 minutes', async () => {
   await assertSucceeds(setDoc(doc(as('ben'), 'householdRecovery/r1'), { ...base, expiresAt: now + 15 * 60 * 1000 }));
   await assertFails(setDoc(doc(as('ben'), 'householdRecovery/r2'), { ...base, expiresAt: now + 60 * 60 * 1000 }));
 });
+
+// ---- Claude connector (2026-11-28): the summary and Claude's queue ----
+const L = 'claudeLinks/ann';
+const summary = { v: 1, totalBalance: 100 };
+test('claude: an account writes, reads and deletes its own summary', async () => {
+  await assertSucceeds(setDoc(doc(as('ann'), L), { summary, updatedAt: 1, v: 1 }));
+  await assertSucceeds(getDoc(doc(as('ann'), L)));
+  await assertSucceeds(deleteDoc(doc(as('ann'), L)));
+});
+test("claude: nobody else can read or write someone's summary", async () => {
+  await env.withSecurityRulesDisabled((ctx) => setDoc(doc(ctx.firestore(), L), { summary, updatedAt: 1, v: 1 }));
+  await assertFails(getDoc(doc(as('ben'), L)));
+  await assertFails(setDoc(doc(as('ben'), L), { summary, updatedAt: 2, v: 1 }));
+  await assertFails(deleteDoc(doc(as('ben'), L)));
+  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), L)));
+});
+test('claude: the summary takes only its three fields', async () => {
+  await assertFails(setDoc(doc(as('ann'), L), { summary, updatedAt: 1, v: 1, data: 'x' }));
+  await assertFails(setDoc(doc(as('ann'), L), { summary: 'text', updatedAt: 1, v: 1 }));
+});
+test("claude: the app can't add to the queue; the owner reads and deletes; others can't", async () => {
+  await assertFails(setDoc(doc(as('ann'), L + '/queue/q1'), { label: 'x', amount: 1 }));
+  await env.withSecurityRulesDisabled((ctx) => setDoc(doc(ctx.firestore(), L + '/queue/q1'), { label: 'x', amount: 1 }));
+  await assertSucceeds(getDocs(collection(as('ann'), L + '/queue')));
+  await assertFails(getDocs(collection(as('ben'), L + '/queue')));
+  await assertFails(updateDoc(doc(as('ann'), L + '/queue/q1'), { amount: 2 }));
+  await assertFails(deleteDoc(doc(as('ben'), L + '/queue/q1')));
+  await assertSucceeds(deleteDoc(doc(as('ann'), L + '/queue/q1')));
+});

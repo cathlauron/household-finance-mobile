@@ -448,6 +448,26 @@ service cloud.firestore {
 
       allow delete: if request.auth != null && request.auth.uid == uid;
     }
+    // Claude connector (Cath's OK, 2026-11-28). Off unless she turns it on in Settings.
+    // claudeLinks/{uid}: the UNLOCKED summary of totals (claudeSummary.ts) that only that
+    // account can read, write or delete. The connector reads it with its own server key.
+    match /claudeLinks/{uid} {
+      allow get, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['summary', 'updatedAt', 'v'])
+        && request.resource.data.summary is map
+        && request.resource.data.updatedAt is number
+        && request.resource.data.v is int;
+      allow list: if false;
+    }
+    // Entries Claude added. Only the connector (server key) writes them; the account's phone
+    // reads them, adds them as "To review" transactions and deletes them. No app can add one.
+    match /claudeLinks/{uid}/queue/{entryId} {
+      allow get, list, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

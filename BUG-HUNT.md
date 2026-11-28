@@ -389,3 +389,17 @@ Area: everything new since 3.8.0 (fx.ts, borrowed.ts, backDated.ts, accountTrail
 - H-67, H-68, H-84 (forms and pages slow to open on the slowed test browser): closed into H-76, the one lag item. The form-opening fixes (B-117, 3.9.0) were aimed at exactly these; the next step is her phone's answer on whether forms still lag, then a timing readout in a test build if they do.
 - Bug hunt of this batch (minimum payment, check-in, calendar widgets, fade, lending): no new bugs found by reading. Known limits told to Cath: a partner's entry only quiets your check-in once it reaches your phone (the app syncs when open); the widgets need the installed build.
 - Smoothness: the direction switch uses the shared fade; the check-in rows open with the shared row motion; nothing else new moves. npm run test:motion passes.
+
+## 2026-11-28: Claude connector batch sweep
+- H-95 (screen checks, certain, annoying for us not Cath): on a clean v3 (3.10.0) the screen
+  checks already fail 2 to 5 of 398 tests, a different few each run: AccountFirst (always:
+  `txn-kind-salary` not found), MoneyBatch, UndoWording, RefundDirection, OldDataScreens
+  (`Animated.timing` undefined after a check has ended). Same on v3 without this batch's
+  changes, so not caused by it. Likely today's date (end of November) and timers left running
+  between checks. Not fixed yet; the next batch should fix them so `check:all` gates again.
+- Sweep of this batch: data (the summary uses the same functions as Home, Accounts and
+  Budgeting, checked in claudeLink.test.mjs), rules (Settings row asks before sharing and before
+  turning off), smoothness (one Settings row built from the existing row and switch, no new
+  motion), security (summary has totals only, a leak check; every Firestore call has
+  withTimeout; Firestore rules: only the account itself reads its summary, no app can add to
+  the queue; rules checks 25 of 25).

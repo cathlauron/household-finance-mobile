@@ -1,22 +1,26 @@
-appId: host.exp.exponent
+# Sign in on the INSTALLED app (3.10+) with the test account, then the tour can run.
+# Set the account with: maestro test -e EMAIL=... -e USERNAME=... -e PASSWORD=... flows/sign-in.yaml
+appId: com.cathlauron.householdfinance
 ---
-- openLink: "exp://192.168.1.62:8081"
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: "sign-in-button"
+    timeout: 60000
 - tapOn:
     id: "email-input"
-- inputText: "test@example.com"
+- inputText: ${EMAIL}
 - tapOn:
     id: "username-input"
-- inputText: "testuser"
+- inputText: ${USERNAME}
 - tapOn:
     id: "password-input"
-- inputText: "test123456"
+- inputText: ${PASSWORD}
 - hideKeyboard
 - tapOn:
     id: "sign-in-button"
 - extendedWaitUntil:
     visible:
-      text: ".*signed in.*"
-    timeout: 75000
-- assertVisible:
-    text: ".*signed in.*"
-    optional: true
+      id: "home-tab"
+    timeout: 120000
