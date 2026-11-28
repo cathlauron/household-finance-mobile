@@ -69,6 +69,7 @@ import { hideAmountsNow } from './src/hideAmounts';
 import { ThemeProvider, useTheme } from './src/ThemeContext';
 import { MoodThemeProvider } from './src/mood';
 import { DataProvider, useData } from './src/DataContext';
+import ClaudeLinkSync from './src/ClaudeLinkSync';
 import { getCurrentFirebaseUser, signOutFirebase, signInWithFirebase } from './src/authFirebase';
 import { rescheduleBillNotifications } from './src/pushNotifications';
 import {
@@ -854,6 +855,8 @@ function AppContent() {
         <ScreenPeelHost />
         {/* Mockup W2: keeps the home screen widgets up to date (installed Android app only). */}
         <WidgetSync />
+        {/* Claude connector (2026-11-28): the shared summary and Claude's entries, only when on. */}
+        <ClaudeLinkSync />
         {/* H-51 (canvas F2 + F3): what another household member changed, on opening / coming back. */}
         <HouseholdChanges />
         <StillTherePopup

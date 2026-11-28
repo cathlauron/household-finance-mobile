@@ -528,3 +528,12 @@ Lending, eye, fade and the older items:
 23. A trip: turn Save for this trip in Savings on and off: nothing you added to the trip just before is lost.
 24. Calendar › + on a day › change the date in the form › Add: the Calendar goes to the new date and its row glows.
 25. Live weather on, then switch the phone's location off and come back to the app: Live weather is Off. Turning it on says to turn the location on.
+
+## 37. Connect to Claude, crash reports (2026-11-28). Needs your phone after setup.
+Setup first: `claude-connector/README.md` (Firebase rules, Cloudflare, Claude connector).
+1. Settings › Backup & Data › Connect to Claude. It asks "Share totals with Claude?". Cancel:
+   it stays off. Turn it on again and tap Share.
+2. Wait 10 seconds. In Claude, ask "What's my Left to Spend?" It matches Home.
+3. Ask Claude to "add ₱150 jeep from Wallet". Close the app and open it again: the jeep is in
+   Transactions with "To review", and Wallet is ₱150 lower.
+4. Turn Connect to Claude off: it asks first. Ask Claude again: it says there's no summary.

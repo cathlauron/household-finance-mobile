@@ -1,0 +1,43 @@
+# Tap-through tour of the INSTALLED app (3.10+). Fails if the app crashes, a tab doesn't open,
+# or a page doesn't show. Start signed in on a test account (never real money data).
+appId: com.cathlauron.householdfinance
+---
+- launchApp
+- extendedWaitUntil:
+    visible:
+      id: "home-tab"
+    timeout: 60000
+# The four tabs
+- tapOn: "Transactions"
+- tapOn: "To-Pay"
+- tapOn:
+    id: "plan-tab"
+- tapOn:
+    id: "home-tab"
+# Settings and its pages
+- tapOn:
+    id: "home-settings-button"
+- tapOn:
+    id: "settings-row-budgeting"
+- back
+- tapOn:
+    id: "settings-row-categories"
+- back
+- tapOn:
+    id: "settings-row-data"
+- scrollUntilVisible:
+    element:
+      id: "settings-claude-link"
+    direction: DOWN
+# Connect to Claude asks first; Cancel leaves it off.
+- tapOn:
+    id: "settings-claude-link"
+- assertVisible: "Share totals with Claude?"
+- tapOn: "Cancel"
+- back
+- tapOn:
+    id: "settings-row-help"
+- back
+- back
+- assertVisible:
+    id: "home-tab"
